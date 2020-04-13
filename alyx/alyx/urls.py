@@ -8,6 +8,7 @@ from subjects import views as sv
 from actions import views as av
 from data import views as dv
 from misc import views as mv
+from buffalo import views as buffalo_views
 
 
 register_file = dv.RegisterFileViewSet.as_view({
