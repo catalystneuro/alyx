@@ -1,6 +1,7 @@
 DBNAME='%DBNAME%'
 DBUSER='%DBUSER%'
+DBHOST='%DBHOST%'
 FILENAME='alyx.sql'
 
-pg_dump -cOx -U $DBUSER -h localhost $DBNAME -f $FILENAME
+pg_dump -cOx -U $DBUSER -h $DBHOST $DBNAME -f $FILENAME
 gzip $FILENAME
