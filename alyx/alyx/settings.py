@@ -144,6 +144,7 @@ INSTALLED_APPS = (
     'misc',
     'experiments',
     'subjects',
+    'buffalo',
 )
 
 MIDDLEWARE = (

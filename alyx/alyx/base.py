@@ -141,6 +141,7 @@ ADMIN_PAGES = [('Common', ['Subjects',
                            'Water restrictions',
                            'Weighings',
                            'Subject requests',
+                           'Behavioral Task'
                            ]),
                ('Data files',
                 ['Data repository types',
@@ -209,7 +210,7 @@ def _iter_history_changes(obj, field):
 
 def _get_category_list(app_list):
     order = ADMIN_PAGES
-    extra_in_common = ['Adverse effects', 'Cull subjects']
+    extra_in_common = ['Adverse effects', 'Cull subjects', 'Behavioral tasks']
     order_models = flatten([models for app, models in order])
     models_dict = {str(model['name']): model
                    for app in app_list
