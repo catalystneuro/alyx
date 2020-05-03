@@ -54,6 +54,7 @@ def api_root(request, format=None):
 
         #'water-requirement-url': reverse(
         #    'water-requirement', request=request, format=format),
+        'behaviortask-url': reverse('behaviortask-list', request=request, format=format),
 
     })
 

@@ -56,6 +56,9 @@ class BehavioralTask(BaseModel):
         help_text="Indicates the relative position of a task within the session it belongs to",
     )
 
+    def __str__(self):
+        return self.name
+
 
 class FoodConsumption(BaseModel):
     amount = models.FloatField(null=True, validators=[MinValueValidator(limit_value=0)])
