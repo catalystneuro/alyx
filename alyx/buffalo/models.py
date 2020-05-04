@@ -7,6 +7,7 @@ from data.models import DatasetType
 from misc.models import HousingSubject, LabMember
 from actions.models import Session
 
+
 MAZE_TYPES = [
     ("Y-maze", "Y-maze"),
     ("calibration", "Calibration"),
@@ -14,6 +15,12 @@ MAZE_TYPES = [
 
 REWARD_TYPES = [
     ("juice", "Juice"),
+]
+
+UNITS = [
+    ("none", "0"),
+    ("few", "1"),
+    ("lots", "2"),
 ]
 
 
@@ -69,3 +76,29 @@ class FoodConsumption(BaseModel):
         LabMember, on_delete=models.SET_NULL, null=True, blank=True
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+
+
+class TurningRecord(BaseModel):
+    task = models.ForeignKey(BehavioralTask, on_delete=models.SET_NULL, null=True)
+    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    turns = models.FloatField()
+    millimeters = models.FloatField(null=True, blank=True)
+    impedance = models.FloatField(null=True, blank=True)
+    units = models.CharField(max_length=255, choices=UNITS, default="", blank=True)
+    lfp_band_1 = models.FloatField(null=True, blank=True)
+    lfp_band_2 = models.FloatField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+
+class UnitsTracking(models.Model):
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    ripples = models.BooleanField(default=False)
+    ripples_channels = models.TextField(blank=True, help_text="Channel #s")
+    sharp_waves = models.BooleanField(default=False)
+    sharp_waves_channels = models.TextField(blank=True, help_text="Channel #s")
+    spikes_ripple = models.BooleanField(default=False)
+    spikes_ripple_channels = models.TextField(blank=True, help_text="Channel #s")
+    good_behavior = models.BooleanField(default=False)

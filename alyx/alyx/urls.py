@@ -116,9 +116,12 @@ urlpatterns = [
     path("water-type/<str:name>", av.WaterTypeList.as_view(), name="watertype-detail"),
     path("weighings", av.WeighingAPIListCreate.as_view(), name="weighing-create"),
     path("weighings/<uuid:pk>", av.WeighingAPIDetail.as_view(), name="weighing-detail"),
+    path("behavioraltask", bf.BehavioralTaskList.as_view(), name="behaviortask-list",),
     path(
-        "behavioraltask",
-        bf.BehavioralTaskListSerializer.as_view(),
+        "behavioraltask/(?P<session>.+)/$",
+        bf.BehavioralTaskList.as_view(),
         name="behaviortask-list",
     ),
+    path("unitstracking", bf.UnitsTrackingList.as_view(), name="unitstracking-list",),
+    path("turningrecord", bf.TurningRecordList.as_view(), name="turningrecord-list",),
 ]
