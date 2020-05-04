@@ -122,6 +122,4 @@ urlpatterns = [
         bf.BehavioralTaskList.as_view(),
         name="behaviortask-list",
     ),
-    path("unitstracking", bf.UnitsTrackingList.as_view(), name="unitstracking-list",),
-    path("turningrecord", bf.TurningRecordList.as_view(), name="turningrecord-list",),
 ]

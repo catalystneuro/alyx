@@ -59,12 +59,6 @@ def api_root(request, format=None):
             "behaviortask-url": reverse(
                 "behaviortask-list", request=request, format=format
             ),
-            "unitstracking-url": reverse(
-                "unitstracking-list", request=request, format=format
-            ),
-            "turningrecord-url": reverse(
-                "turningrecord-list", request=request, format=format
-            ),
         }
     )
 
