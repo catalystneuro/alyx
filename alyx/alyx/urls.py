@@ -9,6 +9,15 @@ from actions import views as av
 from data import views as dv
 from misc import views as mv
 from buffalo import views as bf
+from buffalo.views import (
+    TaskCreateView,
+    SessionCreateView,
+    subjectCreateView,
+    AddTasksToSessionAjax,
+    CreateTasksToSession,
+    TaskUpdateView,
+    subjectUpdateView,
+)
 
 
 register_file = dv.RegisterFileViewSet.as_view({"post": "create"})
@@ -116,10 +125,23 @@ urlpatterns = [
     path("water-type/<str:name>", av.WaterTypeList.as_view(), name="watertype-detail"),
     path("weighings", av.WeighingAPIListCreate.as_view(), name="weighing-create"),
     path("weighings/<uuid:pk>", av.WeighingAPIDetail.as_view(), name="weighing-detail"),
-    path("behavioraltask", bf.BehavioralTaskList.as_view(), name="behaviortask-list",),
+    path("buffalo-tasks/", TaskCreateView.as_view(), name="buffalo-tasks"),
+    path("buffalo-sessions/", SessionCreateView.as_view(), name="buffalo-sessions"),
+    path("buffalo-subjects/", subjectCreateView.as_view(), name="buffalo-subjects"),
     path(
-        "behavioraltask/(?P<session>.+)/$",
-        bf.BehavioralTaskList.as_view(),
-        name="behaviortask-list",
+        "buffalo-add-task-session/",
+        AddTasksToSessionAjax.as_view(),
+        name="buffalo-add-task-session",
+    ),
+    path("buffalo-add-task/", CreateTasksToSession.as_view(), name="buffalo-add-task"),
+    path(
+        "buffalo-edit-task/<uuid:pk>/",
+        TaskUpdateView.as_view(),
+        name="buffalo-edit-task",
+    ),
+    path(
+        "buffalo-edit-subject/<uuid:pk>/",
+        subjectUpdateView.as_view(),
+        name="buffalo-edit-subject",
     ),
 ]

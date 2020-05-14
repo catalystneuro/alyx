@@ -146,7 +146,11 @@ INSTALLED_APPS = (
     'experiments',
     'subjects',
     'buffalo',
+    'crispy_forms'
 )
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
 
 MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',

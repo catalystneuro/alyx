@@ -5,11 +5,15 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 
 from alyx.base import BaseModel
-from data.models import DatasetType
+from data.models import DatasetType, Dataset
 from misc.models import HousingSubject, LabMember
 from actions.models import Session
 from subjects.models import Subject
 
+
+TASK_CATEGORY = [
+    ("task1", "Task 1"),
+]
 
 MAZE_TYPES = [
     ("Y-maze", "Y-maze"),
@@ -34,29 +38,28 @@ NUMBER_OF_CELLS = [
 ]
 
 
-class BehavioralTask(BaseModel):
-    # maze_type = models.CharField(max_length=1, choices=MAZE_TYPES, blank=True)
+class Task(BaseModel):
+    name = models.CharField(max_length=255, blank=True, help_text="Task name")
+    description = models.TextField(blank=True)
+    category = models.CharField(
+        max_length=255, choices=TASK_CATEGORY, default=None, blank=True
+    )
     reward_type = models.CharField(
         max_length=255, choices=REWARD_TYPES, default=None, blank=True
     )
-    # quality_metrics
+    maze_type = models.CharField(max_length=125, choices=MAZE_TYPES, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class SessionTask(BaseModel):
+    task = models.ForeignKey(Task, null=True, blank=True, on_delete=models.SET_NULL)
     version = models.CharField(
         blank=True, null=True, max_length=64, help_text="generating software revision"
     )
     dataset_type = models.ManyToManyField(DatasetType, blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    lab_member = models.ForeignKey(
-        LabMember, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    weight = models.FloatField(
-        validators=[
-            MinValueValidator(limit_value=0),
-            MaxValueValidator(limit_value=35),
-        ],
-        help_text="Weight in Kg",
-    )
-
-    menstration = models.BooleanField(default=False)
     general_comments = models.TextField(blank=True)
     session = models.ForeignKey(
         Session, null=True, blank=True, on_delete=models.SET_NULL
@@ -93,11 +96,12 @@ class FoodConsumption(BaseModel):
 class DailyObservation(models.Model):
     subject = models.ForeignKey(
         Subject,
-        on_delete=models.CASCADE,
-        related_name="%(app_label)s_%(class)ss",
+        null=True,
+        on_delete=models.SET_NULL,
         help_text="The subject on which this action was performed",
     )
-    run_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    run = models.BooleanField(default=False)
     food = models.ForeignKey(
         FoodConsumption, on_delete=models.SET_NULL, null=True, blank=True
     )
@@ -108,16 +112,17 @@ class DailyObservation(models.Model):
 
 
 class Electrode(models.Model):
-    daily_observation = models.ForeignKey(
-        DailyObservation, on_delete=models.SET_NULL, null=True, blank=True
-    )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     turn = models.FloatField()
     millimeters = models.FloatField(null=True, blank=True)
     impedance = models.FloatField(null=True, blank=True)
     units = models.CharField(max_length=255, choices=UNITS, default="", blank=True)
-    lfp_band_1 = models.FloatField(null=True, blank=True)
-    lfp_band_2 = models.FloatField(null=True, blank=True)
+    subject = models.ForeignKey(
+        Subject,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="The subject on which the electrode is",
+    )
     notes = models.TextField(blank=True)
 
     def current_location(self):
@@ -150,9 +155,15 @@ class StartingPoint(models.Model):
     updated = models.DateTimeField(auto_now=True)
 
 
-class STLFile(models.Model):
+class STLFile(Dataset):
     stl_file = models.CharField(
         max_length=1000, blank=True, help_text="Path to STL file"
+    )
+    subject = models.ForeignKey(
+        Subject,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="The subject on which the electrode is",
     )
 
 
@@ -160,8 +171,8 @@ class ChannelRecording(models.Model):
     electrode = models.ForeignKey(
         Electrode, null=True, blank=True, on_delete=models.SET_NULL
     )
-    task = models.ForeignKey(
-        BehavioralTask, null=True, blank=True, on_delete=models.SET_NULL
+    session_task = models.ForeignKey(
+        SessionTask, null=True, blank=True, on_delete=models.SET_NULL
     )
     stl_file = models.ForeignKey(
         STLFile, null=True, blank=True, on_delete=models.SET_NULL
@@ -170,22 +181,24 @@ class ChannelRecording(models.Model):
     number_of_cells = models.CharField(
         max_length=255, choices=NUMBER_OF_CELLS, default="", blank=True
     )
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL
+    )
 
 
-class ProcessedRecording(models.Model):
+class ProcessedRecording(Dataset):
     """sam_unitstracking sheet 2 two can be created by querying this model"""
 
     source = models.CharField(
         max_length=1000, blank=True, help_text="Path to source file"
     )
-    result_file = models.CharField(
+    electrical_voltage_file = models.CharField(
         max_length=1000, blank=True, help_text="Path to result file"
-    )
-    lab_member = models.ForeignKey(
-        LabMember, on_delete=models.SET_NULL, null=True, blank=True
     )
     channel_recording = models.ForeignKey(
         ChannelRecording, on_delete=models.SET_NULL, null=True, blank=True
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    lfp_band_1 = models.FloatField(null=True, blank=True)
+    lfp_band_2 = models.FloatField(null=True, blank=True)
     notes = models.TextField(blank=True)

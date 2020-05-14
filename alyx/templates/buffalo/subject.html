@@ -1,0 +1,53 @@
+{% extends "buffalo/base.html" %}
+{% load crispy_forms_tags %}
+
+
+{% block main_container %}
+    <div class="row">
+        <div class="col-md-7 offset-md-3">
+            <div class="row">
+                <div class="col-lg-12">
+                    <button type="button" class="btn btn-primary btn-sm add-subject" data-toggle="modal" data-target="#add">Add Subject</button>
+                </div>
+            </div>
+            <div class="row">
+              
+                <h5>Subjects</h5>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Sex</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Responsible</th>
+                        {% comment %} <th scope="col">users</th> {% endcomment %}
+                        <th scope="col">Birth Date</th>
+                        <th scope="col">Death Date</th>
+                        <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for object in objects %}
+                            <tr class="">
+                            <td>{{object.nickname}}</td>
+                            <td>{{object.sex}}</td>
+                            <td>{{object.description}}</td>
+                            <td>{{object.responsible_user}}</td>
+                            {% comment %} <td>{{object.users}}</td> {% endcomment %}
+                            <td>{{object.birth_date|default:""}}</td>
+                            <td>{{object.death_date|default:""}}</td>
+                            <td><a class="btn btn-warning btn-sm edit-button" href="{% url 'buffalo-edit-subject' object.id %}"> Edit </a></td></td>  
+                            </tr>
+                        {% endfor%}
+                    </tbody>
+                </table> 
+               
+            </div>
+        </div>
+    <div>
+    <script>
+        $('.add-subject').on('click', function (e) {
+            $("#add .modal-title").text("Add Subject")
+        })
+    </script>
+{% endblock %}
