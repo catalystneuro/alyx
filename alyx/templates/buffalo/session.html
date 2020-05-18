@@ -5,24 +5,6 @@
 
 
 {% block main_container %}
-    {% comment %} <div class="row">
-        <div class="col-lg-3">
-            <div class="input-group">
-                <div class="input-group select-subjects">
-                    <select class="custom-select" id="session-select" aria-label="Example select with button addon">
-                        {% for object in objects %}
-                            {% if object.name %}
-                                <option value="{{object.id}}">{{object.name}}</option>
-                            {% endif %}
-                        {% endfor%}
-                    </select>                    
-                    <div class="input-group-append">
-                        <button class="btn btn-primary btn-sm add-tasks-session" type="button"  data-toggle="modal" data-target="#add-session-task">Add Tasks to Session</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div> {% endcomment %}
     <div class="col-md-10 offset-md-1">
         <div class="row">
             <div class="col-md-12 add-session">
@@ -97,11 +79,10 @@
     
     {% include "buffalo/tasks_selector_modal.html" %}
     {% include "buffalo/session_details.html" %}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script>
         $( document ).ready(function() {
-            
             $('id_lab').val()
             $('#session-details').on('hidden.bs.modal', function (e) {
                 $(".session-task-fields").remove()
@@ -129,9 +110,8 @@
             const start_date = $(this).attr('data-date')
             const narrative = $(this).attr('data-narrative')
             const name = $(this).attr('data-session')
-            const session_detail_fields = ['Session Task', 'Comments', 'Sequence', 'File Name']
+            const session_detail_fields = ['Session Task', 'Version', 'Comments', 'Sequence', 'Datetime (run)', 'File Name']
             $('#id_session').val(sesion_id)
-            console.log('este es el subject', users)
             // GET AJAX request
             $.ajax({
                 type: 'GET',
@@ -149,8 +129,6 @@
                         $('.tasks-table').removeClass('invisible')
                         $('.session-name').text(tasks[0].session__name)
                         
-                        $('.session-start').text(tasks[0].session__start_time)
-                        
                         for (i = 0; i < session_detail_fields.length; i++) {
                             $("#session-details thead tr").append('<th class="session-task-fields col-3" scope="col">' + session_detail_fields[i] + '</th>') 
                         }
@@ -158,18 +136,16 @@
                             $('#session-details tbody').append('<tr class="d-flex task-' +idx+ '"')
                             let tr_class_selector = $('#session-details .task-' +idx+ '')
                             tr_class_selector.append('<td class="col-sm-3">'+ task.task__name +'</td>')
+                            tr_class_selector.append('<td class="col-sm-3">'+ task.task__version +'</td>')
                             tr_class_selector.append('<td class="col-sm-3">'+ task.general_comments +'</td>')
                             tr_class_selector.append('<td class="col-sm-3">'+ task.task_sequence +'</td>')
+                            tr_class_selector.append('<td class="col-sm-3">'+ moment(task.date_time).format("MMMM D, YYYY, h:mm:ss") +'</td>')
                             tr_class_selector.append('<td class="col-sm-3">'+ task.dataset_type +'</td>')
-                            
-                            //$('<td>'+ task.session__start_time +'</td>').insertAfter($("#session-details tbody"))
-                            //$('<tr class="">').insertAfter($("#session-details tbody"))
                         })
                     } else {
                         $('.tasks-table').addClass('invisible')
                         $('.no-tasks').removeClass('invisible')
                     }
-                    
                     $("#session-details").modal("show")
                 },
                 error: function (response) {

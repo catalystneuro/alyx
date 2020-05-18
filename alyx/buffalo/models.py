@@ -7,7 +7,7 @@ from django.conf import settings
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
 from misc.models import HousingSubject, LabMember
-from actions.models import Session
+from actions.models import Session, Weighing
 from subjects.models import Subject
 
 
@@ -48,16 +48,24 @@ class Task(BaseModel):
         max_length=255, choices=REWARD_TYPES, default=None, blank=True
     )
     maze_type = models.CharField(max_length=125, choices=MAZE_TYPES, blank=True)
+    original_task = models.CharField(
+        blank=True, null=True, max_length=255, help_text="Task version"
+    )
+    first_version = models.BooleanField(default=True)
+    version = models.CharField(
+        blank=True, null=True, max_length=255, help_text="Task version", default="1"
+    )
+    # created = models.DateTimeField(auto_now_add=True)
+    # updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        if self.version is None:
+            return self.name
+        return f"{self.name} (version: {self.version})"
 
 
 class SessionTask(BaseModel):
     task = models.ForeignKey(Task, null=True, blank=True, on_delete=models.SET_NULL)
-    version = models.CharField(
-        blank=True, null=True, max_length=64, help_text="generating software revision"
-    )
     dataset_type = models.ManyToManyField(DatasetType, blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     general_comments = models.TextField(blank=True)
@@ -91,6 +99,21 @@ class FoodConsumption(BaseModel):
         LabMember, on_delete=models.SET_NULL, null=True, blank=True
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    # created = models.DateTimeField(auto_now_add=True)
+    # updated = models.DateTimeField(auto_now=True)
+
+
+class SubjectFood(BaseModel):
+    subject = models.ForeignKey(
+        Subject,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="The subject on which this action was performed",
+    )
+    amount = models.FloatField(null=True, blank=True)
+    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class DailyObservation(models.Model):

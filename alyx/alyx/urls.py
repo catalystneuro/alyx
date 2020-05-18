@@ -17,6 +17,11 @@ from buffalo.views import (
     CreateTasksToSession,
     TaskUpdateView,
     subjectUpdateView,
+    TaskCreateVersionView,
+    DailyObservationCreateView,
+    SubjectDetailView,
+    SubjectWeighingCreateView,
+    SubjectFoodCreateView,
 )
 
 
@@ -143,5 +148,30 @@ urlpatterns = [
         "buffalo-edit-subject/<uuid:pk>/",
         subjectUpdateView.as_view(),
         name="buffalo-edit-subject",
+    ),
+    path(
+        "buffalo-task-version/<uuid:pk>/",
+        TaskCreateVersionView.as_view(),
+        name="buffalo-task-version",
+    ),
+    path(
+        "buffalo-daily-observation/<uuid:pk>/",
+        DailyObservationCreateView.as_view(),
+        name="buffalo-daily-observation",
+    ),
+    path(
+        "buffalo-subject-observation/<uuid:pk>/",
+        SubjectDetailView.as_view(),
+        name="buffalo-subject-observation",
+    ),
+    path(
+        "buffalo-subject-weighing/",
+        SubjectWeighingCreateView.as_view(),
+        name="buffalo-subject-weighing",
+    ),
+    path(
+        "buffalo-subject-food/",
+        SubjectFoodCreateView.as_view(),
+        name="buffalo-subject-food",
     ),
 ]

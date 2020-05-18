@@ -4,7 +4,7 @@
 
 {% block main_container %}
     <div class="row">
-        <div class="col-md-7 offset-md-3">
+        <div class="col-md-8 offset-md-2">
             <div class="row">
                 <div class="col-lg-12">
                     <button type="button" class="btn btn-primary btn-sm add-subject" data-toggle="modal" data-target="#add">Add Subject</button>
@@ -20,7 +20,6 @@
                         <th scope="col">Sex</th>
                         <th scope="col">Description</th>
                         <th scope="col">Responsible</th>
-                        {% comment %} <th scope="col">users</th> {% endcomment %}
                         <th scope="col">Birth Date</th>
                         <th scope="col">Death Date</th>
                         <th scope="col">Actions</th>
@@ -33,10 +32,25 @@
                             <td>{{object.sex}}</td>
                             <td>{{object.description}}</td>
                             <td>{{object.responsible_user}}</td>
-                            {% comment %} <td>{{object.users}}</td> {% endcomment %}
                             <td>{{object.birth_date|default:""}}</td>
                             <td>{{object.death_date|default:""}}</td>
-                            <td><a class="btn btn-warning btn-sm edit-button" href="{% url 'buffalo-edit-subject' object.id %}"> Edit </a></td></td>  
+                            <td><a class="btn btn-warning btn-sm edit-button" href="{% url 'buffalo-edit-subject' object.id %}"> Edit </a>
+                            <!--<a class="btn btn-primary btn-sm" href="{% url 'buffalo-daily-observation' object.id %}"> Daily Observation </a>-->
+                            <a class="btn btn-primary btn-sm" href="{% url 'buffalo-subject-observation' object.id %}"> Details </a>
+                            <button 
+                                class="btn btn-primary btn-sm weight" 
+                                value="{{object.pk}}"
+                                data-toggle="modal"
+                                data-target="#add-session-weight">
+                                Add Weight
+                            </button>
+                            <button 
+                                class="btn btn-primary btn-sm food" 
+                                value="{{object.pk}}"
+                                data-toggle="modal"
+                                data-target="#add-session-food">
+                                Add Food
+                            </button>
                             </tr>
                         {% endfor%}
                     </tbody>
@@ -45,9 +59,17 @@
             </div>
         </div>
     <div>
+    {% include "buffalo/subject_weight.html" %}
+    {% include "buffalo/subject_food.html" %}
     <script>
         $('.add-subject').on('click', function (e) {
             $("#add .modal-title").text("Add Subject")
         })
+        $(".weight, .food").on('click', function (e) {
+            const subject_id = $(this).val()
+            $('#id_subject, #add-session-food #id_subject').val(subject_id)
+            $('#div_id_subject').hide()
+        })
+            
     </script>
 {% endblock %}

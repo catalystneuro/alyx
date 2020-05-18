@@ -3,37 +3,19 @@
 
 
 {% block main_container %}
-    {% comment %} <div class="row">
-        <div class="col-lg-3">
-            <div class="input-group">
-                <div class="input-group select-subjects">
-                    <select class="custom-select" id="inputGroupSelect04" aria-label="Example select with button addon">
-                        {% for object in objects %}
-                            {% if object.name %}
-                                <option value="{{object.id}}">{{object.name}}</option>
-                            {% endif %}
-                        {% endfor%}
-                    </select>                    
-                    <div class="input-group-append">
-                        <button class="btn btn-primary btn-sm" type="button">See Task</button>
-                    </div>
-                </div>
-            </div>
-            
-        </div>
-    </div> {% endcomment %}
     <div class="row">
         <div class="col-lg-6 offset-md-3">
             <button type="button" class="btn btn-primary btn-sm add-task" data-toggle="modal" data-target="#add">Add Task</button>
         </div>
     </div>
     <div class="row">
-        <div class="col-lg-6 offset-md-3">
+        <div class="col-lg-7 offset-md-3">
             <h5>Tasks</h5>
             <table class="table table-striped">
                 <thead>
                     <tr>
                     <th scope="col">Name</th>
+                    <th scope="col">Version</th>
                     <th scope="col">Description</th>
                     <th scope="col">Category</th>
                     <th scope="col">Reward Type</th>
@@ -46,12 +28,14 @@
                         {% if object.name %}
                             <tr class="">
                             <td>{{object.name}}</td>
+                            <td>{{object.version|default:''}}</td>
                             <td>{{object.description}}</td>
                             <td>{{object.category}}</td>
                             <td>{{object.reward_type}}</td>
                             <td>{{object.maze_type}}</td>
                             <td>
-                                <a class="btn btn-warning btn-sm pull-right edit-button" href="{% url 'buffalo-edit-task' object.id %}"> Edit </a></td>
+                                <a class="btn btn-warning btn-sm pull-right edit-button" href="{% url 'buffalo-edit-task' object.id %}"> Edit </a>
+                                <a class="btn btn-primary btn-sm pull-right edit-button" href="{% url 'buffalo-task-version' object.id %}"> New Version </a></td>
                             </tr>
                         {% endif %}
                     {% endfor%}
@@ -63,12 +47,6 @@
     <script src="https://code.jquery.com/jquery-3.5.1.min.js" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
     <script>
-        const edit = "{{edit}}"
-        console.log('editar?', edit)
-        if (edit) {
-            console.log('entra aqui?')
-            $("#update").modal('show')
-        }
         $('.add-task').on('click', function (e) {
             $("#add .modal-title").text("Add Task")
         })

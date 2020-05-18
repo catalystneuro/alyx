@@ -12,21 +12,22 @@ from django.views.generic import (
     DetailView,
     UpdateView,
 )
-from multi_form_view import MultiFormView
 from django.urls import reverse
 from django.http import JsonResponse
-from django.core import serializers
 from django.core.serializers.json import DjangoJSONEncoder
 
-from actions.models import Session
+from actions.models import Session, Weighing
 from subjects.models import Subject
-from .models import Task, SessionTask, DailyObservation
+from .models import Task, SessionTask, DailyObservation, SubjectFood
 from .forms import (
     TaskForm,
     SessionForm,
     SubjectForm,
     DailyObservationForm,
     TaskSessionForm,
+    TaskVersionForm,
+    WeighingForm,
+    SubjectFoodForm,
 )
 
 
@@ -37,7 +38,7 @@ class TaskCreateView(CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        context["objects"] = Task.objects.exclude(name="")
+        context["objects"] = Task.objects.exclude(name="").order_by("name")
         return context
 
     def get_success_url(self):
@@ -56,6 +57,47 @@ class TaskUpdateView(UpdateView):
         return reverse("buffalo-tasks")
 
 
+class TaskCreateVersionView(CreateView):
+    template_name = "buffalo/task_form.html"
+    model = Task
+    form_class = TaskVersionForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
+
+    def form_valid(self, form):
+        if form.instance.original_task is None:
+            form.instance.original_task = str(self.kwargs["pk"])
+        form.instance.first_version = False
+        form.instance.version = str(
+            Task.objects.filter(original_task=self.kwargs["pk"]).count() + 2
+        )
+        form.save()
+
+        return super(TaskCreateVersionView, self).form_valid(form)
+
+    def get_form(self, form_class=None):
+        if self.request.method == "GET":
+            task = Task.objects.get(pk=self.kwargs["pk"])
+            form = TaskVersionForm(
+                initial=(
+                    {
+                        "name": task.name,
+                        "version": task.version,
+                        "original_task": task.original_task,
+                    }
+                )
+            )
+            return form
+        if form_class is None:
+            form_class = self.get_form_class()
+        return form_class(**self.get_form_kwargs())
+
+    def get_success_url(self):
+        return reverse("buffalo-tasks")
+
+
 class subjectCreateView(CreateView):
     template_name = "buffalo/subject.html"
     form_class = SubjectForm
@@ -63,9 +105,9 @@ class subjectCreateView(CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["objects"] = Subject.objects.all()
-        context["observations"] = DailyObservation.objects.all()
-        # import pdb; pdb.set_trace()
-        # context["subjects"] = Subject.objects.all()
+        context["form_weight"] = WeighingForm()
+        context["form_food"] = SubjectFoodForm()
+
         return context
 
     def get_success_url(self):
@@ -86,18 +128,24 @@ class subjectUpdateView(UpdateView):
 
 
 class DailyObservationCreateView(CreateView):
-    template_name = "buffalo/subject.html"
+    template_name = "buffalo/daily_observation_form.html"
     form_class = DailyObservationForm
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["objects"] = DailyObservation.objects.all()
-        # import pdb; pdb.set_trace()
-        # context["subjects"] = Subject.objects.all()
         return context
 
+    def get_form(self, form_class=None):
+        if self.request.method == "GET":
+            subject = Subject.objects.get(pk=self.kwargs["pk"])
+            form = DailyObservationForm(initial=({"subject": subject.id}))
+            return form
+        if form_class is None:
+            form_class = self.get_form_class()
+        return form_class(**self.get_form_kwargs())
+
     def get_success_url(self):
-        return reverse("buffalo-sessions")
+        return reverse("buffalo-subjects")
 
 
 class SessionCreateView(CreateView):
@@ -108,9 +156,7 @@ class SessionCreateView(CreateView):
         context = super().get_context_data(**kwargs)
         context["objects"] = Session.objects.exclude(name="")
         context["form_task"] = TaskSessionForm()
-        # import pdb; pdb.set_trace()
 
-        # import pdb; pdb.set_trace()
         return context
 
     def get_success_url(self):
@@ -125,6 +171,7 @@ class AddTasksToSessionAjax(View):
                 SessionTask.objects.filter(session=session_id)
                 .values(
                     "task__name",
+                    "task__version",
                     "session__name",
                     "session__start_time",
                     "date_time",
@@ -134,7 +181,6 @@ class AddTasksToSessionAjax(View):
                 )
                 .order_by("task_sequence")
             )
-            # import pdb; pdb.set_trace()
             data = json.dumps(list(tasks), cls=DjangoJSONEncoder)
             return JsonResponse({"tasks": data}, status=200)
 
@@ -147,10 +193,49 @@ class CreateTasksToSession(CreateView):
         context = super().get_context_data(**kwargs)
         sessions = Session.objects.all()
         context["objects"] = sessions.select_related("subject", "lab", "project")
-        context["form_task"] = TaskSessionForm()
 
-        # context["subjects"] = Subject.objects.all()
         return context
 
     def get_success_url(self):
         return reverse("buffalo-sessions")
+
+
+class SubjectDetailView(TemplateView):
+    template_name = "buffalo/subject_details.html"
+
+    def get(self, request, *args, **kwargs):
+        subject_id = self.kwargs["pk"]
+        context = {
+            "subject": Subject.objects.get(pk=subject_id),
+            "observations": DailyObservation.objects.filter(subject=subject_id),
+            "sessions": Session.objects.filter(subject=subject_id),
+            "weights": Weighing.objects.filter(subject=subject_id),
+            "food": SubjectFood.objects.filter(subject=subject_id),
+        }
+
+        return self.render_to_response(context)
+
+
+class SubjectWeighingCreateView(CreateView):
+    template_name = "buffalo/subject_weight.html"
+    form_class = WeighingForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        return context
+
+    def get_success_url(self):
+        return reverse("buffalo-subjects")
+
+
+class SubjectFoodCreateView(CreateView):
+    template_name = "buffalo/subject_food.html"
+    form_class = SubjectFoodForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return context
+
+    def get_success_url(self):
+        return reverse("buffalo-subjects")
