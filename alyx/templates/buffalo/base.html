@@ -73,20 +73,17 @@
 
                 <div class="collapse navbar-collapse" id="navbarColor03">
                     <ul class="navbar-nav mr-auto">
-                        <li class="nav-item active">
+                        <li class="nav-item task">
                             <a class="nav-link" href="{% url 'buffalo-tasks' %}">Tasks</a>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item subject">
                             <a class="nav-link" href="{% url 'buffalo-subjects' %}">Subjects</a>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item session">
                             <a class="nav-link" href="{% url 'buffalo-sessions' %}">Sessions</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'buffalo-sessions' %}">Food Consumption</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'buffalo-sessions' %}">Dataset</a>
+                            <a class="nav-link" href="#">Dataset</a>
                         </li>
                     </ul>
                 </div>
@@ -128,6 +125,11 @@
                     format: 'MM/DD/Y hh:mm'
                     }
                 })
+                const error = "{{form_errors}}"
+                if (error) {
+                    $("#add").modal("show")
+                    add_settings()
+                }
             })
         </script>
   </body>

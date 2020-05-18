@@ -5,7 +5,7 @@
 
 
 {% block main_container %}
-    <div class="col-md-10 offset-md-1">
+    <div class="col-md-11 offset-md-1">
         <div class="row">
             <div class="col-md-12 add-session">
                 <button 
@@ -18,62 +18,64 @@
         </div>
         <div class="row">
             <h5>Sessions</h5>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                    <th scope="col">Session</th>
-                    <th scope="col">Subject</th>
-                    <th scope="col">Session Tasks</th>
-                    <th scope="col">Users</th>
-                    <th scope="col">Narrative</th>
-                    <th scope="col">Session Start Time</th>
-                    <th scope="col">Session End time</th>
-                    <th scope="col">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                
-                    {% for object in objects %}
-                        <tr class="">
-                        <td value="{{forloop.counter}}">{{ object.name }}</td>
-                        <td>{{object.subject}}</td>
-                        {% with tasks=object.pk|get_tasks %}
-                            <td>
-                                {% for t in tasks %}  
-                                    {{t.task.name}}
-                                {% endfor %}
-                            </td>
-                        {% endwith %}
-                        {% with users=object.users|get_users %}
-                        <td>{{users}}</td>
-                        <td>{{object.narrative}}</td>
-                        <td>{{object.start_time|default:""}}</td>
-                        <td>{{object.end_time|default:""}}</td>
-                        <td>
-                            <button 
-                                class="btn btn-primary btn-sm add-tasks-session" 
-                                data-toggle="modal" 
-                                data-target="#add-session-task"
-                                data-session="{{object.name}}" 
-                                value="{{object.pk}}">
-                                Add Session Task
-                            </button>
-                            <button 
-                                class="btn btn-primary btn-sm details" 
-                                data-subject="{{object.subject}}" 
-                                value="{{object.pk}}" 
-                                data-users="{{users}}" 
-                                data-date="{{object.start_time|default:''}}"
-                                data-session="{{object.name}}"
-                                data-narrative="{{object.narrative}}">
-                                See Details
-                            </button>
-                        </td>
-                        {% endwith %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                        <th scope="col">Session</th>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Session Tasks</th>
+                        <th scope="col">Users</th>
+                        <th scope="col">Narrative</th>
+                        <th scope="col">Session Start Time</th>
+                        <th scope="col">Session End time</th>
+                        <th scope="col">Actions</th>
                         </tr>
-                    {% endfor%}
-                </tbody>
-            </table> 
+                    </thead>
+                    <tbody>
+                    
+                        {% for object in objects %}
+                            <tr class="">
+                            <td value="{{forloop.counter}}">{{ object.name }}</td>
+                            <td>{{object.subject}}</td>
+                            {% with tasks=object.pk|get_tasks %}
+                                <td>
+                                    {% for t in tasks %}  
+                                        {{t.task.name}}
+                                    {% endfor %}
+                                </td>
+                            {% endwith %}
+                            {% with users=object.users|get_users %}
+                            <td>{{users}}</td>
+                            <td>{{object.narrative}}</td>
+                            <td>{{object.start_time|default:""}}</td>
+                            <td>{{object.end_time|default:""}}</td>
+                            <td>
+                                <button 
+                                    class="btn btn-primary btn-sm add-tasks-session" 
+                                    data-toggle="modal" 
+                                    data-target="#add-session-task"
+                                    data-session="{{object.name}}" 
+                                    value="{{object.pk}}">
+                                    Add Session Task
+                                </button>
+                                <button 
+                                    class="btn btn-info btn-sm details" 
+                                    data-subject="{{object.subject}}" 
+                                    value="{{object.pk}}" 
+                                    data-users="{{users}}" 
+                                    data-date="{{object.start_time|default:''}}"
+                                    data-session="{{object.name}}"
+                                    data-narrative="{{object.narrative}}">
+                                    Details
+                                </button>
+                            </td>
+                            {% endwith %}
+                            </tr>
+                        {% endfor%}
+                    </tbody>
+                </table>
+            </div>
         <div>
     </div>
     
@@ -83,6 +85,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
     <script>
         $( document ).ready(function() {
+            $(document).ready(function () {
+                $(".session").addClass('active')
+            }) 
             $('id_lab').val()
             $('#session-details').on('hidden.bs.modal', function (e) {
                 $(".session-task-fields").remove()

@@ -17,6 +17,7 @@ from django.http import JsonResponse
 from django.core.serializers.json import DjangoJSONEncoder
 
 from actions.models import Session, Weighing
+from misc.models import Lab
 from subjects.models import Subject
 from .models import Task, SessionTask, DailyObservation, SubjectFood
 from .forms import (
@@ -107,8 +108,19 @@ class subjectCreateView(CreateView):
         context["objects"] = Subject.objects.all()
         context["form_weight"] = WeighingForm()
         context["form_food"] = SubjectFoodForm()
+        if "form" in kwargs:
+            context["form_errors"] = 1
 
         return context
+
+    def get_form(self, form_class=None):
+        if self.request.method == "GET":
+            lab = Lab.objects.filter(name="Buffalo").first()
+            form = SubjectForm(initial=({"lab": lab.id}))
+            return form
+        if form_class is None:
+            form_class = self.get_form_class()
+        return form_class(**self.get_form_kwargs())
 
     def get_success_url(self):
         return reverse("buffalo-subjects")
