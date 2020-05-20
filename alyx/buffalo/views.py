@@ -117,8 +117,11 @@ class subjectCreateView(CreateView):
 
     def get_form(self, form_class=None):
         if self.request.method == "GET":
-            lab = Lab.objects.filter(name="Buffalo").first()
-            form = SubjectForm(initial=({"lab": lab.id}))
+            try:
+                lab = Lab.objects.filter(name="Buffalo").first()
+                form = SubjectForm(initial=({"lab": lab.id}))
+            except AttributeError:
+                form = SubjectForm()
             return form
         if form_class is None:
             form_class = self.get_form_class()

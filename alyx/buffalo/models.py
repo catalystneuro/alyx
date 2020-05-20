@@ -55,8 +55,8 @@ class Task(BaseModel):
     version = models.CharField(
         blank=True, null=True, max_length=255, help_text="Task version", default="1"
     )
-    # created = models.DateTimeField(auto_now_add=True)
-    # updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         if self.version is None:
@@ -76,6 +76,8 @@ class SessionTask(BaseModel):
         blank=True,
         help_text="Indicates the relative position of a task within the session it belongs to",
     )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.session.name
@@ -99,8 +101,8 @@ class FoodConsumption(BaseModel):
         LabMember, on_delete=models.SET_NULL, null=True, blank=True
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    # created = models.DateTimeField(auto_now_add=True)
-    # updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class SubjectFood(BaseModel):
@@ -135,7 +137,8 @@ class DailyObservation(models.Model):
     lab_member = models.ForeignKey(
         LabMember, on_delete=models.SET_NULL, null=True, blank=True
     )
-
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 class Electrode(models.Model):
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
@@ -150,6 +153,8 @@ class Electrode(models.Model):
         help_text="The subject on which the electrode is",
     )
     notes = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
     def current_location(self):
         """queries related channel recordings"""
@@ -191,6 +196,8 @@ class STLFile(Dataset):
         on_delete=models.SET_NULL,
         help_text="The subject on which the electrode is",
     )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class ChannelRecording(models.Model):
@@ -210,6 +217,8 @@ class ChannelRecording(models.Model):
     session = models.ForeignKey(
         Session, null=True, blank=True, on_delete=models.SET_NULL
     )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class ProcessedRecording(Dataset):
@@ -228,3 +237,5 @@ class ProcessedRecording(Dataset):
     lfp_band_1 = models.FloatField(null=True, blank=True)
     lfp_band_2 = models.FloatField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
