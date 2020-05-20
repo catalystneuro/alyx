@@ -1,0 +1,163 @@
+{% extends "buffalo/base.html" %}
+{% load crispy_forms_tags %}
+{% load session_tasks %}
+
+
+
+{% block main_container %}
+    <div class="col-md-11 offset-md-1">
+        <div class="row">
+            <div class="col-md-12 add-session">
+                <button 
+                    class="btn btn-primary btn-sm add-session" 
+                    data-toggle="modal" 
+                    data-target="#add">
+                    Add Session
+                </button>
+            </div>
+        </div>
+        <div class="row">
+            <h5>Sessions</h5>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                        <th scope="col">Session</th>
+                        <th scope="col">Subject</th>
+                        <th scope="col">Session Tasks</th>
+                        <th scope="col">Users</th>
+                        <th scope="col">Narrative</th>
+                        <th scope="col">Session Start Time</th>
+                        <th scope="col">Session End time</th>
+                        <th scope="col">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    
+                        {% for object in objects %}
+                            <tr class="">
+                            <td value="{{forloop.counter}}">{{ object.name }}</td>
+                            <td>{{object.subject}}</td>
+                            {% with tasks=object.pk|get_tasks %}
+                                <td>
+                                    {% for t in tasks %}  
+                                        {{t.task.name}}
+                                    {% endfor %}
+                                </td>
+                            {% endwith %}
+                            {% with users=object.users|get_users %}
+                            <td>{{users}}</td>
+                            <td>{{object.narrative}}</td>
+                            <td>{{object.start_time|default:""}}</td>
+                            <td>{{object.end_time|default:""}}</td>
+                            <td>
+                                <button 
+                                    class="btn btn-primary btn-sm add-tasks-session" 
+                                    data-toggle="modal" 
+                                    data-target="#add-session-task"
+                                    data-session="{{object.name}}" 
+                                    value="{{object.pk}}">
+                                    Add Session Task
+                                </button>
+                                <button 
+                                    class="btn btn-info btn-sm details" 
+                                    data-subject="{{object.subject}}" 
+                                    value="{{object.pk}}" 
+                                    data-users="{{users}}" 
+                                    data-date="{{object.start_time|default:''}}"
+                                    data-session="{{object.name}}"
+                                    data-narrative="{{object.narrative}}">
+                                    Details
+                                </button>
+                            </td>
+                            {% endwith %}
+                            </tr>
+                        {% endfor%}
+                    </tbody>
+                </table>
+            </div>
+        <div>
+    </div>
+    
+    {% include "buffalo/tasks_selector_modal.html" %}
+    {% include "buffalo/session_details.html" %}
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script>
+        $( document ).ready(function() {
+            $(document).ready(function () {
+                $(".session").addClass('active')
+            }) 
+            $('id_lab').val()
+            $('#session-details').on('hidden.bs.modal', function (e) {
+                $(".session-task-fields").remove()
+            })
+        })
+        $('.add-session').on('click', function (e) {
+            $("#add .modal-title").text("Add Session")
+        })
+        
+        $(".add-tasks-session").on('click', function (e) {
+            const sesion_id = $(this).val()
+            $('#id_session').val(sesion_id)
+            $('#div_id_session').hide()
+            const name = $(this).attr('data-session')
+            $("#add-session-task .modal-title").text("Add Session Task to " + name)
+        })
+            
+        $(".details").on('click', function (e) {
+            $("#add-session-task .task-select option").remove()
+            $('#session-details tbody').html('')
+            
+            const sesion_id = $(this).val()
+            const subject = $(this).attr('data-subject')
+            const users = $(this).attr('data-users')
+            const start_date = $(this).attr('data-date')
+            const narrative = $(this).attr('data-narrative')
+            const name = $(this).attr('data-session')
+            const session_detail_fields = ['Session Task', 'Version', 'Comments', 'Sequence', 'Datetime (run)', 'File Name']
+            $('#id_session').val(sesion_id)
+            // GET AJAX request
+            $.ajax({
+                type: 'GET',
+                url: "{% url 'buffalo-add-task-session' %}",
+                data: {"session_id": sesion_id  },
+                success: function (response) {
+                    tasks = JSON.parse(response['tasks'])
+                    $('.session-name').text(name)
+                    $('.session-users').text(users)
+                    $('.session-subject').text(subject)
+                    $('.session-start').text(start_date)
+                    $('.session-narrative').text(narrative)
+                    if (tasks.length > 0) {
+                        $('.no-tasks').addClass('invisible')
+                        $('.tasks-table').removeClass('invisible')
+                        $('.session-name').text(tasks[0].session__name)
+                        
+                        for (i = 0; i < session_detail_fields.length; i++) {
+                            $("#session-details thead tr").append('<th class="session-task-fields col-3" scope="col">' + session_detail_fields[i] + '</th>') 
+                        }
+                        tasks.forEach((task, idx) => {
+                            $('#session-details tbody').append('<tr class="d-flex task-' +idx+ '"')
+                            let tr_class_selector = $('#session-details .task-' +idx+ '')
+                            tr_class_selector.append('<td class="col-sm-3">'+ task.task__name +'</td>')
+                            tr_class_selector.append('<td class="col-sm-3">'+ task.task__version +'</td>')
+                            tr_class_selector.append('<td class="col-sm-3">'+ task.general_comments +'</td>')
+                            tr_class_selector.append('<td class="col-sm-3">'+ task.task_sequence +'</td>')
+                            tr_class_selector.append('<td class="col-sm-3">'+ moment(task.date_time).format("MMMM D, YYYY, h:mm:ss") +'</td>')
+                            tr_class_selector.append('<td class="col-sm-3">'+ task.dataset_type +'</td>')
+                        })
+                    } else {
+                        $('.tasks-table').addClass('invisible')
+                        $('.no-tasks').removeClass('invisible')
+                    }
+                    $("#session-details").modal("show")
+                },
+                error: function (response) {
+                    console.log(response)
+                }
+            })
+    })
+    </script>
+    
+{% endblock %}

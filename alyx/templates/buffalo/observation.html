@@ -1,0 +1,5 @@
+<form action="" method="post">
+    {% csrf_token %}
+        {{ forms.observation|crispy }}
+    <input  class="btn btn-primary btn-sm"  type="submit" value="Submit">
+</form>
