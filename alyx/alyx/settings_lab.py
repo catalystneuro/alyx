@@ -1,7 +1,8 @@
 from textwrap import dedent
+from decouple import config, Csv
 
 # ALYX-SPECIFIC
-ALLOWED_HOSTS = ['localhost']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost', cast=Csv())
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'GB'
 GLOBUS_CLIENT_ID = '525cc517-8ccb-4d11-8036-af332da5eafd'

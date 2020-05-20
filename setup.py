@@ -39,6 +39,7 @@ def _replace_in_file(source_file, target_file, replacements=None, target_mode='w
 # Prompt information.
 DBNAME = input("Enter a database name [labdb]:") or 'labdb'
 DBUSER = input("Enter a postgres username [labdbuser]:") or 'labdbuser'
+DBHOST = input("Enter a postgres host [localhost]:") or 'localhost'
 DBPASSWORD = getpass("Enter a postgres password:")
 if not DBPASSWORD:
     print("A password is mandatory.")
@@ -75,6 +76,7 @@ repl = {
     '%SECRET_KEY%': SECRET_KEY,
     '%DBNAME%': DBNAME,
     '%DBUSER%': DBUSER,
+    '%DBHOST%': DBHOST,
     '%DBPASSWORD%': DBPASSWORD,
 }
 
