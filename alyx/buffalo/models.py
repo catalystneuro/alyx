@@ -78,7 +78,7 @@ class SessionTask(BaseModel):
     )
 
     def __str__(self):
-        return self.name
+        return self.session.name
 
 
 class FoodConsumption(BaseModel):
@@ -114,6 +114,9 @@ class SubjectFood(BaseModel):
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.subject.nickname
 
 
 class DailyObservation(models.Model):

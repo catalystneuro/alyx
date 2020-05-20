@@ -80,6 +80,8 @@ class TaskCreateVersionView(CreateView):
 
     def get_form(self, form_class=None):
         if self.request.method == "GET":
+            if 'admin' in self.request.environ['HTTP_REFERER']:
+                self.template_name = "buffalo/admin_task_form.html"
             task = Task.objects.get(pk=self.kwargs["pk"])
             form = TaskVersionForm(
                 initial=(
@@ -96,7 +98,7 @@ class TaskCreateVersionView(CreateView):
         return form_class(**self.get_form_kwargs())
 
     def get_success_url(self):
-        return reverse("buffalo-tasks")
+        return reverse("admin:index")
 
 
 class subjectCreateView(CreateView):
@@ -149,7 +151,8 @@ class DailyObservationCreateView(CreateView):
 
     def get_form(self, form_class=None):
         if self.request.method == "GET":
-            subject = Subject.objects.get(pk=self.kwargs["pk"])
+            subject = Subject.objects.get(pk=self.kwargs["subject_id"])
+
             form = DailyObservationForm(initial=({"subject": subject.id}))
             return form
         if form_class is None:
@@ -216,7 +219,9 @@ class SubjectDetailView(TemplateView):
     template_name = "buffalo/subject_details.html"
 
     def get(self, request, *args, **kwargs):
-        subject_id = self.kwargs["pk"]
+        if 'daily-observation' in request.path_info:
+            self.template_name = "buffalo/admin_subject_details.html"
+        subject_id = self.kwargs["subject_id"]
         context = {
             "subject": Subject.objects.get(pk=subject_id),
             "observations": DailyObservation.objects.filter(subject=subject_id),
@@ -251,3 +256,31 @@ class SubjectFoodCreateView(CreateView):
 
     def get_success_url(self):
         return reverse("buffalo-subjects")
+
+
+class SessionTaksDetails(TemplateView):
+    template_name = "buffalo/admin_session_details.html"
+
+    def get(self, request, *args, **kwargs):
+        session_id = self.kwargs["session_id"]
+        session_tasks = (
+            SessionTask.objects.filter(session=session_id)
+            .values(
+                "task__name",
+                "task__version",
+                "session__name",
+                "session__start_time",
+                "date_time",
+                "general_comments",
+                "task_sequence",
+                "dataset_type",
+            )
+            .order_by("task_sequence")
+        )
+
+        context = {
+            "session": Session.objects.get(pk=session_id),
+            "session_tasks": session_tasks,
+        }
+
+        return self.render_to_response(context)

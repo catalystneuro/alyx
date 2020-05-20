@@ -27,7 +27,7 @@ from reversion.admin import VersionAdmin
 
 logger = logging.getLogger(__name__)
 
-DATA_DIR = op.abspath(op.join(op.dirname(__file__), '../../data'))
+DATA_DIR = op.abspath(op.join(op.dirname(__file__), "../../data"))
 DISABLE_MAIL = False  # used for testing
 
 
@@ -41,12 +41,12 @@ class QueryPrintingMiddleware:
 
         response = self.get_response(request)
 
-        if settings.DEBUG and 'runserver' in sys.argv and self.start is not None:
-            red = termcolors.make_style(opts=('bold',), fg='red')
-            yellow = termcolors.make_style(opts=('bold',), fg='yellow')
+        if settings.DEBUG and "runserver" in sys.argv and self.start is not None:
+            red = termcolors.make_style(opts=("bold",), fg="red")
+            yellow = termcolors.make_style(opts=("bold",), fg="yellow")
 
             count = len(connection.queries) - self.start
-            output = '# queries: %s' % count
+            output = "# queries: %s" % count
             output = output.ljust(18)
 
             # add some colour
@@ -67,8 +67,11 @@ class QueryPrintingMiddleware:
 class BaseModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, blank=True, help_text="Long name")
-    json = JSONField(null=True, blank=True,
-                     help_text="Structured data, formatted in a user-defined way")
+    json = JSONField(
+        null=True,
+        blank=True,
+        help_text="Structured data, formatted in a user-defined way",
+    )
 
     class Meta:
         abstract = True
@@ -80,13 +83,17 @@ def modify_fields(**kwargs):
             for prop, val in prop_dict.items():
                 setattr(cls._meta.get_field(field), prop, val)
         return cls
+
     return wrap
 
 
 class BasePolymorphicModel(PolymorphicModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    json = JSONField(null=True, blank=True,
-                     help_text="Structured data, formatted in a user-defined way")
+    json = JSONField(
+        null=True,
+        blank=True,
+        help_text="Structured data, formatted in a user-defined way",
+    )
 
     class Meta:
         abstract = True
@@ -98,16 +105,14 @@ class DefaultListFilter(admin.SimpleListFilter):
     def choices(self, cl):
         for lookup, title in self.lookup_choices:
             yield {
-                'selected': self.value() == lookup,
-                'query_string': cl.get_query_string({
-                    self.parameter_name: lookup,
-                }, []),
-                'display': title,
+                "selected": self.value() == lookup,
+                "query_string": cl.get_query_string({self.parameter_name: lookup,}, []),
+                "display": title,
             }
 
 
-def alyx_mail(to, subject, text=''):
-    if DISABLE_MAIL or os.getenv('DISABLE_MAIL', None):
+def alyx_mail(to, subject, text=""):
+    if DISABLE_MAIL or os.getenv("DISABLE_MAIL", None):
         logger.warning("Mails are disabled by DISABLE_MAIL.")
         return
     if not to:
@@ -117,70 +122,93 @@ def alyx_mail(to, subject, text=''):
     to = [_ for _ in to if _]
     if not to:
         return
-    text += '\n\n--\nMessage sent automatically - please do not reply.'
+    text += "\n\n--\nMessage sent automatically - please do not reply."
     try:
-        send_mail('[alyx] ' + subject, text,
-                  settings.SUBJECT_REQUEST_EMAIL_FROM,
-                  to,
-                  fail_silently=True,
-                  )
-        logger.info("Mail sent to %s.", ', '.join(to))
+        send_mail(
+            "[alyx] " + subject,
+            text,
+            settings.SUBJECT_REQUEST_EMAIL_FROM,
+            to,
+            fail_silently=True,
+        )
+        logger.info("Mail sent to %s.", ", ".join(to))
         return True
     except Exception as e:
         logger.warning("Mail failed: %s", e)
         return False
 
 
-ADMIN_PAGES = [('Common', ['Subjects',
-                           'Sessions',
-                           'Ephys sessions',
-                           'Surgeries',
-                           'Breeding pairs',
-                           'Litters',
-                           'Water administrations',
-                           'Water restrictions',
-                           'Weighings',
-                           'Subject requests',
-                           'Behavioral Task'
-                           ]),
-               ('Data files',
-                ['Data repository types',
-                 'Data repositories',
-                 'Data formats',
-                 'Dataset types',
-                 'Datasets',
-                 'Downloads',
-                 'File records',
-                 'Data collections',
-                 'Time series',
-                 'Event series',
-                 'Interval series',
-                 ]),
-               ('Data that changes rarely',
-                ['Lines',
-                 'Strains',
-                 'Alleles',
-                 'Sequences',
-                 'Sources',
-                 'Species',
-                 'Other actions',
-                 'Procedure types',
-                 'Water types',
-                 'Probe models',
-                 ]),
-               ('Other', ['Genotype tests',
-                          'Zygosities',
-                          ]),
-               ('IT admin', ['Tokens',
-                             'Groups',
-                             'Lab members',
-                             'Labs',
-                             'Lab locations',
-                             'Lab memberships',
-                             ]),
-               ]
+"""ADMIN_PAGES = [
+    (
+        "Common",
+        [
+            "Subjects",
+            "Sessions",
+            "Ephys sessions",
+            "Surgeries",
+            "Breeding pairs",
+            "Litters",
+            "Water administrations",
+            "Water restrictions",
+            "Weighings",
+            "Subject requests",
+            "Behavioral Task",
+        ],
+    ),
+    (
+        "Data files",
+        [
+            "Data repository types",
+            "Data repositories",
+            "Data formats",
+            "Dataset types",
+            "Datasets",
+            "Downloads",
+            "File records",
+            "Data collections",
+            "Time series",
+            "Event series",
+            "Interval series",
+        ],
+    ),
+    (
+        "Data that changes rarely",
+        [
+            "Lines",
+            "Strains",
+            "Alleles",
+            "Sequences",
+            "Sources",
+            "Species",
+            "Other actions",
+            "Procedure types",
+            "Water types",
+            "Probe models",
+        ],
+    ),
+    ("Other", ["Genotype tests", "Zygosities",]),
+    (
+        "IT admin",
+        [
+            "Tokens",
+            "Groups",
+            "Lab members",
+            "Labs",
+            "Lab locations",
+            "Lab memberships",
+        ],
+    ),
+    ("Buffalo", ["Subjects",]),
+]"""
 
-
+ADMIN_PAGES = [
+    (
+        "Buffalo",
+        [
+            "Subjects",
+        ],
+    ),
+]
 class Bunch(dict):
     def __init__(self, *args, **kwargs):
         super(Bunch, self).__init__(*args, **kwargs)
@@ -193,76 +221,93 @@ def flatten(l):
 
 def _show_change(date_time, old, new):
     date_time = parse(date_time)
-    return '%s: %s ⇨ %s' % (
-        date_time.strftime("%d/%m/%Y at %H:%M"), str(old), str(new))
+    return "%s: %s ⇨ %s" % (date_time.strftime("%d/%m/%Y at %H:%M"), str(old), str(new))
 
 
 def _iter_history_changes(obj, field):
-    changes = obj.json.get('history', {}).get(field, [])
+    changes = obj.json.get("history", {}).get(field, [])
     for d1, d2 in zip(changes, changes[1:]):
-        yield _show_change(d1['date_time'], d1['value'], d2['value'])
+        yield _show_change(d1["date_time"], d1["value"], d2["value"])
     # Last change to current value.
     if changes:
         d = changes[-1]
         current = getattr(obj, field, None)
-        yield _show_change(d['date_time'], d['value'], current)
+        yield _show_change(d["date_time"], d["value"], current)
 
 
 def _get_category_list(app_list):
     order = ADMIN_PAGES
-    extra_in_common = ['Adverse effects', 'Cull subjects', 'Behavioral tasks']
+    extra_in_common = ["Adverse effects", "Cull subjects"]
+    buffalo = [
+        "Tasks",
+        "Sessions",
+        "Session tasks",
+        "Subject foods",
+        "Weighings",
+        "Electrodes",
+        "Starting points",
+        "Processed recordings",
+        "Stl files",
+        "Channel recordings",
+    ]
     order_models = flatten([models for app, models in order])
-    models_dict = {str(model['name']): model
-                   for app in app_list
-                   for model in app['models']}
-    model_to_app = {str(model['name']): str(app['name'])
-                    for app in app_list
-                    for model in app['models']}
-    category_list = [Bunch(name=name,
-                           models=[models_dict[m] for m in model_names if m in models_dict],
-                           collapsed='' if name == 'Common' else 'collapsed'
-                           )
-                     for name, model_names in order]
+    models_dict = {
+        str(model["name"]): model for app in app_list for model in app["models"]
+    }
+    model_to_app = {
+        str(model["name"]): str(app["name"])
+        for app in app_list
+        for model in app["models"]
+    }
+    category_list = [
+        Bunch(
+            name=name,
+            models=[models_dict[m] for m in model_names if m in models_dict],
+            collapsed="" #if name == "Common" else "collapsed",
+        )
+        for name, model_names in order
+    ]
     for model_name, app_name in model_to_app.items():
+        if model_name in buffalo:
+            category_list[0].models.append(models_dict[model_name])
         if model_name in order_models:
             continue
-        if model_name.startswith('Subject') or model_name in extra_in_common:
+        """ if model_name.startswith("Subject") or model_name in extra_in_common:
             category_list[0].models.append(models_dict[model_name])
         else:
-            category_list[3].models.append(models_dict[model_name])
+
+            category_list[3].models.append(models_dict[model_name]) """
     # Add link to training view in 'Common' panel.
-    category_list[0].models.append({
-        'admin_url': reverse('training'),
-        'name': 'Training view',
-        'perms': {},
-    })
+    """ category_list[0].models.append(
+        {"admin_url": reverse("training"), "name": "Training view", "perms": {},}
+    ) """
     return category_list
 
 
 def get_admin_url(obj):
     if not obj:
-        return '#'
+        return "#"
     info = (obj._meta.app_label, obj._meta.model_name)
-    return reverse('admin:%s_%s_change' % info, args=(obj.pk,))
+    return reverse("admin:%s_%s_change" % info, args=(obj.pk,))
 
 
 class MyAdminSite(admin.AdminSite):
     def index(self, request, extra_context=None):
         category_list = _get_category_list(self.get_app_list(request))
         context = dict(
-            self.each_context(request),
-            title=self.index_title,
-            app_list=category_list,
+            self.each_context(request), title=self.index_title, app_list=category_list,
         )
         context.update(extra_context or {})
         request.current_app = self.name
 
-        return TemplateResponse(request, self.index_template or 'admin/index.html', context)
+        return TemplateResponse(
+            request, self.index_template or "admin/index.html", context
+        )
 
 
 class JsonWidget(forms.Textarea):
     def __init__(self, *args, **kwargs):
-        kwargs['attrs'] = {'rows': 20, 'cols': 60, 'style': 'font-family: monospace;'}
+        kwargs["attrs"] = {"rows": 20, "cols": 60, "style": "font-family: monospace;"}
         super(JsonWidget, self).__init__(*args, **kwargs)
 
     def format_value(self, value):
@@ -276,19 +321,17 @@ class JsonWidget(forms.Textarea):
 
 class BaseAdmin(VersionAdmin):
     formfield_overrides = {
-        models.TextField: {'widget': forms.Textarea(
-                           attrs={'rows': 8,
-                                  'cols': 60})},
-        JSONField: {'widget': JsonWidget},
-        models.UUIDField: {'widget': forms.TextInput(attrs={'size': 32})},
+        models.TextField: {"widget": forms.Textarea(attrs={"rows": 8, "cols": 60})},
+        JSONField: {"widget": JsonWidget},
+        models.UUIDField: {"widget": forms.TextInput(attrs={"size": 32})},
     }
     list_per_page = 50
     save_on_top = True
     show_full_result_count = False
 
     def __init__(self, *args, **kwargs):
-        if self.fields and 'json' not in self.fields:
-            self.fields += ('json',)
+        if self.fields and "json" not in self.fields:
+            self.fields += ("json",)
         super(BaseAdmin, self).__init__(*args, **kwargs)
 
     def get_changeform_initial_data(self, request):
@@ -296,20 +339,28 @@ class BaseAdmin(VersionAdmin):
         if not request.user.lab:
             return {}
         from misc.models import Lab
+
         tz = pytz.timezone(Lab.objects.get(name=request.user.lab[0]).timezone)
-        assert settings.USE_TZ is False  # timezone.now() is expected to be a naive datetime
+        assert (
+            settings.USE_TZ is False
+        )  # timezone.now() is expected to be a naive datetime
         server_tz = pytz.timezone(settings.TIME_ZONE)  # server timezone
-        now = server_tz.localize(timezone.now())  # convert datetime from naive to server timezone
+        now = server_tz.localize(
+            timezone.now()
+        )  # convert datetime from naive to server timezone
         now = now.astimezone(tz)  # convert to the lab timezone
-        return {'start_time': now, 'created_at': now, 'date_time': now}
+        return {"start_time": now, "created_at": now, "date_time": now}
 
     def changelist_view(self, request, extra_context=None):
         category_list = _get_category_list(admin.site.get_app_list(request))
         extra_context = extra_context or {}
-        extra_context['mininav'] = [('', '-- jump to --')]
-        extra_context['mininav'] += [(model['admin_url'], model['name'])
-                                     for model in category_list[0].models]
-        return super(BaseAdmin, self).changelist_view(request, extra_context=extra_context)
+        extra_context["mininav"] = [("", "-- jump to --")]
+        extra_context["mininav"] += [
+            (model["admin_url"], model["name"]) for model in category_list[0].models
+        ]
+        return super(BaseAdmin, self).changelist_view(
+            request, extra_context=extra_context
+        )
 
     def has_change_permission(self, request, obj=None):
         if not obj:
@@ -317,17 +368,19 @@ class BaseAdmin(VersionAdmin):
         if request.user.is_superuser:
             return True
         # Subject associated to the object.
-        subj = obj if hasattr(obj, 'responsible_user') else getattr(obj, 'subject', None)
-        resp_user = getattr(subj, 'responsible_user', None)
+        subj = (
+            obj if hasattr(obj, "responsible_user") else getattr(obj, "subject", None)
+        )
+        resp_user = getattr(subj, "responsible_user", None)
         # List of allowed users for the subject.
-        allowed = getattr(resp_user, 'allowed_users', None)
+        allowed = getattr(resp_user, "allowed_users", None)
         allowed = set(allowed.all() if allowed else [])
         # Add the repsonsible user or user(s) to the list of allowed users.
-        if hasattr(obj, 'responsible_user'):
+        if hasattr(obj, "responsible_user"):
             allowed.add(obj.responsible_user)
-        if hasattr(obj, 'user'):
+        if hasattr(obj, "user"):
             allowed.add(obj.user)
-        if hasattr(obj, 'users'):
+        if hasattr(obj, "users"):
             for user in obj.users.all():
                 allowed.add(user)
         return request.user in allowed
@@ -336,21 +389,19 @@ class BaseAdmin(VersionAdmin):
 class BaseInlineAdmin(admin.TabularInline):
     show_change_link = True
     formfield_overrides = {
-        models.TextField: {'widget': forms.Textarea(
-                           attrs={'rows': 3,
-                                  'cols': 30})},
-        JSONField: {'widget': forms.Textarea(
-                    attrs={'rows': 3,
-                           'cols': 30})},
-        models.CharField: {'widget': forms.TextInput(attrs={'size': 16})},
+        models.TextField: {"widget": forms.Textarea(attrs={"rows": 3, "cols": 30})},
+        JSONField: {"widget": forms.Textarea(attrs={"rows": 3, "cols": 30})},
+        models.CharField: {"widget": forms.TextInput(attrs={"size": 16})},
     }
 
 
 class BaseTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        globals()['DISABLE_MAIL'] = True
-        call_command('loaddata', op.join(DATA_DIR, 'all_dumped_anon.json.gz'), verbosity=1)
+        globals()["DISABLE_MAIL"] = True
+        call_command(
+            "loaddata", op.join(DATA_DIR, "all_dumped_anon.json.gz"), verbosity=1
+        )
 
     def ar(self, r, code=200):
         """
@@ -361,17 +412,17 @@ class BaseTests(TestCase):
         :return: data: the data structure without pagination info if paginate activated
         """
         self.assertTrue(r.status_code == code, r.data)
-        pkeys = set(['count', 'next', 'previous', 'results'])
+        pkeys = set(["count", "next", "previous", "results"])
         if isinstance(r.data, OrderedDict) and set(r.data.keys()) == pkeys:
-            return r.data['results']
+            return r.data["results"]
         else:
             return r.data
 
     def post(self, *args, **kwargs):
-        return self.client.post(*args, **kwargs, content_type='application/json')
+        return self.client.post(*args, **kwargs, content_type="application/json")
 
     def patch(self, *args, **kwargs):
-        return self.client.patch(*args, **kwargs, content_type='application/json')
+        return self.client.patch(*args, **kwargs, content_type="application/json")
 
 
 def base_json_filter(fieldname, queryset, name, value):
@@ -379,27 +430,30 @@ def base_json_filter(fieldname, queryset, name, value):
     # exact/equal lookup: "?extended_qc=qc_bool,True"
     # gte lookup: "?extended_qc=qc_pct__gte,0.5"
     # chained lookups: "?extended_qc=qc_pct__gte,0.5,qc_bool,True"
-    fv = value.split(',')
+    fv = value.split(",")
     i = 0
     while i < len(fv):
         field, val = fv[i], fv[i + 1]
         i += 2
-        if val == 'True':
+        if val == "True":
             val = True
-        elif val == 'False':
+        elif val == "False":
             val = False
-        elif val.replace('.', '', 1).isdigit():
+        elif val.replace(".", "", 1).isdigit():
             val = float(val)
         else:
             raise ValueError("lookup " + value + " not understood")
-        queryset = queryset.filter(**{fieldname + '__' + field: val})
+        queryset = queryset.filter(**{fieldname + "__" + field: val})
     return queryset
 
 
 mysite = MyAdminSite()
-mysite.site_header = 'Alyx'
-mysite.site_title = 'Alyx'
+""" mysite.site_header = "Alyx"
+mysite.site_title = "Alyx"
 mysite.site_url = None
-mysite.index_title = 'Welcome to Alyx'
-
+mysite.index_title = "Welcome to Alyx" """
+mysite.site_header = "Buffalo"
+mysite.site_title = "Buffalo"
+mysite.site_url = None
+mysite.index_title = "Welcome to Buffalo"
 admin.site = mysite

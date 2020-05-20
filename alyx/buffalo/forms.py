@@ -74,14 +74,18 @@ class SessionForm(ModelForm):
 
     class Meta:
         model = Session
-        fields = ["name", "subject", "users", "lab", "start_time", "end_time"]
+        fields = [
+            "name",
+            "subject",
+            "users",
+            "lab",
+            "narrative",
+            "start_time",
+            "end_time",
+        ]
 
 
 class TaskSessionForm(ModelForm):
-    date_time = forms.DateTimeField(
-        label="Date time", help_text="When the Session task was run"
-    )
-
     class Meta:
         model = SessionTask
         fields = [

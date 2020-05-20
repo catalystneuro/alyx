@@ -22,6 +22,7 @@ from buffalo.views import (
     SubjectDetailView,
     SubjectWeighingCreateView,
     SubjectFoodCreateView,
+    SessionTaksDetails,
 )
 
 
@@ -34,16 +35,17 @@ user_list = mv.UserViewSet.as_view({"get": "list"})
 user_detail = mv.UserViewSet.as_view({"get": "retrieve"})
 
 
-admin.site.site_header = "Alyx"
+#admin.site.site_header = "Alyx"
+admin.site.site_header = "Buffalo"
 
 urlpatterns = [
     path("", mv.api_root),
     path("", include("experiments.urls")),
     path("admin/", admin.site.urls),
-    path("admin-subjects/", include("subjects.urls")),
-    path("admin-actions/", include("actions.urls")),
-    path("auth/", include("rest_framework.urls", namespace="rest_framework")),
-    path("auth-token", authv.obtain_auth_token),
+    #path("admin-subjects/", include("subjects.urls")),
+    #path("admin-actions/", include("actions.urls")),
+    #path("auth/", include("rest_framework.urls", namespace="rest_framework")),
+    #path("auth-token", authv.obtain_auth_token),
     path("data-formats", dv.DataFormatList.as_view(), name="dataformat-list"),
     path(
         "data-formats/<str:name>",
@@ -160,7 +162,7 @@ urlpatterns = [
         name="buffalo-daily-observation",
     ),
     path(
-        "buffalo-subject-observation/<uuid:pk>/",
+        "buffalo-subject-observation/<uuid:subject_id>/",
         SubjectDetailView.as_view(),
         name="buffalo-subject-observation",
     ),
@@ -173,5 +175,15 @@ urlpatterns = [
         "buffalo-subject-food/",
         SubjectFoodCreateView.as_view(),
         name="buffalo-subject-food",
+    ),
+    path(
+        "daily-observation/<uuid:subject_id>",
+        SubjectDetailView.as_view(),
+        name="daily-observation",
+    ),
+    path(
+        "session-tasks/<uuid:session_id>",
+        SessionTaksDetails.as_view(),
+        name="session-tasks",
     ),
 ]
