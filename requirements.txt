@@ -22,3 +22,4 @@ python-dateutil
 python-magic
 pytz
 webdavclient3
+python-decouple

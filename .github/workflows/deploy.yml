@@ -1,0 +1,19 @@
+name: Deploy dev
+on:
+  push:
+    branches:
+      - dev
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy alyx in dev server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.ALYX_HOST }}
+          username: ${{ secrets.ALYX_USERNAME }}
+          key: ${{ secrets.ALYX_KEY }}
+          port: ${{ secrets.ALYX_PORT }}
+          script: | 
+            cd /opt/monadical.alyx
+            ./bin/alyx-deploy
