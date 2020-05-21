@@ -19,7 +19,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from actions.models import Session, Weighing
 from misc.models import Lab
 from subjects.models import Subject
-from .models import Task, SessionTask, DailyObservation, SubjectFood
+from .models import Task, SessionTask, DailyObservation, SubjectFood, ChannelRecording
 from .forms import (
     TaskForm,
     SessionForm,
@@ -80,7 +80,7 @@ class TaskCreateVersionView(CreateView):
 
     def get_form(self, form_class=None):
         if self.request.method == "GET":
-            if 'admin' in self.request.environ['HTTP_REFERER']:
+            if "buffalo/task/" in self.request.environ["HTTP_REFERER"]:
                 self.template_name = "buffalo/admin_task_form.html"
             task = Task.objects.get(pk=self.kwargs["pk"])
             form = TaskVersionForm(
@@ -222,7 +222,7 @@ class SubjectDetailView(TemplateView):
     template_name = "buffalo/subject_details.html"
 
     def get(self, request, *args, **kwargs):
-        if 'daily-observation' in request.path_info:
+        if "daily-observation" in request.path_info:
             self.template_name = "buffalo/admin_subject_details.html"
         subject_id = self.kwargs["subject_id"]
         context = {
@@ -269,6 +269,7 @@ class SessionTaksDetails(TemplateView):
         session_tasks = (
             SessionTask.objects.filter(session=session_id)
             .values(
+                "id",
                 "task__name",
                 "task__version",
                 "session__name",
@@ -280,10 +281,16 @@ class SessionTaksDetails(TemplateView):
             )
             .order_by("task_sequence")
         )
+        channels_recording = []
+        for session_task in session_tasks:
 
+            channel_recording = ChannelRecording.objects.filter(
+                session_task=session_task["id"], session=session_id
+            ).first()
+            channels_recording.append(channel_recording)
         context = {
             "session": Session.objects.get(pk=session_id),
             "session_tasks": session_tasks,
+            "channels_recording": channels_recording,
         }
-
         return self.render_to_response(context)

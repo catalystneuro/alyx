@@ -32,6 +32,7 @@ from .forms import (
 
 
 class BuffaloSubject(admin.ModelAdmin):
+    change_form_template = "buffalo/change_form.html"
     form = SubjectForm
     fields = [
         "nickname",
@@ -61,7 +62,9 @@ class BuffaloSubject(admin.ModelAdmin):
 
 class BuffaloSession(admin.ModelAdmin):
     form = SessionForm
-    # fields = ["name", "subject", "users", "lab", "start_time", "end_time"]
+    change_list_template = "buffalo/change_list.html"
+    change_form_template = "buffalo/change_form.html"
+   
     list_display = [
         "name",
         "subject",
@@ -123,6 +126,7 @@ class BuffaloSubjectFood(BaseAdmin):
 
 
 class BuffaloTask(BaseAdmin):
+    change_form_template = "buffalo/change_form.html"
     form = TaskForm
     list_display = [
         "name_version",
@@ -146,6 +150,34 @@ class BuffaloTask(BaseAdmin):
             )
         return ""
 
+class BuffaloElectrode(admin.ModelAdmin):
+    list_display = [
+        "subject",
+        "turn",
+        "millimeters",
+        "impedance",
+        "units",
+        "notes",
+    ]
+
+class BuffaloChannelRecording(admin.ModelAdmin):
+    list_display = [
+        "subject_recorded",
+        "session",
+        "session_task_",
+        "alive",
+        "number_of_cells",
+        "stl_file",
+    ]
+
+    def session_task_(self, obj):
+        session_task = SessionTask.objects.get(pk=obj.session_task.id)
+        return session_task.task
+
+    def subject_recorded(self, obj):
+        session = Session.objects.get(pk=obj.session.id)
+        
+        return session.subject
 
 admin.site.register(Subject, BuffaloSubject)
 admin.site.register(Session, BuffaloSession)
@@ -154,8 +186,8 @@ admin.site.register(SessionTask, BuffaloSessionTask)
 admin.site.register(Task, BuffaloTask)
 
 admin.site.register(SubjectFood, BuffaloSubjectFood)
-admin.site.register(Electrode)
+admin.site.register(Electrode, BuffaloElectrode)
 admin.site.register(StartingPoint)
 admin.site.register(STLFile)
-admin.site.register(ChannelRecording)
+admin.site.register(ChannelRecording, BuffaloChannelRecording)
 admin.site.register(ProcessedRecording)

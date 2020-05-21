@@ -31,10 +31,10 @@ UNITS = [
 ]
 
 NUMBER_OF_CELLS = [
-    (1, "nothing"),
-    (2, "maybe 1 cell"),
-    (3, "1 good cell"),
-    (4, "2+ good cells"),
+    ('1', "nothing"),
+    ('2', "maybe 1 cell"),
+    ('3', "1 good cell"),
+    ('4', "2+ good cells"),
 ]
 
 
@@ -79,9 +79,7 @@ class SessionTask(BaseModel):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return self.session.name
-
+    
 
 class FoodConsumption(BaseModel):
     amount = models.FloatField(null=True, validators=[MinValueValidator(limit_value=0)])
@@ -164,6 +162,9 @@ class Electrode(models.Model):
 
     def is_in_location(self, stl):
         return self.current_location in stl
+
+    def __str__(self):
+        return self.subject.nickname
 
 
 class StartingPoint(models.Model):

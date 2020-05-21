@@ -39,7 +39,8 @@ user_detail = mv.UserViewSet.as_view({"get": "retrieve"})
 admin.site.site_header = "Buffalo"
 
 urlpatterns = [
-    path("", mv.api_root),
+    #path("", mv.api_root),
+    path("", admin.site.urls),
     path("", include("experiments.urls")),
     path("admin/", admin.site.urls),
     #path("admin-subjects/", include("subjects.urls")),
