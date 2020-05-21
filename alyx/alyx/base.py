@@ -249,6 +249,8 @@ def _get_category_list(app_list):
         "Processed recordings",
         "Stl files",
         "Channel recordings",
+        "Dataset types", 
+        "Datasets",
     ]
     order_models = flatten([models for app, models in order])
     models_dict = {

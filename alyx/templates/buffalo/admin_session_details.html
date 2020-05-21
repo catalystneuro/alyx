@@ -1,4 +1,4 @@
-{% extends "admin/change_form.html" %}
+{% extends "buffalo/change_list.html" %}
 {% load i18n admin_urls static admin_list %}
 
 {% block branding %}
@@ -16,7 +16,18 @@
 
 
 {% block content %}
-
+    <h1>Session Details</h1>
+    {% block object-tools %}
+        <ul class="object-tools">
+            {% block object-tools-items %}
+                <li>
+                <a href="/buffalo/sessiontask/add/" class="addlink">
+                    Add session task
+                    </a>
+                </li>
+            {% endblock %}
+        </ul>
+    {% endblock %}
     <div class="col-sm-10 offset-md-1 subject-info">
         <div class="col-sm-3">
             <label><strong>Session </strong>{{session.name}}</label><br>
@@ -59,6 +70,34 @@
                 </table>
             </div>
         </div>
+        {% if channels_recording %}
+            <br><br>
+            <h1>channels Recording</h1>
+            <div class="col-lg-10  offset-md-1">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr class="d-flex">
+                                <th class="session-task-fields col-2" scope="col">Session Task</th>
+                                <th class="session-task-fields col-1" scope="col">Alive</th>
+                                <th class="session-task-fields col-3" scope="col">Number of cells</th>
+                             </tr>
+                        </thead>
+                        <tbody>
+                            {% for channel_recording in channels_recording %}
+                                {% if channel_recording %}
+                                    <tr class="d-flex">
+                                        <td class="col-sm-2">{{channel_recording.session_task.task.name }}</td>
+                                        <td class="col-sm-1">{{channel_recording.alive}}</td>
+                                        <td class="col-sm-3">{{channel_recording.number_of_cells}}</td>
+                                    </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
     {% else %}
         <div class="col-lg-10  offset-md-1">
             <div class="badge badge-secondary">
