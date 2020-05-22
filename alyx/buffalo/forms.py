@@ -1,4 +1,6 @@
+from datetime import datetime
 from django import forms
+
 from django.forms import ModelForm
 
 from actions.models import Session, Weighing
@@ -70,7 +72,13 @@ class SubjectForm(ModelForm):
 
 
 class SessionForm(ModelForm):
-    name = forms.CharField(label="Session name", required=False, max_length=150)
+    name = forms.CharField(
+        label="Session name",
+        required=False,
+        max_length=150,
+        initial=datetime.today().strftime("%d/%m/%Y"),
+        widget=forms.TextInput(attrs={"readonly": "readonly"}),
+    )
 
     class Meta:
         model = Session

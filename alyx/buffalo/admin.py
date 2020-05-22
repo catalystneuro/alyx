@@ -1,6 +1,5 @@
 # Register the modules to show up at the admin page https://server/admin
 from django.contrib import admin
-from django.forms import ModelForm
 from django import forms
 
 from django.urls import reverse
@@ -9,7 +8,6 @@ from django.utils.html import format_html
 from subjects.models import Subject
 from actions.models import Session, Weighing
 from alyx.base import BaseAdmin
-
 from .models import (
     Task,
     SessionTask,
@@ -64,7 +62,8 @@ class BuffaloSession(admin.ModelAdmin):
     form = SessionForm
     change_list_template = "buffalo/change_list.html"
     change_form_template = "buffalo/change_form.html"
-   
+    source = ""
+
     list_display = [
         "name",
         "subject",
@@ -88,9 +87,47 @@ class BuffaloSession(admin.ModelAdmin):
             '<a href="{url}">{name}</a>', url=url, name="Session Task Details"
         )
 
+    def add_view(self, request, *args, **kwargs):
+        if "daily" in request.environ["HTTP_REFERER"]:
+            self.source = "daily"
+        return super(BuffaloSession, self).add_view(request, *args, **kwargs)
+
+    def response_add(self, request, obj):
+        response = super(BuffaloSession, self).response_add(request, obj)
+        if self.source == "daily":
+            response["location"] = "/daily-observation/" + str(obj.subject_id)
+            self.source = ""
+        return response
+
 
 class BuffaloWeight(BaseAdmin):
     form = WeighingForm
+    change_form_template = "buffalo/change_form.html"
+    source = ""
+
+    list_display = [
+        "subject",
+        "weight_in_Kg",
+        "user",
+        "date_time",
+    ]
+
+    def weight_in_Kg(self, obj):
+        url = f"/actions/weighing/{obj.id}/change"
+        name = f"{obj.weight} kg"
+        return format_html('<a href="{url}">{name}</a>', url=url, name=name)
+
+    def add_view(self, request, *args, **kwargs):
+        if "daily" in request.environ["HTTP_REFERER"]:
+            self.source = "daily"
+        return super(BuffaloWeight, self).add_view(request, *args, **kwargs)
+
+    def response_add(self, request, obj):
+        response = super(BuffaloWeight, self).response_add(request, obj)
+        if self.source == "daily":
+            response["location"] = "/daily-observation/" + str(obj.subject_id)
+            self.source = ""
+        return response
 
 
 class BuffaloSessionTask(BaseAdmin):
@@ -120,9 +157,23 @@ class BuffaloSessionTask(BaseAdmin):
     ordering = ("session",)
 
 
-class BuffaloSubjectFood(BaseAdmin):
+class BuffaloSubjectFood(admin.ModelAdmin):
     form = SubjectFoodForm
+    change_form_template = "buffalo/change_form.html"
     list_display = ["subject", "amount", "date_time"]
+    source = ""
+
+    def add_view(self, request, *args, **kwargs):
+        if "daily" in request.environ["HTTP_REFERER"]:
+            self.source = "daily"
+        return super(BuffaloSubjectFood, self).add_view(request, *args, **kwargs)
+
+    def response_add(self, request, obj):
+        response = super(BuffaloSubjectFood, self).response_add(request, obj)
+        if self.source == "daily":
+            response["location"] = "/daily-observation/" + str(obj.subject_id)
+            self.source = ""
+        return response
 
 
 class BuffaloTask(BaseAdmin):
@@ -150,7 +201,9 @@ class BuffaloTask(BaseAdmin):
             )
         return ""
 
+
 class BuffaloElectrode(admin.ModelAdmin):
+    change_form_template = "buffalo/change_form.html"
     list_display = [
         "subject",
         "turn",
@@ -160,7 +213,9 @@ class BuffaloElectrode(admin.ModelAdmin):
         "notes",
     ]
 
+
 class BuffaloChannelRecording(admin.ModelAdmin):
+    change_form_template = "buffalo/change_form.html"
     list_display = [
         "subject_recorded",
         "session",
@@ -176,18 +231,22 @@ class BuffaloChannelRecording(admin.ModelAdmin):
 
     def subject_recorded(self, obj):
         session = Session.objects.get(pk=obj.session.id)
-        
+
         return session.subject
+
+
+class BuffaloSTLFile(admin.ModelAdmin):
+    change_form_template = "buffalo/change_form.html"
+
 
 admin.site.register(Subject, BuffaloSubject)
 admin.site.register(Session, BuffaloSession)
 admin.site.register(Weighing, BuffaloWeight)
 admin.site.register(SessionTask, BuffaloSessionTask)
 admin.site.register(Task, BuffaloTask)
-
 admin.site.register(SubjectFood, BuffaloSubjectFood)
 admin.site.register(Electrode, BuffaloElectrode)
 admin.site.register(StartingPoint)
-admin.site.register(STLFile)
+admin.site.register(STLFile, BuffaloSTLFile)
 admin.site.register(ChannelRecording, BuffaloChannelRecording)
 admin.site.register(ProcessedRecording)

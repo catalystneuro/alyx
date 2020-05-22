@@ -27,6 +27,7 @@ form#subject_form div.form-row.field-strain label
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
 
 <script>
 $(document).keydown(function(e) {
@@ -100,9 +101,18 @@ $(window).on("load", function() {
 
 // HACK: date widget in local timezone.
 (function($){
+    let today = new Date()
+    today = moment(today).format("D/MM/YYYY")
   $(function(){
     document.body.setAttribute("data-admin-utc-offset", (new Date()).getTimezoneOffset() * -60);
+    
   })
+    $('#id_subject').change(function(){
+        const subject = $("#id_subject option:selected").text()
+        $("#session_form #id_name").val("")
+        $("#session_form #id_name").val(today + "_" + subject)
+    })
+
 })(jQuery)
 
 </script>
