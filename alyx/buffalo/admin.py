@@ -130,8 +130,9 @@ class BuffaloWeight(BaseAdmin):
         return response
 
 
-class BuffaloSessionTask(BaseAdmin):
+class BuffaloSessionTask(admin.ModelAdmin):
     form = TaskSessionForm
+    change_form_template = "buffalo/change_form.html"
 
     def get_queryset(self, request):
         qs = super(BuffaloSessionTask, self).get_queryset(request).distinct("session")
@@ -139,10 +140,13 @@ class BuffaloSessionTask(BaseAdmin):
 
     list_display = ["session", "tasks", "session_tasks_details"]
     model = SessionTask
-    extra = 0
 
     def session_tasks_details(self, obj):
-        url = reverse("session-tasks", kwargs={"session_id": obj.session.id})
+        try:
+            url = reverse("session-tasks", kwargs={"session_id": obj.session.id})
+        except AttributeError:
+            url = ""
+
         return format_html(
             '<a href="{url}">{name}</a>', url=url, name="Session Task Details"
         )
@@ -153,6 +157,29 @@ class BuffaloSessionTask(BaseAdmin):
         for task in tasks:
             tasks_list.append(task.task)
         return tasks_list
+
+    def save_model(self, request, obj, form, change):
+        all_tasks = form.cleaned_data["all_tasks"]
+        session = form.cleaned_data["session"]
+        date_time = form.cleaned_data["date_time"]
+        general_comments = form.cleaned_data["general_comments"]
+        dataset_type = form.cleaned_data["dataset_type"]
+        task_sequence = form.cleaned_data["task_sequence"]
+        task = form.cleaned_data["task"]
+
+        if all_tasks:
+            for t in all_tasks:
+                if task != t:
+                    session_task = SessionTask.objects.create(
+                        session=session,
+                        date_time=date_time,
+                        general_comments=general_comments,
+                        task_sequence=task_sequence,
+                        task=t,
+                    )
+                    for d in dataset_type:
+                        session_task.dataset_type.add(d)
+        super().save_model(request, obj, form, change)
 
     ordering = ("session",)
 

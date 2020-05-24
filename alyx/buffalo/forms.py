@@ -94,6 +94,15 @@ class SessionForm(ModelForm):
 
 
 class TaskSessionForm(ModelForm):
+    task = forms.ModelMultipleChoiceField(queryset=Task.objects.all())
+
+    def clean(self):
+        cleaned_data = super(TaskSessionForm, self).clean()
+        tasks = cleaned_data["task"]
+        cleaned_data["task"] = tasks[0]
+        cleaned_data["all_tasks"] = tasks
+        return cleaned_data
+
     class Meta:
         model = SessionTask
         fields = [

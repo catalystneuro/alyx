@@ -63,7 +63,15 @@
                                 <td class="col-sm-1">{{session_task.task__version}}</td>
                                 <td class="col-sm-3">{{session_task.general_comments}}</td>
                                 <td class="col-sm-2">{{session_task.date_time|default:""}}</td>
-                                <td class="col-sm-3">{{session_task.dataset_type|default:""}}</td>
+                                {% for s in session_task_dataset_type.items %}
+                                    {% ifequal session_task.task__id s.0 %}
+                                        <td class="col-sm-3">
+                                        {% for dt in s.1 %}
+                                            {{dt}}<br>
+                                        {% endfor %}
+                                        </td>
+                                    {% endifequal %}
+                                {% endfor %}
                             </tr>
                         {% endfor %}
                     </tbody>

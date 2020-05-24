@@ -266,10 +266,11 @@ class SessionTaksDetails(TemplateView):
 
     def get(self, request, *args, **kwargs):
         session_id = self.kwargs["session_id"]
-        session_tasks = (
+        all_session_tasks = (
             SessionTask.objects.filter(session=session_id)
             .values(
                 "id",
+                "task__id",
                 "task__name",
                 "task__version",
                 "session__name",
@@ -277,13 +278,25 @@ class SessionTaksDetails(TemplateView):
                 "date_time",
                 "general_comments",
                 "task_sequence",
-                "dataset_type",
+                "dataset_type__name",
             )
             .order_by("task_sequence")
         )
         channels_recording = []
-        for session_task in session_tasks:
+        session_task_dataset_type = {}
+        session_tasks = []
+        for session_task in all_session_tasks:
+            session_task_id = session_task["task__id"]
+            if session_task_id in session_task_dataset_type:
 
+                session_task_dataset_type[session_task_id].append(
+                    session_task["dataset_type__name"]
+                )
+            else:
+                session_tasks.append(session_task)
+                session_task_dataset_type.update(
+                    {session_task_id: [session_task["dataset_type__name"]]}
+                )
             channel_recording = ChannelRecording.objects.filter(
                 session_task=session_task["id"], session=session_id
             ).first()
@@ -292,5 +305,6 @@ class SessionTaksDetails(TemplateView):
             "session": Session.objects.get(pk=session_id),
             "session_tasks": session_tasks,
             "channels_recording": channels_recording,
+            "session_task_dataset_type": session_task_dataset_type,
         }
         return self.render_to_response(context)
