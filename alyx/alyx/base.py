@@ -202,13 +202,10 @@ def alyx_mail(to, subject, text=""):
 ]"""
 
 ADMIN_PAGES = [
-    (
-        "Buffalo",
-        [
-            "Subjects",
-        ],
-    ),
+    ("Buffalo", [],),
 ]
+
+
 class Bunch(dict):
     def __init__(self, *args, **kwargs):
         super(Bunch, self).__init__(*args, **kwargs)
@@ -239,17 +236,19 @@ def _get_category_list(app_list):
     order = ADMIN_PAGES
     extra_in_common = ["Adverse effects", "Cull subjects"]
     buffalo = [
+        "Buffalo subjects",
         "Tasks",
         "Sessions",
         "Session tasks",
         "Subject foods",
         "Weighings",
         "Electrodes",
+        "Electrode turns",
         "Starting points",
         "Processed recordings",
         "Stl files",
         "Channel recordings",
-        "Dataset types", 
+        "Dataset types",
         "Datasets",
     ]
     order_models = flatten([models for app, models in order])
@@ -265,7 +264,7 @@ def _get_category_list(app_list):
         Bunch(
             name=name,
             models=[models_dict[m] for m in model_names if m in models_dict],
-            collapsed="" #if name == "Common" else "collapsed",
+            collapsed="",  # if name == "Common" else "collapsed",
         )
         for name, model_names in order
     ]

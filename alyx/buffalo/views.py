@@ -298,7 +298,7 @@ class SessionTaksDetails(TemplateView):
                     {session_task_id: [session_task["dataset_type__name"]]}
                 )
             channel_recording = ChannelRecording.objects.filter(
-                session_task=session_task["id"], session=session_id
+                session=session_id
             ).first()
             channels_recording.append(channel_recording)
         context = {

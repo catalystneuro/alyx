@@ -1,6 +1,7 @@
 # Register the modules to show up at the admin page https://server/admin
 from django.contrib import admin
 from django import forms
+from django.forms import BaseInlineFormSet
 
 from django.urls import reverse
 from django.utils.html import format_html
@@ -10,6 +11,8 @@ from actions.models import Session, Weighing
 from alyx.base import BaseAdmin
 from .models import (
     Task,
+    TaskCategory,
+    Location,
     SessionTask,
     SubjectFood,
     Electrode,
@@ -17,6 +20,9 @@ from .models import (
     STLFile,
     ChannelRecording,
     ProcessedRecording,
+    ElectrodeTurn,
+    BuffaloSubject,
+    Reward,
 )
 from .forms import (
     WeighingForm,
@@ -29,17 +35,10 @@ from .forms import (
 )
 
 
-class BuffaloSubject(admin.ModelAdmin):
+class BuffaloSubjectAdmin(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
     form = SubjectForm
-    fields = [
-        "nickname",
-        "lab",
-        "responsible_user",
-        "birth_date",
-        "sex",
-        "description",
-    ]
+
     list_display = [
         "nickname",
         "birth_date",
@@ -58,6 +57,30 @@ class BuffaloSubject(admin.ModelAdmin):
         return format_html('<a href="{url}">{name}</a>', url=url, name="See More")
 
 
+class ChannelRecordingFormset(BaseInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        super(ChannelRecordingFormset, self).__init__(*args, **kwargs)
+
+
+class ChannelRecordingInline(admin.TabularInline):
+    model = ChannelRecording
+    formset = ChannelRecordingFormset
+    fields = ("electrode", "alive", "notes")
+    extra = 1
+
+
+class SessionTaskFormset(BaseInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        super(SessionTaskFormset, self).__init__(*args, **kwargs)
+
+
+class SessionTaskInline(admin.TabularInline):
+    model = SessionTask
+    formset = SessionTaskFormset
+    fields = ("task", "session", "task_sequence", "dataset_type", "general_comments")
+    extra = 1
+
+
 class BuffaloSession(admin.ModelAdmin):
     form = SessionForm
     change_list_template = "buffalo/change_list.html"
@@ -73,6 +96,7 @@ class BuffaloSession(admin.ModelAdmin):
         "start_time",
         "end_time",
     ]
+    inlines = [SessionTaskInline]
 
     def session_tasks(self, obj):
         tasks = SessionTask.objects.filter(session=obj.id)
@@ -138,8 +162,11 @@ class BuffaloSessionTask(admin.ModelAdmin):
         qs = super(BuffaloSessionTask, self).get_queryset(request).distinct("session")
         return qs
 
-    list_display = ["session", "tasks", "session_tasks_details"]
+    list_display = ["session_", "tasks", "session_tasks_details"]
     model = SessionTask
+
+    def session_(self, obj):
+        return obj.session.name
 
     def session_tasks_details(self, obj):
         try:
@@ -157,29 +184,6 @@ class BuffaloSessionTask(admin.ModelAdmin):
         for task in tasks:
             tasks_list.append(task.task)
         return tasks_list
-
-    def save_model(self, request, obj, form, change):
-        all_tasks = form.cleaned_data["all_tasks"]
-        session = form.cleaned_data["session"]
-        date_time = form.cleaned_data["date_time"]
-        general_comments = form.cleaned_data["general_comments"]
-        dataset_type = form.cleaned_data["dataset_type"]
-        task_sequence = form.cleaned_data["task_sequence"]
-        task = form.cleaned_data["task"]
-
-        if all_tasks:
-            for t in all_tasks:
-                if task != t:
-                    session_task = SessionTask.objects.create(
-                        session=session,
-                        date_time=date_time,
-                        general_comments=general_comments,
-                        task_sequence=task_sequence,
-                        task=t,
-                    )
-                    for d in dataset_type:
-                        session_task.dataset_type.add(d)
-        super().save_model(request, obj, form, change)
 
     ordering = ("session",)
 
@@ -209,9 +213,12 @@ class BuffaloTask(BaseAdmin):
     list_display = [
         "name_version",
         "description",
+        "training",
+        "platform",
         "category",
-        "reward_type",
-        "maze_type",
+        "reward",
+        "location",
+        "dataset_type_name",
         "new_version",
     ]
     ordering = ("name",)
@@ -228,6 +235,21 @@ class BuffaloTask(BaseAdmin):
             )
         return ""
 
+    def dataset_type_name(self, obj):
+        return "\n".join([d.name for d in obj.dataset_type.all()])
+
+
+class StartingPointFormset(BaseInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        super(StartingPointFormset, self).__init__(*args, **kwargs)
+
+
+class StartingPointInline(admin.TabularInline):
+    model = StartingPoint
+    formset = StartingPointFormset
+    fields = ("electrode", "x", "y", "z", "lab_member", "depth", "date_time", "notes")
+    extra = 1
+
 
 class BuffaloElectrode(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
@@ -239,26 +261,23 @@ class BuffaloElectrode(admin.ModelAdmin):
         "units",
         "notes",
     ]
+    inlines = [StartingPointInline]
 
 
 class BuffaloChannelRecording(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
     list_display = [
         "subject_recorded",
-        "session",
-        "session_task_",
+        "session_",
         "alive",
         "number_of_cells",
-        "stl_file",
     ]
 
-    def session_task_(self, obj):
-        session_task = SessionTask.objects.get(pk=obj.session_task.id)
-        return session_task.task
+    def session_(self, obj):
+        return obj.session.name
 
     def subject_recorded(self, obj):
         session = Session.objects.get(pk=obj.session.id)
-
         return session.subject
 
 
@@ -266,14 +285,22 @@ class BuffaloSTLFile(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
 
 
-admin.site.register(Subject, BuffaloSubject)
+class BuffaloStartingPoint(admin.ModelAdmin):
+    change_form_template = "buffalo/change_form.html"
+
+
+admin.site.register(BuffaloSubject, BuffaloSubjectAdmin)
 admin.site.register(Session, BuffaloSession)
 admin.site.register(Weighing, BuffaloWeight)
 admin.site.register(SessionTask, BuffaloSessionTask)
 admin.site.register(Task, BuffaloTask)
 admin.site.register(SubjectFood, BuffaloSubjectFood)
 admin.site.register(Electrode, BuffaloElectrode)
-admin.site.register(StartingPoint)
+admin.site.register(StartingPoint, BuffaloStartingPoint)
 admin.site.register(STLFile, BuffaloSTLFile)
 admin.site.register(ChannelRecording, BuffaloChannelRecording)
 admin.site.register(ProcessedRecording)
+admin.site.register(TaskCategory)
+admin.site.register(Location)
+admin.site.register(ElectrodeTurn)
+admin.site.register(Reward)

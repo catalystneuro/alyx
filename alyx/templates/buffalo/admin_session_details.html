@@ -67,7 +67,7 @@
                                     {% ifequal session_task.task__id s.0 %}
                                         <td class="col-sm-3">
                                         {% for dt in s.1 %}
-                                            {{dt}}<br>
+                                            {{dt|default:""}}<br>
                                         {% endfor %}
                                         </td>
                                     {% endifequal %}

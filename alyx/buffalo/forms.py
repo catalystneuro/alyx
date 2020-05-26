@@ -1,15 +1,25 @@
 from datetime import datetime
 from django import forms
-
+import django.forms
 from django.forms import ModelForm
 
 from actions.models import Session, Weighing
-from subjects.models import Subject
-from .models import Task, DailyObservation, SessionTask, SubjectFood
+
+# from subjects.models import Subject
+from .models import (
+    Task,
+    DailyObservation,
+    SessionTask,
+    SubjectFood,
+    BuffaloSubject,
+    ChannelRecording,
+    Electrode,
+)
 
 
 class TaskForm(forms.ModelForm):
     name = forms.CharField(label="Task name", required=True, max_length=150)
+    description = forms.CharField(label="Description (optional)", required=False)
 
     class Meta:
         name = forms.CharField(widget=forms.TextInput(attrs={"readonly": "readonly"}))
@@ -17,9 +27,12 @@ class TaskForm(forms.ModelForm):
         fields = [
             "name",
             "description",
+            "training",
+            "platform",
             "category",
-            "reward_type",
-            "maze_type",
+            "reward",
+            "location",
+            "dataset_type",
         ]
 
 
@@ -37,8 +50,6 @@ class TaskVersionForm(forms.ModelForm):
             "name",
             "description",
             "category",
-            "reward_type",
-            "maze_type",
             "version",
             "original_task",
             "first_version",
@@ -58,11 +69,14 @@ class DailyObservationForm(ModelForm):
 
 class SubjectForm(ModelForm):
     nickname = forms.CharField(label="Name", required=True, max_length=150)
+    code = forms.CharField(label="Code", required=False, max_length=150)
 
     class Meta:
-        model = Subject
+        model = BuffaloSubject
         fields = [
             "nickname",
+            "unique_id",
+            "code",
             "lab",
             "responsible_user",
             "birth_date",
@@ -80,6 +94,10 @@ class SessionForm(ModelForm):
         widget=forms.TextInput(attrs={"readonly": "readonly"}),
     )
 
+    subject = forms.ModelChoiceField(
+        queryset=BuffaloSubject.objects.all(), required=False
+    )
+
     class Meta:
         model = Session
         fields = [
@@ -93,15 +111,25 @@ class SessionForm(ModelForm):
         ]
 
 
+class CustomModelChoiceField(django.forms.ModelChoiceField):
+    """Subclasses Django's ModelChoiceField and adds one parameter, `obj_label`.
+        This should be a callable with one argument (the current object) which
+        returns a string to use as the label of that object or instance."""
+
+    def __init__(self, obj_label=None, *args, **kwargs):
+        super(CustomModelChoiceField, self).__init__(*args, **kwargs)
+        self.obj_label = obj_label
+
+    def label_from_instance(self, obj):
+        # import pdb; pdb.set_trace()
+        if self.obj_label:
+            return self.label(obj.name)
+        return super(CustomModelChoiceField, self).label_from_instance(obj.name)
+
+
 class TaskSessionForm(ModelForm):
     task = forms.ModelMultipleChoiceField(queryset=Task.objects.all())
-
-    def clean(self):
-        cleaned_data = super(TaskSessionForm, self).clean()
-        tasks = cleaned_data["task"]
-        cleaned_data["task"] = tasks[0]
-        cleaned_data["all_tasks"] = tasks
-        return cleaned_data
+    session = CustomModelChoiceField(queryset=Session.objects.all())
 
     class Meta:
         model = SessionTask
@@ -116,7 +144,9 @@ class TaskSessionForm(ModelForm):
 
 
 class WeighingForm(forms.ModelForm):
-    subject = forms.ModelChoiceField(queryset=Subject.objects.all(), required=False)
+    subject = forms.ModelChoiceField(
+        queryset=BuffaloSubject.objects.all(), required=False
+    )
     weight = forms.FloatField(help_text="Weight in Kg")
 
     def __init__(self, *args, **kwargs):
@@ -129,7 +159,9 @@ class WeighingForm(forms.ModelForm):
 
 
 class SubjectFoodForm(forms.ModelForm):
-    subject = forms.ModelChoiceField(queryset=Subject.objects.all(), required=False)
+    subject = forms.ModelChoiceField(
+        queryset=BuffaloSubject.objects.all(), required=False
+    )
     amount = forms.FloatField(help_text="in Ml")
 
     def __init__(self, *args, **kwargs):
