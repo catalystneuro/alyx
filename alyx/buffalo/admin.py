@@ -6,6 +6,10 @@ from django.forms import BaseInlineFormSet
 from django.urls import reverse
 from django.utils.html import format_html
 
+from django.shortcuts import redirect
+
+import nested_admin
+
 from subjects.models import Subject
 from actions.models import Session, Weighing
 from alyx.base import BaseAdmin
@@ -20,8 +24,9 @@ from .models import (
     STLFile,
     ChannelRecording,
     ProcessedRecording,
-    ElectrodeTurn,
     BuffaloSubject,
+    ElectrodeLog,
+    BuffaloElectrodeSubject,
     Reward,
 )
 from .forms import (
@@ -45,16 +50,29 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
         "sex",
         "description",
         "responsible_user",
-        "daily_observations",
+        "options",
     ]
 
     search_fields = [
         "nickname",
     ]
 
+    def link(self, url, name):
+        link_code = '<a href="{url}">{name}</a>'
+        return format_html(link_code, url=url, name=name)
+
     def daily_observations(self, obj):
         url = reverse("daily-observation", kwargs={"subject_id": obj.id})
-        return format_html('<a href="{url}">{name}</a>', url=url, name="See More")
+        return self.link(url, "Daily observations")
+
+    def set_electrodes(self, obj):
+        url = reverse("admin:buffalo_buffaloelectrodesubject_change", args=[obj.id])
+        return self.link(url, "Set electrodes")
+
+    def options(self, obj):
+        select = "{} / {}"
+        select = select.format(self.daily_observations(obj), self.set_electrodes(obj))
+        return format_html(select)
 
 
 class ChannelRecordingFormset(BaseInlineFormSet):
@@ -244,24 +262,73 @@ class StartingPointFormset(BaseInlineFormSet):
         super(StartingPointFormset, self).__init__(*args, **kwargs)
 
 
-class StartingPointInline(admin.TabularInline):
+class StartingPointInline(nested_admin.NestedTabularInline):
     model = StartingPoint
     formset = StartingPointFormset
     fields = ("electrode", "x", "y", "z", "lab_member", "depth", "date_time", "notes")
-    extra = 1
+    extra = 0
 
 
-class BuffaloElectrode(admin.ModelAdmin):
+class BuffaloElectrode(nested_admin.NestedTabularInline):
+    model = Electrode
+    extra = 0
+    inlines = [StartingPointInline]
+
+
+class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
+    change_form_template = "buffalo/change_form.html"
+    form = SubjectForm
+
+    list_display = [
+        "nickname",
+        "birth_date",
+        "sex",
+        "description",
+        "responsible_user",
+    ]
+
+    fields = ['nickname', 'unique_id', 'name']
+
+    search_fields = [
+        "nickname",
+    ]
+
+    inlines = [BuffaloElectrode]
+
+    def response_change(self, request, obj):
+        return redirect('/buffalo/buffalosubject')
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return self.readonly_fields + ('nickname', 'unique_id', 'name')
+        return self.readonly_fields
+
+
+class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
     list_display = [
         "subject",
+        "electrode",
         "turn",
-        "millimeters",
         "impedance",
-        "units",
-        "notes",
     ]
-    inlines = [StartingPointInline]
+    fields = (
+        'subject', 
+        'electrode', 
+        'turn', 
+        'impedance', 
+        'date_time', 
+        'notes'
+    )
 
 
 class BuffaloChannelRecording(admin.ModelAdmin):
@@ -290,17 +357,17 @@ class BuffaloStartingPoint(admin.ModelAdmin):
 
 
 admin.site.register(BuffaloSubject, BuffaloSubjectAdmin)
+admin.site.register(BuffaloElectrodeSubject, BuffaloElectrodeSubjectAdmin)
+admin.site.register(ElectrodeLog, BuffaloElectrodeLogAdmin)
 admin.site.register(Session, BuffaloSession)
 admin.site.register(Weighing, BuffaloWeight)
 admin.site.register(SessionTask, BuffaloSessionTask)
 admin.site.register(Task, BuffaloTask)
 admin.site.register(SubjectFood, BuffaloSubjectFood)
-admin.site.register(Electrode, BuffaloElectrode)
 admin.site.register(StartingPoint, BuffaloStartingPoint)
 admin.site.register(STLFile, BuffaloSTLFile)
 admin.site.register(ChannelRecording, BuffaloChannelRecording)
 admin.site.register(ProcessedRecording)
 admin.site.register(TaskCategory)
 admin.site.register(Location)
-admin.site.register(ElectrodeTurn)
 admin.site.register(Reward)
