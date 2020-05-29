@@ -27,6 +27,7 @@ from .models import (
     BuffaloSubject,
     ElectrodeLog,
     BuffaloElectrodeSubject,
+    BuffaloElectrodeLogSubject,
     Reward,
 )
 from .forms import (
@@ -58,7 +59,7 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
     ]
 
     def link(self, url, name):
-        link_code = '<a href="{url}">{name}</a>'
+        link_code = '<a class="button" href="{url}">{name}</a>'
         return format_html(link_code, url=url, name=name)
 
     def daily_observations(self, obj):
@@ -68,10 +69,16 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
     def set_electrodes(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodesubject_change", args=[obj.id])
         return self.link(url, "Set electrodes")
+    
+    def new_electrode_logs(self, obj):
+        url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.id])
+        return self.link(url, "New electrode logs")
 
     def options(self, obj):
-        select = "{} / {}"
-        select = select.format(self.daily_observations(obj), self.set_electrodes(obj))
+        select = "{} {} {}"
+        select = select.format(self.daily_observations(obj), 
+                               self.set_electrodes(obj),
+                               self.new_electrode_logs(obj))
         return format_html(select)
 
 
@@ -313,6 +320,69 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
         return self.readonly_fields
 
 
+def TemplateInitialDataElectrodeLog(data, num_forms):
+    class BuffaloElectrodeLog(admin.TabularInline):
+
+        def get_queryset(self, request):
+            self.request = request
+            return ElectrodeLog.objects.none()
+
+        class ElectrodeLogInlineFormSet(BaseInlineFormSet):
+            def __init__(self, *args, **kwargs):
+                kwargs['initial'] = data
+                super(BuffaloElectrodeLog.ElectrodeLogInlineFormSet, self).__init__(*args, **kwargs)
+
+        model = ElectrodeLog
+        extra = num_forms
+        fields = ('electrode','turn','impedance','date_time','notes')
+        formset = ElectrodeLogInlineFormSet
+    
+    return BuffaloElectrodeLog
+
+
+class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
+
+    change_form_template = "buffalo/change_form.html"
+    form = SubjectForm
+    list_display = [
+        "nickname",
+        "birth_date",
+        "sex",
+        "description",
+        "responsible_user",
+    ]
+    fields = ['nickname', 'unique_id', 'name']
+    search_fields = [
+        "nickname",
+    ]
+
+    def get_inline_instances(self, request, obj=None):
+        electrodes = Electrode.objects.filter(subject=obj.id)
+        initial = []
+        for electrode in electrodes:
+            initial.append({'electrode': electrode.id})
+        inlines = [TemplateInitialDataElectrodeLog(initial, len(initial))]
+        return [inline(self.model, self.admin_site) for inline in inlines]
+
+
+    def response_change(self, request, obj):
+        return redirect('/buffalo/buffalosubject')
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return self.readonly_fields + ('nickname', 'unique_id', 'name')
+        return self.readonly_fields
+
+
 class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
     list_display = [
@@ -320,6 +390,7 @@ class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
         "electrode",
         "turn",
         "impedance",
+        "date_time"
     ]
     fields = (
         'subject', 
@@ -329,6 +400,10 @@ class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
         'date_time', 
         'notes'
     )
+    search_fields = [
+        "subject__nickname",
+    ]
+    ordering = ['-date_time']
 
 
 class BuffaloChannelRecording(admin.ModelAdmin):
@@ -358,6 +433,7 @@ class BuffaloStartingPoint(admin.ModelAdmin):
 
 admin.site.register(BuffaloSubject, BuffaloSubjectAdmin)
 admin.site.register(BuffaloElectrodeSubject, BuffaloElectrodeSubjectAdmin)
+admin.site.register(BuffaloElectrodeLogSubject, BuffaloElectrodeLogSubjectAdmin)
 admin.site.register(ElectrodeLog, BuffaloElectrodeLogAdmin)
 admin.site.register(Session, BuffaloSession)
 admin.site.register(Weighing, BuffaloWeight)

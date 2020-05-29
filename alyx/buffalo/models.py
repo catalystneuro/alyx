@@ -75,6 +75,11 @@ class BuffaloElectrodeSubject(BuffaloSubject):
     class Meta:
         proxy = True
 
+class BuffaloElectrodeLogSubject(BuffaloSubject):
+
+    class Meta:
+        proxy = True
+
 
 class Task(BaseModel):
     name = models.CharField(max_length=255, blank=True, help_text="Task name")
@@ -218,8 +223,8 @@ class ElectrodeLog(BaseAction):
         null=True,
         blank=True,
     )
-    turn = models.FloatField(null=True)
-    impedance = models.FloatField(null=True)
+    turn = models.FloatField(null=False)
+    impedance = models.FloatField(null=False)
     notes = models.TextField(blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     procedures = models.ManyToManyField('actions.ProcedureType', blank=True,
