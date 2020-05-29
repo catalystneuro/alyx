@@ -146,7 +146,8 @@ INSTALLED_APPS = (
     'experiments',
     'subjects',
     'buffalo',
-    'crispy_forms'
+    'crispy_forms',
+    'nested_admin',
 )
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'

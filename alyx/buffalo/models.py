@@ -7,7 +7,7 @@ from django.conf import settings
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
 from misc.models import HousingSubject, LabMember
-from actions.models import Session, Weighing
+from actions.models import Session, Weighing, BaseAction, ProcedureType 
 from subjects.models import Subject
 
 
@@ -74,6 +74,16 @@ class BuffaloSubject(Subject):
     code = models.CharField(
         max_length=2, blank=True, default="", help_text="Two letter code"
     )
+
+class BuffaloElectrodeSubject(BuffaloSubject):
+
+    class Meta:
+        proxy = True
+
+class BuffaloElectrodeLogSubject(BuffaloSubject):
+
+    class Meta:
+        proxy = True
 
 
 class Task(BaseModel):
@@ -192,7 +202,6 @@ class Electrode(models.Model):
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     millimeters = models.FloatField(null=True, blank=True)
-    impedance = models.FloatField(null=True, blank=True)
     units = models.CharField(max_length=255, choices=UNITS, default="", blank=True)
     channel_number = models.CharField(max_length=255, default="", blank=True)
     notes = models.TextField(blank=True)
@@ -212,13 +221,21 @@ class Electrode(models.Model):
         return f"{self.subject.nickname} - {self.channel_number}"
 
 
-class ElectrodeTurn(models.Model):
+class ElectrodeLog(BaseAction):
     electrode = models.ForeignKey(
-        Electrode, on_delete=models.SET_NULL, null=True, blank=True,
+        Electrode, 
+        on_delete=models.SET_NULL, 
+        null=True,
+        blank=True,
     )
-    turns = models.FloatField(null=True, default=None)
+    turn = models.FloatField(null=False)
+    impedance = models.FloatField(null=False)
+    notes = models.TextField(blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    units = models.CharField(max_length=255, default="", blank=True, null=True)
+    procedures = models.ManyToManyField('actions.ProcedureType', blank=True,
+                                        help_text="The procedure(s) performed")
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class StartingPoint(models.Model):
