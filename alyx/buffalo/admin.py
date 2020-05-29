@@ -405,7 +405,7 @@ def TemplateInitialDataElectrodeLog(data, num_forms):
 
         model = ElectrodeLog
         extra = num_forms
-        fields = ('electrode','turn','impedance','date_time','notes')
+        fields = ('electrode','turn','date_time','notes')
         formset = ElectrodeLogInlineFormSet
     
     return BuffaloElectrodeLog

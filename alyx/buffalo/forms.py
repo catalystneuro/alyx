@@ -205,7 +205,6 @@ class ElectrodeForm(forms.ModelForm):
             "subject",
             "date_time",
             "millimeters",
-            "impedance",
             "units",
             "channel_number",
             "notes",
