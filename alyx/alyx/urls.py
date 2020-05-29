@@ -13,7 +13,7 @@ from buffalo.views import (
     TaskCreateView,
     SessionCreateView,
     subjectCreateView,
-    AddTasksToSessionAjax,
+    getTaskCategoryJson,
     CreateTasksToSession,
     TaskUpdateView,
     subjectUpdateView,
@@ -137,9 +137,9 @@ urlpatterns = [
     path("buffalo-sessions/", SessionCreateView.as_view(), name="buffalo-sessions"),
     path("buffalo-subjects/", subjectCreateView.as_view(), name="buffalo-subjects"),
     path(
-        "buffalo-add-task-session/",
-        AddTasksToSessionAjax.as_view(),
-        name="buffalo-add-task-session",
+        "buffalo-get-task-category-json/",
+        getTaskCategoryJson.as_view(),
+        name="buffalo-get-task-category-json",
     ),
     path("buffalo-add-task/", CreateTasksToSession.as_view(), name="buffalo-add-task"),
     path(

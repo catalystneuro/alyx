@@ -62,6 +62,11 @@ class TaskCategory(BaseModel):
         return self.name
 
 
+class Platform(BaseModel):
+    def __str__(self):
+        return self.name
+
+
 class BuffaloSubject(Subject):
     unique_id = models.CharField(
         max_length=255, blank=True, default="", help_text="Monkey Identifier"
@@ -74,8 +79,8 @@ class BuffaloSubject(Subject):
 class Task(BaseModel):
     name = models.CharField(max_length=255, blank=True, help_text="Task name")
     description = models.TextField(blank=True)
-    platform = models.CharField(
-        max_length=180, choices=PLATFORM, default="", blank=True
+    platform = models.ForeignKey(
+        Platform, null=True, blank=True, on_delete=models.SET_NULL, default=None
     )
     category = models.ForeignKey(
         TaskCategory, null=True, blank=True, on_delete=models.SET_NULL
@@ -186,7 +191,6 @@ class Electrode(models.Model):
         help_text="The subject on which the electrode is",
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    turn = models.FloatField()
     millimeters = models.FloatField(null=True, blank=True)
     impedance = models.FloatField(null=True, blank=True)
     units = models.CharField(max_length=255, choices=UNITS, default="", blank=True)
@@ -212,8 +216,9 @@ class ElectrodeTurn(models.Model):
     electrode = models.ForeignKey(
         Electrode, on_delete=models.SET_NULL, null=True, blank=True,
     )
-    turn = models.FloatField(null=True, default=None)
+    turns = models.FloatField(null=True, default=None)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    units = models.CharField(max_length=255, default="", blank=True, null=True)
 
 
 class StartingPoint(models.Model):

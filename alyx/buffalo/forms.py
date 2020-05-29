@@ -5,7 +5,6 @@ from django.forms import ModelForm
 
 from actions.models import Session, Weighing
 
-# from subjects.models import Subject
 from .models import (
     Task,
     DailyObservation,
@@ -14,6 +13,7 @@ from .models import (
     BuffaloSubject,
     ChannelRecording,
     Electrode,
+    TaskCategory,
 )
 
 
@@ -26,14 +26,19 @@ class TaskForm(forms.ModelForm):
         model = Task
         fields = [
             "name",
+            "version",
             "description",
             "training",
             "platform",
             "category",
+            "json",
             "reward",
             "location",
             "dataset_type",
         ]
+        widgets = {
+            "version": forms.HiddenInput(),
+        }
 
 
 class TaskVersionForm(forms.ModelForm):
@@ -48,9 +53,14 @@ class TaskVersionForm(forms.ModelForm):
         model = Task
         fields = [
             "name",
-            "description",
-            "category",
             "version",
+            "description",
+            "training",
+            "platform",
+            "category",
+            "json",
+            "reward",
+            "location",
             "original_task",
             "first_version",
         ]
@@ -89,13 +99,13 @@ class SessionForm(ModelForm):
     name = forms.CharField(
         label="Session name",
         required=False,
-        max_length=150,
-        initial=datetime.today().strftime("%d/%m/%Y"),
-        widget=forms.TextInput(attrs={"readonly": "readonly"}),
+        max_length=250,
+        initial=datetime.today().isoformat(),
+        widget=forms.TextInput(attrs={"readonly": "readonly", "size": "40"}),
     )
 
     subject = forms.ModelChoiceField(
-        queryset=BuffaloSubject.objects.all(), required=False
+        queryset=BuffaloSubject.objects.all(), required=True
     )
 
     class Meta:
@@ -121,14 +131,12 @@ class CustomModelChoiceField(django.forms.ModelChoiceField):
         self.obj_label = obj_label
 
     def label_from_instance(self, obj):
-        # import pdb; pdb.set_trace()
         if self.obj_label:
             return self.label(obj.name)
         return super(CustomModelChoiceField, self).label_from_instance(obj.name)
 
 
-class TaskSessionForm(ModelForm):
-    task = forms.ModelMultipleChoiceField(queryset=Task.objects.all())
+class SessionTaskForm(ModelForm):
     session = CustomModelChoiceField(queryset=Session.objects.all())
 
     class Meta:
@@ -174,4 +182,31 @@ class SubjectFoodForm(forms.ModelForm):
             "subject",
             "amount",
             "date_time",
+        ]
+
+
+class TaskCategoryForm(forms.ModelForm):
+    json = forms.CharField(max_length=1024, help_text='{"env": "env value"}')
+
+    class Meta:
+        model = TaskCategory
+        fields = [
+            "name",
+            "json",
+        ]
+
+class ElectrodeForm(forms.ModelForm):
+    subject = forms.ModelChoiceField(
+        queryset=BuffaloSubject.objects.all(), required=False
+    )
+    class Meta:
+        model = Electrode
+        fields = [
+            "subject",
+            "date_time",
+            "millimeters",
+            "impedance",
+            "units",
+            "channel_number",
+            "notes",
         ]

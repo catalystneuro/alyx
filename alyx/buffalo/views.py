@@ -19,13 +19,20 @@ from django.core.serializers.json import DjangoJSONEncoder
 from actions.models import Session, Weighing
 from misc.models import Lab
 from subjects.models import Subject
-from .models import Task, SessionTask, DailyObservation, SubjectFood, ChannelRecording
+from .models import (
+    Task,
+    SessionTask,
+    DailyObservation,
+    SubjectFood,
+    ChannelRecording,
+    TaskCategory,
+)
 from .forms import (
     TaskForm,
     SessionForm,
     SubjectForm,
     DailyObservationForm,
-    TaskSessionForm,
+    SessionTaskForm,
     TaskVersionForm,
     WeighingForm,
     SubjectFoodForm,
@@ -68,8 +75,7 @@ class TaskCreateVersionView(CreateView):
         return context
 
     def form_valid(self, form):
-        if form.instance.original_task is None:
-            form.instance.original_task = str(self.kwargs["pk"])
+        form.instance.original_task = str(self.kwargs["pk"])
         form.instance.first_version = False
         form.instance.version = str(
             Task.objects.filter(original_task=self.kwargs["pk"]).count() + 2
@@ -87,6 +93,14 @@ class TaskCreateVersionView(CreateView):
                 initial=(
                     {
                         "name": task.name,
+                        "description": task.description,
+                        "training": task.training,
+                        "platform": task.platform,
+                        "category": task.category,
+                        "json": task.json,
+                        "reward": task.reward,
+                        "location": task.location,
+                        "dataset_type": task.dataset_type,
                         "version": task.version,
                         "original_task": task.original_task,
                     }
@@ -173,7 +187,7 @@ class SessionCreateView(CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["objects"] = Session.objects.exclude(name="")
-        context["form_task"] = TaskSessionForm()
+        context["form_task"] = SessionTaskForm()
 
         return context
 
@@ -181,31 +195,18 @@ class SessionCreateView(CreateView):
         return reverse("buffalo-sessions")
 
 
-class AddTasksToSessionAjax(View):
+class getTaskCategoryJson(View):
     def get(self, request, *args, **kwargs):
         if request.is_ajax():
-            session_id = request.GET.get("session_id")
-            tasks = (
-                SessionTask.objects.filter(session=session_id)
-                .values(
-                    "task__name",
-                    "task__version",
-                    "session__name",
-                    "session__start_time",
-                    "date_time",
-                    "general_comments",
-                    "task_sequence",
-                    "dataset_type",
-                )
-                .order_by("task_sequence")
-            )
-            data = json.dumps(list(tasks), cls=DjangoJSONEncoder)
-            return JsonResponse({"tasks": data}, status=200)
+            task_category = request.GET.get("task_category_id")
+            category = TaskCategory.objects.get(pk=task_category)
+            data = category.json
+            return JsonResponse({"category_json": data}, status=200)
 
 
 class CreateTasksToSession(CreateView):
     template_name = "buffalo/tasks_selector_modal.html"
-    form_class = TaskSessionForm
+    form_class = SessionTaskForm
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -287,6 +288,7 @@ class SessionTaksDetails(TemplateView):
         session_tasks = []
         for session_task in all_session_tasks:
             session_task_id = session_task["task__id"]
+
             if session_task_id in session_task_dataset_type:
 
                 session_task_dataset_type[session_task_id].append(
@@ -297,14 +299,13 @@ class SessionTaksDetails(TemplateView):
                 session_task_dataset_type.update(
                     {session_task_id: [session_task["dataset_type__name"]]}
                 )
-            channel_recording = ChannelRecording.objects.filter(
-                session=session_id
-            ).first()
-            channels_recording.append(channel_recording)
+        channels_recording = ChannelRecording.objects.filter(session=session_id,)
+
         context = {
             "session": Session.objects.get(pk=session_id),
             "session_tasks": session_tasks,
-            "channels_recording": channels_recording,
+            "channels_recording": list(channels_recording),
             "session_task_dataset_type": session_task_dataset_type,
         }
+
         return self.render_to_response(context)

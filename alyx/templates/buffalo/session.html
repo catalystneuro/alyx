@@ -120,7 +120,7 @@
             // GET AJAX request
             $.ajax({
                 type: 'GET',
-                url: "{% url 'buffalo-add-task-session' %}",
+                url: "{% url 'buffalo-get-task-category-json' %}",
                 data: {"session_id": sesion_id  },
                 success: function (response) {
                     tasks = JSON.parse(response['tasks'])

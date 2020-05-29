@@ -28,6 +28,11 @@ form#subject_form div.form-row.field-strain label
 
 <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
 <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+
+
 
 <script>
 $(document).keydown(function(e) {
@@ -98,21 +103,66 @@ $(window).on("load", function() {
     })
 });
 
+$(document).ready(function() {
+    const version = parseInt($("#id_version").val())
+    if (version > 1) {
+        $(".field-version").removeClass('hidden')
+        $("#id_version, #id_name").prop({'type': 'text', 'readonly':'readonly'})
+    }
+    $('#id_category').change(function(){
+        const task_category_id = $("#id_category option:selected").val()
+        $.ajax({
+            type: 'GET',
+            url: "{% url 'buffalo-get-task-category-json' %}",
+            data: {"task_category_id": task_category_id  },
+            success: function (response) {
+                $("#id_json").val("")
+                $("#id_json").val(response.category_json)
+            },
+            error: function (response) {
+                console.log(response)
+            }
+        })
+    })
 
+   const channels = "{{channels}}"
+    if (channels) {
+        $('.module:lt(1), #sessiontask_set-group table, #channelrecording_set-group table, .submit-row').addClass("hidden");
+        $('#channelrecording_set-group h2').append('<a id="show-channel" class="" href="#"> (Show)</a>')
+        $('#sessiontask_set-group h2').append('<a id="show-session-tasks" class="" href="#"> (Show)</a>')
+    }
+    $("#show-channel").on('click', function() {
+        const parent = $("#show-channel").parent().next('table')
+        $('#channelrecording_set-group table, .submit-row').toggleClass("hidden")
+        if ($('#channelrecording_set-group table').hasClass("hidden")) {
+            $('#channelrecording_set-group #show-channel').text("(Show)");
+        } else {
+            $('#channelrecording_set-group #show-channel').text("(Hide)");
+        }
+    })
+    $("#show-session-tasks").on('click', function() {
+        $('#sessiontask_set-group table, .submit-row').toggleClass("hidden")
+        if ($('#sessiontask_set-group table').hasClass("hidden")) {
+            $('#sessiontask_set-group #show-session-tasks').text("(Show)");
+        } else {
+            $('#sessiontask_set-group #show-session-tasks').text("(Hide)");
+        }
+        
+    })
+});
 // HACK: date widget in local timezone.
 (function($){
     let today = new Date()
-    today = moment(today).format("D/MM/YYYY")
-  $(function(){
-    document.body.setAttribute("data-admin-utc-offset", (new Date()).getTimezoneOffset() * -60);
-    
-  })
-    $('#id_subject').change(function(){
-        const subject = $("#id_subject option:selected").text()
+    today = moment(today).toISOString()
+     $('#id_subject').change(function(){
+        let subject = $("#id_subject option:selected").text()
         $("#session_form #id_name").val("")
         $("#session_form #id_name").val(today + "_" + subject)
     })
-
+    
+  $(function(){
+    document.body.setAttribute("data-admin-utc-offset", (new Date()).getTimezoneOffset() * -60);
+  })
 })(jQuery)
 
 </script>

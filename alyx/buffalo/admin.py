@@ -23,15 +23,18 @@ from .models import (
     ElectrodeTurn,
     BuffaloSubject,
     Reward,
+    Platform,
 )
 from .forms import (
     WeighingForm,
-    TaskSessionForm,
+    SessionTaskForm,
     TaskForm,
     SubjectFoodForm,
     SubjectForm,
     SessionForm,
     TaskForm,
+    TaskCategoryForm,
+    ElectrodeForm
 )
 
 
@@ -65,8 +68,19 @@ class ChannelRecordingFormset(BaseInlineFormSet):
 class ChannelRecordingInline(admin.TabularInline):
     model = ChannelRecording
     formset = ChannelRecordingFormset
-    fields = ("electrode", "alive", "notes")
+    fields = ("electrode", "session", "alive", "notes")
     extra = 1
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "electrode":
+            try:
+                session = Session.objects.get(
+                    pk=request.resolver_match.kwargs["object_id"]
+                )
+                kwargs["queryset"] = Electrode.objects.filter(subject=session.subject)
+            except KeyError:
+                pass
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
 class SessionTaskFormset(BaseInlineFormSet):
@@ -96,7 +110,8 @@ class BuffaloSession(admin.ModelAdmin):
         "start_time",
         "end_time",
     ]
-    inlines = [SessionTaskInline]
+    inlines = [SessionTaskInline, ChannelRecordingInline]
+    ordering = ("-start_time",)
 
     def session_tasks(self, obj):
         tasks = SessionTask.objects.filter(session=obj.id)
@@ -121,7 +136,50 @@ class BuffaloSession(admin.ModelAdmin):
         if self.source == "daily":
             response["location"] = "/daily-observation/" + str(obj.subject_id)
             self.source = ""
+        else:
+            response["location"] = "/session-tasks/" + str(obj.id)
         return response
+
+    def response_change(self, request, obj):
+        response = super(BuffaloSession, self).response_add(request, obj)
+        response["location"] = "/session-tasks/" + str(obj.id)
+
+        return response
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        if "session-tasks" in request.META["HTTP_REFERER"]:
+            extra_context.update({"channels": 1})
+        return super().change_view(
+            request, object_id, form_url, extra_context=extra_context,
+        )
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for obj in formset.deleted_objects:
+            obj.delete()
+        if "channelrecording" in formset.prefix:
+            if change is False:
+                session = formset.instance
+                prev_session = Session.objects.filter(subject=session.subject).order_by(
+                    "-start_time"
+                )
+                if len(prev_session) >= 2:
+                    prev_channels = ChannelRecording.objects.filter(
+                        session=prev_session[1].id
+                    )
+                    if prev_channels:
+                        for prev_channel in prev_channels:
+                            ChannelRecording.objects.create(
+                                electrode=prev_channel.electrode,
+                                session=formset.instance,
+                                alive=prev_channel.alive,
+                                notes=prev_channel.notes,
+                            )
+
+        for instance in instances:
+            instance.save()
+        formset.save_m2m()
 
 
 class BuffaloWeight(BaseAdmin):
@@ -155,7 +213,7 @@ class BuffaloWeight(BaseAdmin):
 
 
 class BuffaloSessionTask(admin.ModelAdmin):
-    form = TaskSessionForm
+    form = SessionTaskForm
     change_form_template = "buffalo/change_form.html"
 
     def get_queryset(self, request):
@@ -166,6 +224,8 @@ class BuffaloSessionTask(admin.ModelAdmin):
     model = SessionTask
 
     def session_(self, obj):
+        if obj.session is None:
+            return ""
         return obj.session.name
 
     def session_tasks_details(self, obj):
@@ -221,22 +281,33 @@ class BuffaloTask(BaseAdmin):
         "dataset_type_name",
         "new_version",
     ]
-    ordering = ("name",)
+    ordering = ("-updated",)
 
     def name_version(self, obj):
         version = f" (version:{obj.version})"
         return obj.name + version
 
     def new_version(self, obj):
-        if obj.version == "1":
+        if obj.first_version is True:
             url = reverse("buffalo-task-version", kwargs={"pk": obj.id})
             return format_html(
                 '<a href="{url}">{name}</a>', url=url, name="Add new version"
             )
+
         return ""
 
     def dataset_type_name(self, obj):
         return "\n".join([d.name for d in obj.dataset_type.all()])
+
+    def save_model(self, request, obj, form, change):
+        if change is False and obj.first_version is True:
+            obj.version = "1"
+        if change:
+            saved_version = Task.objects.get(pk=obj.id)
+            obj.name = saved_version.name
+            obj.version = saved_version.version
+
+        super().save_model(request, obj, form, change)
 
 
 class StartingPointFormset(BaseInlineFormSet):
@@ -253,15 +324,16 @@ class StartingPointInline(admin.TabularInline):
 
 class BuffaloElectrode(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
+    form = ElectrodeForm
     list_display = [
         "subject",
-        "turn",
         "millimeters",
         "impedance",
         "units",
         "notes",
     ]
-    inlines = [StartingPointInline]
+    #inlines = [StartingPointInline, ChannelRecordingInline]
+    ordering = ("-updated",)
 
 
 class BuffaloChannelRecording(admin.ModelAdmin):
@@ -274,9 +346,13 @@ class BuffaloChannelRecording(admin.ModelAdmin):
     ]
 
     def session_(self, obj):
+        if obj.session is None:
+            return ""
         return obj.session.name
 
     def subject_recorded(self, obj):
+        if obj.session is None:
+            return ""
         session = Session.objects.get(pk=obj.session.id)
         return session.subject
 
@@ -287,6 +363,11 @@ class BuffaloSTLFile(admin.ModelAdmin):
 
 class BuffaloStartingPoint(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
+
+
+class BuffaloCategory(admin.ModelAdmin):
+    change_form_template = "buffalo/change_form.html"
+    form = TaskCategoryForm
 
 
 admin.site.register(BuffaloSubject, BuffaloSubjectAdmin)
@@ -300,7 +381,8 @@ admin.site.register(StartingPoint, BuffaloStartingPoint)
 admin.site.register(STLFile, BuffaloSTLFile)
 admin.site.register(ChannelRecording, BuffaloChannelRecording)
 admin.site.register(ProcessedRecording)
-admin.site.register(TaskCategory)
+admin.site.register(TaskCategory, BuffaloCategory)
 admin.site.register(Location)
 admin.site.register(ElectrodeTurn)
 admin.site.register(Reward)
+admin.site.register(Platform)
