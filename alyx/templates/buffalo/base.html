@@ -100,37 +100,5 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/css/tempusdominus-bootstrap-4.min.css" />
         <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
         <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
-  
-       
-        <script>
-            $( document ).ready(function() {
-                $("#id_birth_date").daterangepicker({
-                    singleDatePicker: true,
-                    showDropdowns: true,
-                    locale: {
-                        format: 'DD/MM/YYYY'
-                    },
-                    minYear: 1901,
-                    maxYear: parseInt(moment().format('YYYY-MM-DD'),10)
-                })
-                $("#id_date_time, #id_start_time, #id_end_time").daterangepicker({
-                    opens: 'left',
-                    singleDatePicker: true,
-                    "timePicker24Hour": true,
-                    timePicker: true,
-                    "autoApply": true,
-                    startDate: moment().startOf('hour'),
-                    endDate: moment().startOf('hour').add(32, 'hour'),
-                    locale: {
-                    format: 'MM/DD/Y hh:mm'
-                    }
-                })
-                const error = "{{form_errors}}"
-                if (error) {
-                    $("#add").modal("show")
-                    add_settings()
-                }
-            })
-        </script>
   </body>
 </html>

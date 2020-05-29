@@ -21,8 +21,8 @@
         <ul class="object-tools">
             {% block object-tools-items %}
                 <li>
-                <a href="/buffalo/sessiontask/add/" class="addlink">
-                    Add session task
+                    <a href="/actions/session/{{session.id}}/change/" class="addlink">
+                    Add Channel Recording Info/ Add Session task
                     </a>
                 </li>
             {% endblock %}
@@ -39,7 +39,7 @@
                     {{users}}
                 {% endwith %}
             </label><br>
-            <label><strong>Narrative</strong></label><br>
+            <label><strong>Narrative</strong>{{session.narrative}}</label><br>
         </div>
         <br><br>
     </div>
@@ -63,45 +63,58 @@
                                 <td class="col-sm-1">{{session_task.task__version}}</td>
                                 <td class="col-sm-3">{{session_task.general_comments}}</td>
                                 <td class="col-sm-2">{{session_task.date_time|default:""}}</td>
-                                <td class="col-sm-3">{{session_task.dataset_type|default:""}}</td>
+                                {% for s in session_task_dataset_type.items %}
+                                    {% ifequal session_task.task__id s.0 %}
+                                        <td class="col-sm-3">
+                                        {% for dt in s.1 %}
+                                            {{dt|default:""}}<br>
+                                        {% endfor %}
+                                        </td>
+                                    {% endifequal %}
+                                {% endfor %}
                             </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
-        {% if channels_recording %}
-            <br><br>
-            <h1>channels Recording</h1>
-            <div class="col-lg-10  offset-md-1">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr class="d-flex">
-                                <th class="session-task-fields col-2" scope="col">Session Task</th>
-                                <th class="session-task-fields col-1" scope="col">Alive</th>
-                                <th class="session-task-fields col-3" scope="col">Number of cells</th>
-                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for channel_recording in channels_recording %}
-                                {% if channel_recording %}
-                                    <tr class="d-flex">
-                                        <td class="col-sm-2">{{channel_recording.session_task.task.name }}</td>
-                                        <td class="col-sm-1">{{channel_recording.alive}}</td>
-                                        <td class="col-sm-3">{{channel_recording.number_of_cells}}</td>
-                                    </tr>
-                                {% endif %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        {% endif %}
     {% else %}
         <div class="col-lg-10  offset-md-1">
             <div class="badge badge-secondary">
                     No Session Tasks
+            </div>
+        </div>
+    {% endif %}
+    {% if channels_recording %}
+        <br><br>
+        <h1>channels Recording</h1>
+        <div class="col-lg-10  offset-md-1">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr class="d-flex">
+                            <th class="session-task-fields col-1" scope="col">Channel Number</th>
+                            <th class="session-task-fields col-1" scope="col">Alive</th>
+                            <th class="session-task-fields col-3" scope="col">Number of cells</th>
+                            <th class="session-task-fields col-3" scope="col">Notes</th>
+                            </tr>
+                    </thead>
+                    <tbody>
+                        {% for channel_recording in channels_recording %}
+                            {% if channel_recording %}
+                                
+                                <tr class="d-flex">
+                                    <td class="col-sm-1">{{channel_recording.electrode.channel_number}}</td>
+                                    <td class="col-sm-1">{{channel_recording.alive}}</td>
+                                    <!--<td class="col-sm-3">{{channel_recording.number_of_cells}}</td>-->
+                                    <td class="col-sm-3">{{channel_recording.notes}}</td>
+                                </tr>
+                                
+                                
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     {% endif %}

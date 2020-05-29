@@ -7,21 +7,12 @@ from django.conf import settings
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
 from misc.models import HousingSubject, LabMember
-from actions.models import Session, Weighing
+from actions.models import Session, Weighing, BaseAction, ProcedureType 
 from subjects.models import Subject
 
 
 TASK_CATEGORY = [
     ("task1", "Task 1"),
-]
-
-MAZE_TYPES = [
-    ("Y-maze", "Y-maze"),
-    ("calibration", "Calibration"),
-]
-
-REWARD_TYPES = [
-    ("juice", "Juice"),
 ]
 
 UNITS = [
@@ -31,23 +22,86 @@ UNITS = [
 ]
 
 NUMBER_OF_CELLS = [
-    ('1', "nothing"),
-    ('2', "maybe 1 cell"),
-    ('3', "1 good cell"),
-    ('4', "2+ good cells"),
+    ("1", "nothing"),
+    ("2", "maybe 1 cell"),
+    ("3", "1 good cell"),
+    ("4", "2+ good cells"),
 ]
+
+PLATFORM = [
+    ("unity", "Unity"),
+    ("monkeylogic", "Monkeylogic"),
+    ("cortex", "Cortex"),
+]
+
+RIPLES = [
+    ("yes", "Yes"),
+    ("no", "No"),
+    ("maybe", "Maybe"),
+]
+
+ALIVE = [
+    ("yes", "Yes"),
+    ("no", "No"),
+    ("maybe", "Maybe"),
+]
+
+
+class Location(BaseModel):
+    def __str__(self):
+        return self.name
+
+
+class Reward(BaseModel):
+    def __str__(self):
+        return self.name
+
+
+class TaskCategory(BaseModel):
+    def __str__(self):
+        return self.name
+
+
+class Platform(BaseModel):
+    def __str__(self):
+        return self.name
+
+
+class BuffaloSubject(Subject):
+    unique_id = models.CharField(
+        max_length=255, blank=True, default="", help_text="Monkey Identifier"
+    )
+    code = models.CharField(
+        max_length=2, blank=True, default="", help_text="Two letter code"
+    )
+
+class BuffaloElectrodeSubject(BuffaloSubject):
+
+    class Meta:
+        proxy = True
+
+class BuffaloElectrodeLogSubject(BuffaloSubject):
+
+    class Meta:
+        proxy = True
 
 
 class Task(BaseModel):
     name = models.CharField(max_length=255, blank=True, help_text="Task name")
     description = models.TextField(blank=True)
-    category = models.CharField(
-        max_length=255, choices=TASK_CATEGORY, default=None, blank=True
+    platform = models.ForeignKey(
+        Platform, null=True, blank=True, on_delete=models.SET_NULL, default=None
     )
-    reward_type = models.CharField(
-        max_length=255, choices=REWARD_TYPES, default=None, blank=True
+    category = models.ForeignKey(
+        TaskCategory, null=True, blank=True, on_delete=models.SET_NULL
     )
-    maze_type = models.CharField(max_length=125, choices=MAZE_TYPES, blank=True)
+    location = models.ForeignKey(
+        Location, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    reward = models.ForeignKey(Reward, null=True, blank=True, on_delete=models.SET_NULL)
+
+    training = models.BooleanField(default=False)
+    dataset_type = models.ManyToManyField(DatasetType, blank=True)
     original_task = models.CharField(
         blank=True, null=True, max_length=255, help_text="Task version"
     )
@@ -66,20 +120,20 @@ class Task(BaseModel):
 
 class SessionTask(BaseModel):
     task = models.ForeignKey(Task, null=True, blank=True, on_delete=models.SET_NULL)
-    dataset_type = models.ManyToManyField(DatasetType, blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     general_comments = models.TextField(blank=True)
     session = models.ForeignKey(
         Session, null=True, blank=True, on_delete=models.SET_NULL
     )
+    dataset_type = models.ManyToManyField(DatasetType, blank=True)
     task_sequence = models.PositiveSmallIntegerField(
+        null=True,
         blank=True,
         help_text="Indicates the relative position of a task within the session it belongs to",
     )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
-    
 
 class FoodConsumption(BaseModel):
     amount = models.FloatField(null=True, validators=[MinValueValidator(limit_value=0)])
@@ -105,7 +159,7 @@ class FoodConsumption(BaseModel):
 
 class SubjectFood(BaseModel):
     subject = models.ForeignKey(
-        Subject,
+        BuffaloSubject,
         null=True,
         on_delete=models.SET_NULL,
         help_text="The subject on which this action was performed",
@@ -121,7 +175,7 @@ class SubjectFood(BaseModel):
 
 class DailyObservation(models.Model):
     subject = models.ForeignKey(
-        Subject,
+        BuffaloSubject,
         null=True,
         on_delete=models.SET_NULL,
         help_text="The subject on which this action was performed",
@@ -138,18 +192,18 @@ class DailyObservation(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+
 class Electrode(models.Model):
-    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    turn = models.FloatField()
-    millimeters = models.FloatField(null=True, blank=True)
-    impedance = models.FloatField(null=True, blank=True)
-    units = models.CharField(max_length=255, choices=UNITS, default="", blank=True)
     subject = models.ForeignKey(
-        Subject,
+        BuffaloSubject,
         null=True,
         on_delete=models.SET_NULL,
         help_text="The subject on which the electrode is",
     )
+    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    millimeters = models.FloatField(null=True, blank=True)
+    units = models.CharField(max_length=255, choices=UNITS, default="", blank=True)
+    channel_number = models.CharField(max_length=255, default="", blank=True)
     notes = models.TextField(blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -164,13 +218,27 @@ class Electrode(models.Model):
         return self.current_location in stl
 
     def __str__(self):
-        return self.subject.nickname
+        return f"{self.subject.nickname} - {self.channel_number}"
+
+
+class ElectrodeLog(BaseAction):
+    electrode = models.ForeignKey(
+        Electrode, 
+        on_delete=models.SET_NULL, 
+        null=True,
+        blank=True,
+    )
+    turn = models.FloatField(null=False)
+    impedance = models.FloatField(null=False)
+    notes = models.TextField(blank=True)
+    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    procedures = models.ManyToManyField('actions.ProcedureType', blank=True,
+                                        help_text="The procedure(s) performed")
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class StartingPoint(models.Model):
-    lab_member = models.ForeignKey(
-        LabMember, on_delete=models.SET_NULL, null=True, blank=True
-    )
     electrode = models.ForeignKey(
         Electrode,
         on_delete=models.SET_NULL,
@@ -181,7 +249,11 @@ class StartingPoint(models.Model):
     x = models.FloatField(null=True)
     y = models.FloatField(null=True)
     z = models.FloatField(null=True)
-    orientation = models.CharField(max_length=128, blank=True)
+    lab_member = models.ForeignKey(
+        LabMember, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    depth = models.FloatField(null=True)
+    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     notes = models.TextField(blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -192,7 +264,7 @@ class STLFile(Dataset):
         max_length=1000, blank=True, help_text="Path to STL file"
     )
     subject = models.ForeignKey(
-        Subject,
+        BuffaloSubject,
         null=True,
         on_delete=models.SET_NULL,
         help_text="The subject on which the electrode is",
@@ -205,13 +277,9 @@ class ChannelRecording(models.Model):
     electrode = models.ForeignKey(
         Electrode, null=True, blank=True, on_delete=models.SET_NULL
     )
-    session_task = models.ForeignKey(
-        SessionTask, null=True, blank=True, on_delete=models.SET_NULL
-    )
-    stl_file = models.ForeignKey(
-        STLFile, null=True, blank=True, on_delete=models.SET_NULL
-    )
-    alive = models.BooleanField(default=False)
+    riples = models.CharField(max_length=180, choices=RIPLES, default="", blank=True)
+    notes = models.CharField(max_length=255, default="", blank=True)
+    alive = models.CharField(max_length=180, choices=ALIVE, default="", blank=True)
     number_of_cells = models.CharField(
         max_length=255, choices=NUMBER_OF_CELLS, default="", blank=True
     )

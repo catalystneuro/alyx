@@ -23,3 +23,6 @@ python-magic
 pytz
 webdavclient3
 python-decouple
+django-extensions
+django-crispy-forms
+django-nested-admin
