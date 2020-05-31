@@ -229,8 +229,8 @@ class SubjectDetailView(TemplateView):
         context = {
             "subject": Subject.objects.get(pk=subject_id),
             "observations": DailyObservation.objects.filter(subject=subject_id),
-            "sessions": Session.objects.filter(subject=subject_id),
-            "weights": Weighing.objects.filter(subject=subject_id),
+            "sessions": Session.objects.filter(subject=subject_id).order_by('-start_time'),
+            "weights": Weighing.objects.filter(subject=subject_id).order_by('-date_time'),
             "food": SubjectFood.objects.filter(subject=subject_id),
         }
 

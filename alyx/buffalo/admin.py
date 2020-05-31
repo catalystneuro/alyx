@@ -1,4 +1,5 @@
 # Register the modules to show up at the admin page https://server/admin
+from datetime import datetime
 from django.contrib import admin
 from django import forms
 from django.forms import BaseInlineFormSet
@@ -40,7 +41,7 @@ from .forms import (
     SessionForm,
     TaskForm,
     TaskCategoryForm,
-    ElectrodeForm
+    ElectrodeForm,
 )
 
 
@@ -69,19 +70,26 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
         url = reverse("daily-observation", kwargs={"subject_id": obj.id})
         return self.link(url, "Daily observations")
 
+    def add_session(self, obj):
+        url = "/actions/session/add/?subject=" + str(obj.id)
+        return self.link(url, "Add Session")
+
     def set_electrodes(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodesubject_change", args=[obj.id])
         return self.link(url, "Set electrodes")
-    
+
     def new_electrode_logs(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.id])
         return self.link(url, "New electrode logs")
 
     def options(self, obj):
-        select = "{} {} {}"
-        select = select.format(self.daily_observations(obj), 
-                               self.set_electrodes(obj),
-                               self.new_electrode_logs(obj))
+        select = "{} {} {} {}"
+        select = select.format(
+            self.daily_observations(obj),
+            self.add_session(obj),
+            self.set_electrodes(obj),
+            self.new_electrode_logs(obj),
+        )
         return format_html(select)
 
 
@@ -93,8 +101,8 @@ class ChannelRecordingFormset(BaseInlineFormSet):
 class ChannelRecordingInline(admin.TabularInline):
     model = ChannelRecording
     formset = ChannelRecordingFormset
-    fields = ("electrode", "session", "alive", "notes")
-    extra = 1
+    fields = ("electrode", "riples", "alive", "number_of_cells", "notes")
+    extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "electrode":
@@ -117,7 +125,37 @@ class SessionTaskInline(admin.TabularInline):
     model = SessionTask
     formset = SessionTaskFormset
     fields = ("task", "session", "task_sequence", "dataset_type", "general_comments")
-    extra = 1
+    extra = 0
+
+
+def TemplateInitialDataAddChannelRecording(data, num_forms):
+    class AddChannelRecordingInline(admin.TabularInline):
+        def get_queryset(self, request):
+            self.request = request
+            return ChannelRecording.objects.none()
+
+        def formfield_for_foreignkey(self, db_field, request, **kwargs):
+            subject = request.GET.get("subject", None)
+            if db_field.name == "electrode" and subject is not None:
+                try:
+                    kwargs["queryset"] = Electrode.objects.filter(subject=subject)
+                except KeyError:
+                    pass
+            return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+        class AddChannelRecordingFormset(BaseInlineFormSet):
+            def __init__(self, *args, **kwargs):
+                kwargs["initial"] = data
+                super(
+                    AddChannelRecordingInline.AddChannelRecordingFormset, self
+                ).__init__(*args, **kwargs)
+
+        model = ChannelRecording
+        extra = num_forms
+        fields = ("electrode", "riples", "alive", "number_of_cells", "notes")
+        formset = AddChannelRecordingFormset
+
+    return AddChannelRecordingInline
 
 
 class BuffaloSession(admin.ModelAdmin):
@@ -125,6 +163,7 @@ class BuffaloSession(admin.ModelAdmin):
     change_list_template = "buffalo/change_list.html"
     change_form_template = "buffalo/change_form.html"
     source = ""
+    extra = 0
 
     list_display = [
         "name",
@@ -137,6 +176,43 @@ class BuffaloSession(admin.ModelAdmin):
     ]
     inlines = [SessionTaskInline, ChannelRecordingInline]
     ordering = ("-start_time",)
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super(BuffaloSession, self).get_form(request, obj, **kwargs)
+        subject = request.GET.get("subject", None)
+        if subject is not None:
+            subject = BuffaloSubject.objects.get(pk=subject)
+
+            session_name = f"{datetime.today().isoformat()}_{subject.nicknamesafe()}"
+            form.base_fields["name"].initial = session_name
+        return form
+
+    def get_inline_instances(self, request, obj=None):
+        subject = request.GET.get("subject", None)
+        if subject is not None:
+            prev_session = Session.objects.filter(subject=subject).order_by(
+                "-start_time"
+            )
+            if prev_session:
+                prev_channels = ChannelRecording.objects.filter(
+                    session=prev_session[0].id
+                )
+                initial = []
+                for prev_channel in prev_channels:
+                    initial.append(
+                        {
+                            "electrode": prev_channel.electrode,
+                            "alive": prev_channel.alive,
+                            "notes": prev_channel.alive,
+                        }
+                    )
+                inlines = [
+                    SessionTaskInline,
+                    TemplateInitialDataAddChannelRecording(initial, len(initial)),
+                ]
+                inlines = [inline(self.model, self.admin_site) for inline in inlines]
+                return inlines
+        return super(BuffaloSession, self).get_inline_instances(request, obj)
 
     def session_tasks(self, obj):
         tasks = SessionTask.objects.filter(session=obj.id)
@@ -178,33 +254,6 @@ class BuffaloSession(admin.ModelAdmin):
         return super().change_view(
             request, object_id, form_url, extra_context=extra_context,
         )
-
-    def save_formset(self, request, form, formset, change):
-        instances = formset.save(commit=False)
-        for obj in formset.deleted_objects:
-            obj.delete()
-        if "channelrecording" in formset.prefix:
-            if change is False:
-                session = formset.instance
-                prev_session = Session.objects.filter(subject=session.subject).order_by(
-                    "-start_time"
-                )
-                if len(prev_session) >= 2:
-                    prev_channels = ChannelRecording.objects.filter(
-                        session=prev_session[1].id
-                    )
-                    if prev_channels:
-                        for prev_channel in prev_channels:
-                            ChannelRecording.objects.create(
-                                electrode=prev_channel.electrode,
-                                session=formset.instance,
-                                alive=prev_channel.alive,
-                                notes=prev_channel.notes,
-                            )
-
-        for instance in instances:
-            instance.save()
-        formset.save_m2m()
 
 
 class BuffaloWeight(BaseAdmin):
@@ -365,7 +414,7 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
         "responsible_user",
     ]
 
-    fields = ['nickname', 'unique_id', 'name']
+    fields = ["nickname", "unique_id", "name"]
 
     search_fields = [
         "nickname",
@@ -374,7 +423,7 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
     inlines = [BuffaloElectrode]
 
     def response_change(self, request, obj):
-        return redirect('/buffalo/buffalosubject')
+        return redirect("/buffalo/buffalosubject")
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -387,27 +436,28 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
-            return self.readonly_fields + ('nickname', 'unique_id', 'name')
+            return self.readonly_fields + ("nickname", "unique_id", "name")
         return self.readonly_fields
 
 
 def TemplateInitialDataElectrodeLog(data, num_forms):
     class BuffaloElectrodeLog(admin.TabularInline):
-
         def get_queryset(self, request):
             self.request = request
             return ElectrodeLog.objects.none()
 
         class ElectrodeLogInlineFormSet(BaseInlineFormSet):
             def __init__(self, *args, **kwargs):
-                kwargs['initial'] = data
-                super(BuffaloElectrodeLog.ElectrodeLogInlineFormSet, self).__init__(*args, **kwargs)
+                kwargs["initial"] = data
+                super(BuffaloElectrodeLog.ElectrodeLogInlineFormSet, self).__init__(
+                    *args, **kwargs
+                )
 
         model = ElectrodeLog
         extra = num_forms
-        fields = ('electrode','turn','date_time','notes')
+        fields = ("electrode", "turn", "date_time", "notes")
         formset = ElectrodeLogInlineFormSet
-    
+
     return BuffaloElectrodeLog
 
 
@@ -422,7 +472,7 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         "description",
         "responsible_user",
     ]
-    fields = ['nickname', 'unique_id', 'name']
+    fields = ["nickname", "unique_id", "name"]
     search_fields = [
         "nickname",
     ]
@@ -431,13 +481,12 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         electrodes = Electrode.objects.filter(subject=obj.id)
         initial = []
         for electrode in electrodes:
-            initial.append({'electrode': electrode.id})
+            initial.append({"electrode": electrode.id})
         inlines = [TemplateInitialDataElectrodeLog(initial, len(initial))]
         return [inline(self.model, self.admin_site) for inline in inlines]
 
-
     def response_change(self, request, obj):
-        return redirect('/buffalo/buffalosubject')
+        return redirect("/buffalo/buffalosubject")
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -450,32 +499,19 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
-            return self.readonly_fields + ('nickname', 'unique_id', 'name')
+            return self.readonly_fields + ("nickname", "unique_id", "name")
         return self.readonly_fields
 
 
 class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
     form = ElectrodeForm
-    list_display = [
-        "subject",
-        "electrode",
-        "turn",
-        "impedance",
-        "date_time"
-    ]
-    fields = (
-        'subject', 
-        'electrode', 
-        'turn', 
-        'impedance', 
-        'date_time', 
-        'notes'
-    )
+    list_display = ["subject", "electrode", "turn", "impedance", "date_time"]
+    fields = ("subject", "electrode", "turn", "impedance", "date_time", "notes")
     search_fields = [
         "subject__nickname",
     ]
-    ordering = ['-date_time']
+    ordering = ["-date_time"]
 
 
 class BuffaloChannelRecording(admin.ModelAdmin):
