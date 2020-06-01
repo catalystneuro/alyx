@@ -182,7 +182,6 @@ class BuffaloSession(admin.ModelAdmin):
         subject = request.GET.get("subject", None)
         if subject is not None:
             subject = BuffaloSubject.objects.get(pk=subject)
-
             session_name = f"{datetime.today().isoformat()}_{subject.nicknamesafe()}"
             form.base_fields["name"].initial = session_name
         return form
@@ -267,6 +266,14 @@ class BuffaloWeight(BaseAdmin):
         "user",
         "date_time",
     ]
+    
+    def get_form(self, request, obj=None, **kwargs):
+        form = super(BuffaloWeight, self).get_form(request, obj, **kwargs)
+        subject = request.GET.get("subject", None)
+        if subject is not None:
+            subject = BuffaloSubject.objects.get(pk=subject)
+            form.base_fields["subject"].initial = subject
+        return form
 
     def weight_in_Kg(self, obj):
         url = f"/actions/weighing/{obj.id}/change"
