@@ -7,7 +7,6 @@ from actions.models import Session, Weighing
 
 from .models import (
     Task,
-    DailyObservation,
     SessionTask,
     SubjectFood,
     BuffaloSubject,
@@ -69,12 +68,6 @@ class TaskVersionForm(forms.ModelForm):
             "original_task": forms.HiddenInput(),
             "first_version": forms.HiddenInput(),
         }
-
-
-class DailyObservationForm(ModelForm):
-    class Meta:
-        model = DailyObservation
-        fields = ["subject", "date_time", "run", "food", "general_comments"]
 
 
 class SubjectForm(ModelForm):

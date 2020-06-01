@@ -1,19 +1,13 @@
 from django.db import models
 from django.utils import timezone
-from django.core.validators import MinValueValidator, MaxValueValidator
 
-from django.conf import settings
 
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
-from misc.models import HousingSubject, LabMember
+from misc.models import LabMember, Food
 from actions.models import Session, Weighing, BaseAction, ProcedureType 
 from subjects.models import Subject
 
-
-TASK_CATEGORY = [
-    ("task1", "Task 1"),
-]
 
 UNITS = [
     ("none", "0"),
@@ -135,29 +129,7 @@ class SessionTask(BaseModel):
     updated = models.DateTimeField(auto_now=True)
 
 
-class FoodConsumption(BaseModel):
-    amount = models.FloatField(null=True, validators=[MinValueValidator(limit_value=0)])
-    food = models.FloatField(
-        validators=[
-            MinValueValidator(limit_value=50),
-            MaxValueValidator(limit_value=1500),
-        ],
-        default=None,
-        help_text="Food in Ml",
-    )
-    note = models.TextField(blank=True, help_text="If supplemented make note")
-    housing_subject = models.ForeignKey(
-        HousingSubject, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    lab_member = models.ForeignKey(
-        LabMember, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-
-
-class SubjectFood(BaseModel):
+class SubjectFood(Food):
     subject = models.ForeignKey(
         BuffaloSubject,
         null=True,
@@ -171,26 +143,6 @@ class SubjectFood(BaseModel):
 
     def __str__(self):
         return self.subject.nickname
-
-
-class DailyObservation(models.Model):
-    subject = models.ForeignKey(
-        BuffaloSubject,
-        null=True,
-        on_delete=models.SET_NULL,
-        help_text="The subject on which this action was performed",
-    )
-    date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    run = models.BooleanField(default=False)
-    food = models.ForeignKey(
-        FoodConsumption, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    general_comments = models.TextField(blank=True)
-    lab_member = models.ForeignKey(
-        LabMember, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
 
 
 class Electrode(models.Model):

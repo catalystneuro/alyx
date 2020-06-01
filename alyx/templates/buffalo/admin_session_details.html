@@ -94,6 +94,7 @@
                     <thead>
                         <tr class="d-flex">
                             <th class="session-task-fields col-1" scope="col">Channel Number</th>
+                            <th class="session-task-fields col-1" scope="col">Ripples</th>
                             <th class="session-task-fields col-1" scope="col">Alive</th>
                             <th class="session-task-fields col-3" scope="col">Number of cells</th>
                             <th class="session-task-fields col-3" scope="col">Notes</th>
@@ -102,11 +103,11 @@
                     <tbody>
                         {% for channel_recording in channels_recording %}
                             {% if channel_recording %}
-                                
                                 <tr class="d-flex">
                                     <td class="col-sm-1">{{channel_recording.electrode.channel_number}}</td>
+                                    <td class="col-sm-1">{{channel_recording.riples}}</td>
                                     <td class="col-sm-1">{{channel_recording.alive}}</td>
-                                    <!--<td class="col-sm-3">{{channel_recording.number_of_cells}}</td>-->
+                                    <td class="col-sm-3">{{channel_recording.number_of_cells}}</td>
                                     <td class="col-sm-3">{{channel_recording.notes}}</td>
                                 </tr>
                                 
