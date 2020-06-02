@@ -202,3 +202,6 @@ class ElectrodeForm(forms.ModelForm):
             "channel_number",
             "notes",
         ]
+
+class ElectrodeBulkLoadForm(forms.Form):
+    file = forms.FileField()

@@ -26,3 +26,4 @@ python-decouple
 django-extensions
 django-crispy-forms
 django-nested-admin
+openpyxl
