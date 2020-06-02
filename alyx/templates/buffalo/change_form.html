@@ -156,28 +156,10 @@ $(document).ready(function() {
 
    const channels = "{{channels}}"
     if (channels) {
-        $('.module:lt(1), #sessiontask_set-group table, #channelrecording_set-group table, .submit-row').addClass("hidden");
-        $('#channelrecording_set-group h2').append('<a id="show-channel" class="" href="#"> (Show)</a>')
-        $('#sessiontask_set-group h2').append('<a id="show-session-tasks" class="" href="#"> (Show)</a>')
-    }
-    $("#show-channel").on('click', function() {
-        const parent = $("#show-channel").parent().next('table')
-        $('#channelrecording_set-group table, .submit-row').toggleClass("hidden")
-        if ($('#channelrecording_set-group table').hasClass("hidden")) {
-            $('#channelrecording_set-group #show-channel').text("(Show)");
-        } else {
-            $('#channelrecording_set-group #show-channel').text("(Hide)");
-        }
-    })
-    $("#show-session-tasks").on('click', function() {
-        $('#sessiontask_set-group table, .submit-row').toggleClass("hidden")
-        if ($('#sessiontask_set-group table').hasClass("hidden")) {
-            $('#sessiontask_set-group #show-session-tasks').text("(Show)");
-        } else {
-            $('#sessiontask_set-group #show-session-tasks').text("(Hide)");
-        }
+        $('.module:lt(1)').addClass("hidden");
         
-    })
+    }
+    
 });
 // HACK: date widget in local timezone.
 (function($){

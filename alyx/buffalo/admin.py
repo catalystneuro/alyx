@@ -2,7 +2,7 @@
 from datetime import datetime
 from django.contrib import admin
 from django import forms
-from django.forms import BaseInlineFormSet
+from django.forms import BaseInlineFormSet, ModelForm
 
 from django.urls import reverse
 from django.utils.html import format_html
@@ -136,7 +136,14 @@ class SessionTaskInline(admin.TabularInline):
 
 
 def TemplateInitialDataAddChannelRecording(data, num_forms):
+    class AlwaysChangedModelForm(ModelForm):
+        def has_changed(self):
+            """ Should returns True if data differs from initial.
+            By always returning true even unchanged inlines will get validated and saved."""
+            return True
+
     class AddChannelRecordingInline(admin.TabularInline):
+        form = AlwaysChangedModelForm
         def get_queryset(self, request):
             self.request = request
             return ChannelRecording.objects.none()
@@ -212,7 +219,9 @@ class BuffaloSession(admin.ModelAdmin):
                     initial.append(
                         {
                             "electrode": prev_channel.electrode,
+                            "riples": prev_channel.riples,
                             "alive": prev_channel.alive,
+                            "number_of_cells": prev_channel.number_of_cells,
                             "notes": prev_channel.alive,
                         }
                     )
