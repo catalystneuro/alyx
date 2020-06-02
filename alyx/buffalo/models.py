@@ -177,8 +177,8 @@ class ElectrodeLog(BaseAction):
         null=True,
         blank=True,
     )
-    turn = models.FloatField(null=False)
-    impedance = models.FloatField(null=False)
+    turn = models.FloatField(null=True, blank=True)
+    impedance = models.FloatField(null=True, blank=True)
     notes = models.TextField(blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     procedures = models.ManyToManyField('actions.ProcedureType', blank=True,
