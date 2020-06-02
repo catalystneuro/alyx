@@ -20,6 +20,7 @@ from buffalo.views import (
     SubjectWeighingCreateView,
     SessionTaksDetails,
     SubjectDetailView,
+    getTaskDatasetType,
 )
 
 
@@ -168,5 +169,10 @@ urlpatterns = [
         "session-tasks/<uuid:session_id>",
         SessionTaksDetails.as_view(),
         name="session-tasks",
+    ),
+    path(
+        "buffalo-get-task-dataset-type/",
+        getTaskDatasetType.as_view(),
+        name="buffalo-get-task-dataset-type",
     ),
 ]

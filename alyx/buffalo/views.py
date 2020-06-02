@@ -236,3 +236,11 @@ class SessionTaksDetails(TemplateView):
         }
 
         return self.render_to_response(context)
+
+class getTaskDatasetType(View):
+    def get(self, request, *args, **kwargs):
+        if request.is_ajax():
+            task_id = request.GET.get("task_id")
+            task = Task.objects.filter(id=task_id).values("dataset_type__id")
+            data = json.dumps(list(task), cls=DjangoJSONEncoder)
+            return JsonResponse({"task_dataset_type": data}, status=200)

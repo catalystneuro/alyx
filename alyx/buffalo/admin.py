@@ -14,6 +14,7 @@ import nested_admin
 from subjects.models import Subject
 from actions.models import Session, Weighing
 from alyx.base import BaseAdmin
+from misc.models import Lab
 from .models import (
     Task,
     TaskCategory,
@@ -61,6 +62,12 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
     search_fields = [
         "nickname",
     ]
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super(BuffaloSubjectAdmin, self).get_form(request, obj, **kwargs)
+        lab = Lab.objects.filter(name__icontains='buffalo').first()
+        form.base_fields["lab"].initial = lab
+        return form
 
     def link(self, url, name):
         link_code = '<a class="button" href="{url}">{name}</a>'
@@ -180,6 +187,10 @@ class BuffaloSession(admin.ModelAdmin):
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloSession, self).get_form(request, obj, **kwargs)
         subject = request.GET.get("subject", None)
+        lab = Lab.objects.filter(name__icontains='buffalo').first()
+        form.base_fields["lab"].initial = lab
+        form.base_fields["users"].initial = [request.user]
+        
         if subject is not None:
             subject = BuffaloSubject.objects.get(pk=subject)
             session_name = f"{datetime.today().isoformat()}_{subject.nicknamesafe()}"
@@ -348,7 +359,7 @@ class BuffaloSubjectFood(admin.ModelAdmin):
         return response
 
 
-class BuffaloTask(BaseAdmin):
+class BuffaloTask(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
     form = TaskForm
     list_display = [
