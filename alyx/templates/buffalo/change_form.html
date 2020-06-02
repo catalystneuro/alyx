@@ -109,7 +109,8 @@ $(document).ready(function() {
         $(".field-version").removeClass('hidden')
         $("#id_version, #id_name").prop({'type': 'text', 'readonly':'readonly'})
     }
-    $('#id_category').change(function(){
+
+    $('#id_category').change(function() {
         const task_category_id = $("#id_category option:selected").val()
         $.ajax({
             type: 'GET',
@@ -124,6 +125,34 @@ $(document).ready(function() {
             }
         })
     })
+    
+    get_dataset_types = () => {
+        $('select').on('change',function() {
+            const task_id = $(this).val()
+            dataset_type_select = $(this).parents('.field-task').siblings('.field-dataset_type')
+            dataset_type_select_id = dataset_type_select.find('select')
+            dataset_type_select_id.find("option:selected").prop("selected", false)
+            if (task_id) {
+                $.ajax({
+                    type: 'GET',
+                    url: "{% url 'buffalo-get-task-dataset-type' %}",
+                    data: {"task_id": task_id  },
+                    success: function (response) {
+                        dataset_type_select_id.prop("selected", false)
+                        datasets = tasks = JSON.parse(response['task_dataset_type'])
+                        datasets.forEach(dataset_type => console.log(dataset_type_select_id.find(" option[value='"+dataset_type.dataset_type__id+"']").prop('selected', true)));
+                    },
+                    error: function (response) {
+                        console.log(response)
+                    }
+                })
+            }
+        })
+    }
+    $("#sessiontask_set-group .add-row a").on('click', function () {
+         get_dataset_types()
+    })
+    get_dataset_types()
 
    const channels = "{{channels}}"
     if (channels) {

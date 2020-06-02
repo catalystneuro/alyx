@@ -22,12 +22,6 @@ NUMBER_OF_CELLS = [
     ("4", "2+ good cells"),
 ]
 
-PLATFORM = [
-    ("unity", "Unity"),
-    ("monkeylogic", "Monkeylogic"),
-    ("cortex", "Cortex"),
-]
-
 RIPLES = [
     ("yes", "Yes"),
     ("no", "No"),
@@ -68,6 +62,9 @@ class BuffaloSubject(Subject):
     code = models.CharField(
         max_length=2, blank=True, default="", help_text="Two letter code"
     )
+    #created = models.DateTimeField(auto_now_add=True)
+    #updated = models.DateTimeField(auto_now=True)
+
 
 class BuffaloElectrodeSubject(BuffaloSubject):
 
