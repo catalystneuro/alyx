@@ -242,7 +242,6 @@ def _get_category_list(app_list):
         "Session tasks",
         "Subject foods",
         "Weighings",
-        "Buffalo electrode subjects",
         "Electrode logs",
         "Starting points",
         "Processed recordings",

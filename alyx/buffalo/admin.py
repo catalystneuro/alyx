@@ -234,12 +234,15 @@ class BuffaloSession(admin.ModelAdmin):
     def session_details(self, obj):
         url = reverse("session-tasks", kwargs={"session_id": obj.id})
         return format_html(
-            '<a href="{url}">{name}</a>', url=url, name="Session Task Details"
+            '<a href="{url}">{name}</a>', url=url, name="Session Details"
         )
 
     def add_view(self, request, *args, **kwargs):
-        if "daily" in request.environ["HTTP_REFERER"]:
-            self.source = "daily"
+        try:
+            if "daily" in request.environ["HTTP_REFERER"]:
+                self.source = "daily"
+        except KeyError:
+            pass
         return super(BuffaloSession, self).add_view(request, *args, **kwargs)
 
     def response_add(self, request, obj):
@@ -259,8 +262,11 @@ class BuffaloSession(admin.ModelAdmin):
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}
-        if "session-tasks" in request.META["HTTP_REFERER"]:
-            extra_context.update({"channels": 1})
+        try:
+            if "session-tasks" in request.META["HTTP_REFERER"]:
+                extra_context.update({"channels": 1})
+        except KeyError:
+            pass
         return super().change_view(
             request, object_id, form_url, extra_context=extra_context,
         )
@@ -292,8 +298,11 @@ class BuffaloWeight(BaseAdmin):
         return format_html('<a href="{url}">{name}</a>', url=url, name=name)
 
     def add_view(self, request, *args, **kwargs):
-        if "daily" in request.environ["HTTP_REFERER"]:
-            self.source = "daily"
+        try:
+            if "daily" in request.environ["HTTP_REFERER"]:
+                self.source = "daily"
+        except KeyError:
+            pass
         return super(BuffaloWeight, self).add_view(request, *args, **kwargs)
 
     def response_add(self, request, obj):
@@ -347,8 +356,11 @@ class BuffaloSubjectFood(admin.ModelAdmin):
     source = ""
 
     def add_view(self, request, *args, **kwargs):
-        if "daily" in request.environ["HTTP_REFERER"]:
-            self.source = "daily"
+        try:
+            if "daily" in request.environ["HTTP_REFERER"]:
+                self.source = "daily"
+        except KeyError:
+            pass
         return super(BuffaloSubjectFood, self).add_view(request, *args, **kwargs)
 
     def response_add(self, request, obj):
