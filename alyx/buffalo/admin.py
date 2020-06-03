@@ -222,7 +222,7 @@ class BuffaloSession(admin.ModelAdmin):
                             "riples": prev_channel.riples,
                             "alive": prev_channel.alive,
                             "number_of_cells": prev_channel.number_of_cells,
-                            "notes": prev_channel.alive,
+                            "notes": prev_channel.notes,
                         }
                     )
                 inlines = [
@@ -256,11 +256,8 @@ class BuffaloSession(admin.ModelAdmin):
 
     def response_add(self, request, obj):
         response = super(BuffaloSession, self).response_add(request, obj)
-        if self.source == "daily":
-            response["location"] = "/daily-observation/" + str(obj.subject_id)
-            self.source = ""
-        else:
-            response["location"] = "/session-tasks/" + str(obj.id)
+
+        response["location"] = "/session-tasks/" + str(obj.id)
         return response
 
     def response_change(self, request, obj):
