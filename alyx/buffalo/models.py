@@ -126,7 +126,7 @@ class SessionTask(BaseModel):
     updated = models.DateTimeField(auto_now=True)
 
 
-class SubjectFood(Food):
+class SubjectFood(BaseModel):
     subject = models.ForeignKey(
         BuffaloSubject,
         null=True,
