@@ -1,12 +1,19 @@
 from django.db import models
 from django.utils import timezone
-
+from django.core.validators import MinValueValidator
 
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
 from misc.models import LabMember, Food
-from actions.models import Session, Weighing, BaseAction, ProcedureType 
+from actions.models import Session, Weighing, BaseAction, ProcedureType
 from subjects.models import Subject
+
+
+FOOD_UNITS = [
+    ("ml", "ML"),
+    ("bucket", "Bucket"),
+    ("gr", "gr"),
+]
 
 
 UNITS = [
@@ -62,17 +69,16 @@ class BuffaloSubject(Subject):
     code = models.CharField(
         max_length=2, blank=True, default="", help_text="Two letter code"
     )
-    #created = models.DateTimeField(auto_now_add=True)
-    #updated = models.DateTimeField(auto_now=True)
+    # created = models.DateTimeField(auto_now_add=True)
+    # updated = models.DateTimeField(auto_now=True)
 
 
 class BuffaloElectrodeSubject(BuffaloSubject):
-
     class Meta:
         proxy = True
 
-class BuffaloElectrodeLogSubject(BuffaloSubject):
 
+class BuffaloElectrodeLogSubject(BuffaloSubject):
     class Meta:
         proxy = True
 
@@ -126,20 +132,45 @@ class SessionTask(BaseModel):
     updated = models.DateTimeField(auto_now=True)
 
 
-class SubjectFood(BaseModel):
+class FoodType(BaseModel):
+    unit = models.CharField(max_length=255, choices=FOOD_UNITS, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
+class FoodLog(BaseModel):
     subject = models.ForeignKey(
         BuffaloSubject,
         null=True,
         on_delete=models.SET_NULL,
         help_text="The subject on which this action was performed",
     )
-    amount = models.FloatField(null=True, blank=True)
+    food = models.ForeignKey(FoodType, null=True, blank=True, on_delete=models.PROTECT)
+    amount = models.FloatField(
+        null=True, blank=True, validators=[MinValueValidator(limit_value=0)]
+    )
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL
+    )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.subject.nickname
+        return self.food.name
+
+    def get_food_detail(self):
+        food_detail = f"{self} {self.amount} {self.food.unit}"
+        return food_detail
+
+
+class BuffaloSession(Session):
+    dataset_type = models.ManyToManyField(DatasetType, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class Electrode(models.Model):
@@ -172,17 +203,15 @@ class Electrode(models.Model):
 
 class ElectrodeLog(BaseAction):
     electrode = models.ForeignKey(
-        Electrode, 
-        on_delete=models.SET_NULL, 
-        null=True,
-        blank=True,
+        Electrode, on_delete=models.SET_NULL, null=True, blank=True,
     )
     turn = models.FloatField(null=True, blank=True)
     impedance = models.FloatField(null=True, blank=True)
     notes = models.TextField(blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    procedures = models.ManyToManyField('actions.ProcedureType', blank=True,
-                                        help_text="The procedure(s) performed")
+    procedures = models.ManyToManyField(
+        "actions.ProcedureType", blank=True, help_text="The procedure(s) performed"
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

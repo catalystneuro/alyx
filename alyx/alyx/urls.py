@@ -18,7 +18,7 @@ from buffalo.views import (
     subjectUpdateView,
     TaskCreateVersionView,
     SubjectWeighingCreateView,
-    SessionTaksDetails,
+    SessionDetails,
     SubjectDetailView,
     getTaskDatasetType,
 )
@@ -166,9 +166,9 @@ urlpatterns = [
         name="daily-observation",
     ),
     path(
-        "session-tasks/<uuid:session_id>",
-        SessionTaksDetails.as_view(),
-        name="session-tasks",
+        "session-details/<uuid:session_id>",
+        SessionDetails.as_view(),
+        name="session-details",
     ),
     path(
         "buffalo-get-task-dataset-type/",

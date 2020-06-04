@@ -167,8 +167,8 @@ $(document).ready(function() {
     today = moment(today).toISOString()
      $('#id_subject').change(function(){
         let subject = $("#id_subject option:selected").text()
-        $("#session_form #id_name").val("")
-        $("#session_form #id_name").val(today + "_" + subject)
+        $("#buffalosession_form #id_name").val("")
+        $("#buffalosession_form #id_name").val(today + "_" + subject)
     })
     
   $(function(){

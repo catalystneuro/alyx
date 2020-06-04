@@ -3,16 +3,18 @@ from django import forms
 import django.forms
 from django.forms import ModelForm
 
-from actions.models import Session, Weighing
+from actions.models import Weighing
 
 from .models import (
     Task,
     SessionTask,
-    SubjectFood,
     BuffaloSubject,
     ChannelRecording,
     Electrode,
     TaskCategory,
+    FoodType,
+    FoodLog,
+    BuffaloSession,
 )
 
 
@@ -102,12 +104,13 @@ class SessionForm(ModelForm):
     )
 
     class Meta:
-        model = Session
+        model = BuffaloSession
         fields = [
             "name",
             "subject",
             "users",
             "lab",
+            "dataset_type",
             "narrative",
             "start_time",
             "end_time",
@@ -130,7 +133,7 @@ class CustomModelChoiceField(django.forms.ModelChoiceField):
 
 
 class SessionTaskForm(ModelForm):
-    session = CustomModelChoiceField(queryset=Session.objects.all())
+    session = CustomModelChoiceField(queryset=BuffaloSession.objects.all())
 
     class Meta:
         model = SessionTask
@@ -159,27 +162,29 @@ class WeighingForm(forms.ModelForm):
         fields = ["subject", "date_time", "weight", "user"]
 
 
-class SubjectFoodForm(forms.ModelForm):
+class SubjectFoodLog(forms.ModelForm):
     subject = forms.ModelChoiceField(
         queryset=BuffaloSubject.objects.all(), required=False
     )
-    amount = forms.FloatField(help_text="in Ml")
 
     def __init__(self, *args, **kwargs):
-        super(SubjectFoodForm, self).__init__(*args, **kwargs)
+        super(SubjectFoodLog, self).__init__(*args, **kwargs)
         self.fields["amount"].widget.attrs = {"min": 50, "max": 1500}
 
     class Meta:
-        model = SubjectFood
+        model = FoodLog
         fields = [
             "subject",
+            "food",
             "amount",
             "date_time",
         ]
 
 
 class TaskCategoryForm(forms.ModelForm):
-    json = forms.CharField(max_length=1024, help_text='{"env": "env value"}', required=False)
+    json = forms.CharField(
+        max_length=1024, help_text='{"env": "env value"}', required=False
+    )
 
     class Meta:
         model = TaskCategory
@@ -188,10 +193,12 @@ class TaskCategoryForm(forms.ModelForm):
             "json",
         ]
 
+
 class ElectrodeForm(forms.ModelForm):
     subject = forms.ModelChoiceField(
         queryset=BuffaloSubject.objects.all(), required=False
     )
+
     class Meta:
         model = Electrode
         fields = [
@@ -201,4 +208,13 @@ class ElectrodeForm(forms.ModelForm):
             "units",
             "channel_number",
             "notes",
+        ]
+
+
+class FoodTypeForm(forms.ModelForm):
+    class Meta:
+        model = FoodType
+        fields = [
+            "name",
+            "unit",
         ]

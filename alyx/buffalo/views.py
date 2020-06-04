@@ -18,9 +18,10 @@ from subjects.models import Subject
 from .models import (
     Task,
     SessionTask,
-    SubjectFood,
+    FoodLog,
     ChannelRecording,
     TaskCategory,
+    BuffaloSession,
 )
 from .forms import (
     TaskForm,
@@ -29,7 +30,6 @@ from .forms import (
     SessionTaskForm,
     TaskVersionForm,
     WeighingForm,
-    SubjectFoodForm,
 )
 
 
@@ -168,9 +168,13 @@ class SubjectDetailView(TemplateView):
         subject_id = self.kwargs["subject_id"]
         context = {
             "subject": Subject.objects.get(pk=subject_id),
-            "sessions": Session.objects.filter(subject=subject_id).order_by('-start_time'),
-            "weights": Weighing.objects.filter(subject=subject_id).order_by('-date_time'),
-            "food": SubjectFood.objects.filter(subject=subject_id),
+            "sessions": Session.objects.filter(subject=subject_id).order_by(
+                "-start_time"
+            ),
+            "weights": Weighing.objects.filter(subject=subject_id).order_by(
+                "-date_time"
+            ),
+            "food": FoodLog.objects.filter(subject=subject_id),
         }
 
         return self.render_to_response(context)
@@ -189,7 +193,7 @@ class SubjectWeighingCreateView(CreateView):
         return reverse("buffalo-subjects")
 
 
-class SessionTaksDetails(TemplateView):
+class SessionDetails(TemplateView):
     template_name = "buffalo/admin_session_details.html"
 
     def get(self, request, *args, **kwargs):
@@ -227,15 +231,19 @@ class SessionTaksDetails(TemplateView):
                     {session_task_id: [session_task["dataset_type__name"]]}
                 )
         channels_recording = ChannelRecording.objects.filter(session=session_id,)
-
+        session = BuffaloSession.objects.get(pk=session_id)
         context = {
-            "session": Session.objects.get(pk=session_id),
+            "session": session,
+            "session_users": session.users.all(),
+            "session_foodlog": FoodLog.objects.filter(session=session_id).first(),
+            "session_dataset_types": session.dataset_type.all(),
             "session_tasks": session_tasks,
             "channels_recording": list(channels_recording),
             "session_task_dataset_type": session_task_dataset_type,
         }
 
         return self.render_to_response(context)
+
 
 class getTaskDatasetType(View):
     def get(self, request, *args, **kwargs):
