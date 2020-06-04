@@ -222,12 +222,13 @@ class AlwaysChangedFoodForm(ModelForm):
         self.fields["amount"].error_messages["required"] = "Min value is 0"
 
 
+
 class SessionFoodInline(admin.TabularInline):
     model = FoodLog
     form = AlwaysChangedFoodForm
     fields = ("session", "food", "amount")
-    extra = 1
-    max_num = 1
+    extra = 0
+    min_num = 1
     can_delete = False
 
 
