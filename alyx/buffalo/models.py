@@ -114,6 +114,9 @@ class Task(BaseModel):
             return self.name
         return f"{self.name} (version: {self.version})"
 
+    class Meta:
+        verbose_name = 'TaskType'
+
 
 class SessionTask(BaseModel):
     task = models.ForeignKey(Task, null=True, blank=True, on_delete=models.SET_NULL)
@@ -131,6 +134,9 @@ class SessionTask(BaseModel):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = 'Task'
+
 
 class FoodType(BaseModel):
     unit = models.CharField(max_length=255, choices=FOOD_UNITS, blank=True)
@@ -138,7 +144,8 @@ class FoodType(BaseModel):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        str_food_log = f"{self.name} - ({self.unit})"
+        return str_food_log
 
 
 class FoodLog(BaseModel):
@@ -163,7 +170,7 @@ class FoodLog(BaseModel):
         return self.food.name
 
     def get_food_detail(self):
-        food_detail = f"{self} {self.amount} {self.food.unit}"
+        food_detail = f"{self} {self.amount} ({self.food.unit})"
         return food_detail
 
 
@@ -172,6 +179,8 @@ class BuffaloSession(Session):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = 'Session'
 
 class Electrode(models.Model):
     subject = models.ForeignKey(

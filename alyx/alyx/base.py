@@ -237,10 +237,12 @@ def _get_category_list(app_list):
     extra_in_common = ["Adverse effects", "Cull subjects"]
     buffalo = [
         "Buffalo subjects",
-        "Tasks",
         "Sessions",
-        "Session tasks",
-        "Subject foods",
+        "TaskTypes",
+        "Sessions",
+        "Tasks",
+        "Food logs",
+        "Food types",
         "Weighings",
         "Electrode logs",
         "Starting points",
