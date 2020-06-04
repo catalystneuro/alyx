@@ -11,6 +11,7 @@ from django.views.generic import (
 from django.urls import reverse
 from django.http import JsonResponse
 from django.core.serializers.json import DjangoJSONEncoder
+from django.contrib import messages
 
 from actions.models import Session, Weighing
 from misc.models import Lab
@@ -249,17 +250,16 @@ class getTaskDatasetType(View):
 class ElectrodeBulkLoadView(FormView):
     form_class = ElectrodeBulkLoadForm
     template_name = "buffalo/electrode_bulk_load.html"
-    #success_url = reverse("buffalo-subjects")
 
     def post(self, request, *args, **kwargs):
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         file = request.FILES['file']
         if form.is_valid():
-            print("cargado")
+            messages.success(request, 'File loaded successful.')
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
     
     def get_success_url(self):
-        return reverse("buffalo-subjects")
+        return reverse("admin:buffalo_buffalosubject_changelist")
