@@ -198,6 +198,9 @@ class StartingPoint(models.Model):
     x = models.FloatField(null=True)
     y = models.FloatField(null=True)
     z = models.FloatField(null=True)
+    x_norm = models.FloatField(null=True)
+    y_norm = models.FloatField(null=True)
+    z_norm = models.FloatField(null=True)
     lab_member = models.ForeignKey(
         LabMember, on_delete=models.SET_NULL, null=True, blank=True
     )
