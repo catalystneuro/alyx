@@ -19,7 +19,7 @@
             <h5>Load electrodes</h5>
         </div>
         <div class="col-lg-4 offset-md-4 card card-body">
-                <form action="" method="post">
+                <form action="" method="post" enctype="multipart/form-data">
                     {% csrf_token %}
                     {{ form }}
                     <input  class="btn btn-primary btn-sm submit-button"  type="submit" value="Submit">
