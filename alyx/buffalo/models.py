@@ -151,17 +151,28 @@ class Electrode(models.Model):
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     millimeters = models.FloatField(null=True, blank=True)
-    units = models.CharField(max_length=255, choices=UNITS, default="", blank=True)
+    turns_per_mm = models.FloatField(null=True, blank=True, default=8)
     channel_number = models.CharField(max_length=255, default="", blank=True)
-    notes = models.TextField(blank=True)
+    notes = models.CharField(max_length=255, default="", blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
     def current_location(self):
         """queries related channel recordings"""
         starting_point = self.starting_point.latest("updated")
-        location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.y}
+        location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
         return location
+    
+    def create_new_starting_point_from_mat(self, electrode_info):
+        starting_point = StartingPoint()
+        starting_point.x = electrode_info['start_point'][0]
+        starting_point.y = electrode_info['start_point'][1]
+        starting_point.z = electrode_info['start_point'][2]
+        starting_point.x_norm = electrode_info['norms'][0]
+        starting_point.y_norm = electrode_info['norms'][1]
+        starting_point.z_norm = electrode_info['norms'][2]
+        starting_point.electrode = self
+        starting_point.save()
 
     def is_in_location(self, stl):
         return self.current_location in stl
@@ -179,12 +190,27 @@ class ElectrodeLog(BaseAction):
     )
     turn = models.FloatField(null=True, blank=True)
     impedance = models.FloatField(null=True, blank=True)
-    notes = models.TextField(blank=True)
+    notes = models.CharField(max_length=255, default="", blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     procedures = models.ManyToManyField('actions.ProcedureType', blank=True,
                                         help_text="The procedure(s) performed")
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    @property
+    def current_location(self):
+        """queries related channel recordings"""
+        starting_point = self.electrode.starting_point.latest("updated")
+        location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
+        if self.turn:
+            distance = (self.turn / self.electrode.turns_per_mm)
+            location_list = starting_point.get_norms()
+            initial_position = starting_point.get_start_position()
+            for i in range(len(location_list)):
+                location_list[i] *= distance
+                location_list[i] += initial_position[i]
+            location = {"x": location_list[0], "y": location_list[1], "z": location_list[2]}
+        return str(location)
 
 
 class StartingPoint(models.Model):
@@ -198,15 +224,23 @@ class StartingPoint(models.Model):
     x = models.FloatField(null=True)
     y = models.FloatField(null=True)
     z = models.FloatField(null=True)
+    x_norm = models.FloatField(null=True)
+    y_norm = models.FloatField(null=True)
+    z_norm = models.FloatField(null=True)
     lab_member = models.ForeignKey(
         LabMember, on_delete=models.SET_NULL, null=True, blank=True
     )
-    depth = models.FloatField(null=True)
+    depth = models.FloatField(null=True, blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    notes = models.TextField(blank=True)
+    notes = models.CharField(max_length=255, default="", blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+    def get_start_position(self):
+        return [self.x, self.y, self.z]
+
+    def get_norms(self):
+        return [self.x_norm, self.y_norm, self.z_norm]
 
 class STLFile(Dataset):
     stl_file = models.CharField(

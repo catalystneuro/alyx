@@ -1,5 +1,5 @@
 import json
-
+import pdb
 from django.views.generic import (
     View,
     CreateView,
@@ -11,6 +11,8 @@ from django.views.generic import (
 from django.urls import reverse
 from django.http import JsonResponse
 from django.core.serializers.json import DjangoJSONEncoder
+from django.contrib import messages
+from .utils import get_mat_file_info
 
 from actions.models import Session, Weighing
 from misc.models import Lab
@@ -21,6 +23,9 @@ from .models import (
     SubjectFood,
     ChannelRecording,
     TaskCategory,
+    BuffaloSubject,
+    Electrode,
+    StartingPoint,
 )
 from .forms import (
     TaskForm,
@@ -30,6 +35,7 @@ from .forms import (
     TaskVersionForm,
     WeighingForm,
     SubjectFoodForm,
+    ElectrodeBulkLoadForm,
 )
 
 
@@ -244,3 +250,41 @@ class getTaskDatasetType(View):
             task = Task.objects.filter(id=task_id).values("dataset_type__id")
             data = json.dumps(list(task), cls=DjangoJSONEncoder)
             return JsonResponse({"task_dataset_type": data}, status=200)
+            
+class ElectrodeBulkLoadView(FormView):
+    form_class = ElectrodeBulkLoadForm
+    template_name = "buffalo/electrode_bulk_load.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        subject_id = self.kwargs.pop('subject_id', None)
+        if subject_id:
+            kwargs['initial'] = {
+                "subject": subject_id
+            }
+        return kwargs
+
+    def post(self, request, *args, **kwargs):
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        if form.is_valid():
+            subject_id = form.cleaned_data['subject']
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            electrodes_info = get_mat_file_info(form.cleaned_data['file'], subject.unique_id)
+            for electrode_info in electrodes_info:
+                electrode = Electrode.objects.filter(channel_number=str(electrode_info['channel'])).first()
+                if electrode:
+                    electrode.create_new_starting_point_from_mat(electrode_info)
+                else:
+                    new_electrode = Electrode()
+                    new_electrode.subject = subject
+                    new_electrode.channel_number = str(electrode_info['channel'])
+                    new_electrode.save()
+                    new_electrode.create_new_starting_point_from_mat(electrode_info)
+            messages.success(request, 'File loaded successful.')
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+    
+    def get_success_url(self):
+        return reverse("admin:buffalo_buffalosubject_changelist")
