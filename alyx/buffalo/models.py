@@ -197,19 +197,26 @@ class ElectrodeLog(BaseAction):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+    def get_current_location(self):
+        """queries related channel recordings"""
+        electrode = self.electrode
+        location = {}
+        if electrode:
+            starting_point = electrode.starting_point.latest("updated")
+            location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
+            if self.turn:
+                distance = (self.turn / self.electrode.turns_per_mm)
+                location_list = starting_point.get_norms()
+                initial_position = starting_point.get_start_position()
+                for i in range(len(location_list)):
+                    location_list[i] *= distance
+                    location_list[i] += initial_position[i]
+                location = {"x": location_list[0], "y": location_list[1], "z": location_list[2]}
+        return location
+
     @property
     def current_location(self):
-        """queries related channel recordings"""
-        starting_point = self.electrode.starting_point.latest("updated")
-        location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
-        if self.turn:
-            distance = (self.turn / self.electrode.turns_per_mm)
-            location_list = starting_point.get_norms()
-            initial_position = starting_point.get_start_position()
-            for i in range(len(location_list)):
-                location_list[i] *= distance
-                location_list[i] += initial_position[i]
-            location = {"x": location_list[0], "y": location_list[1], "z": location_list[2]}
+        location = self.get_current_location()
         return str(location)
 
 

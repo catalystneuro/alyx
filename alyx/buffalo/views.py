@@ -272,7 +272,10 @@ class ElectrodeBulkLoadView(FormView):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             electrodes_info = get_mat_file_info(form.cleaned_data['file'], subject.unique_id)
             for electrode_info in electrodes_info:
-                electrode = Electrode.objects.filter(channel_number=str(electrode_info['channel'])).first()
+                electrode = Electrode.objects.filter(
+                    subject=subject_id,
+                    channel_number=str(electrode_info['channel'])
+                ).first()
                 if electrode:
                     electrode.create_new_starting_point_from_mat(electrode_info)
                 else:
