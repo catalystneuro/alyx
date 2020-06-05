@@ -136,6 +136,7 @@ class SessionTask(BaseModel):
 
     class Meta:
         verbose_name = 'Task'
+        unique_together = ('session', 'task_sequence',)
 
 
 class FoodType(BaseModel):

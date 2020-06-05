@@ -159,6 +159,10 @@ $(document).ready(function() {
         $('.module:lt(1)').addClass("hidden");
         
     }
+    $("#sessiontask_set-group .add-row a").on("click", function() {
+        task_sequence = $("#sessiontask_set-group .field-task_sequence").length - 1
+        $("#sessiontask_set-group .form-row:not(.empty-form) .field-task_sequence input").last().val(task_sequence)
+    })
     
 });
 // HACK: date widget in local timezone.
@@ -170,7 +174,7 @@ $(document).ready(function() {
         $("#buffalosession_form #id_name").val("")
         $("#buffalosession_form #id_name").val(today + "_" + subject)
     })
-    
+
   $(function(){
     document.body.setAttribute("data-admin-utc-offset", (new Date()).getTimezoneOffset() * -60);
   })
