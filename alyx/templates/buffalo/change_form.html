@@ -127,7 +127,7 @@ $(document).ready(function() {
     })
     
     get_dataset_types = () => {
-        $('select').on('change',function() {
+        $('#sessiontask_set-group select').on('change',function() {
             const task_id = $(this).val()
             dataset_type_select = $(this).parents('.field-task').siblings('.field-dataset_type')
             dataset_type_select_id = dataset_type_select.find('select')
@@ -163,7 +163,33 @@ $(document).ready(function() {
         task_sequence = $("#sessiontask_set-group .field-task_sequence").length - 1
         $("#sessiontask_set-group .form-row:not(.empty-form) .field-task_sequence input").last().val(task_sequence)
     })
-    
+
+    const current_location = window.location.pathname
+    if (current_location.includes("buffalosession/add")) {
+        $('#channelrecording_set-group h2').append(
+            '<a id="load-data" class="btn btn-light" href="#channelrecording_set-group" style="color:#fff">  (CLICK to Load data)</a>'
+        )
+        const initial_data = $("#channelrecording_set-group .form-row select[readonly], #channelrecording_set-group .field-notes input[readonly]" )
+        initial_data.prop('disabled', true)
+        const new_data = $("#channelrecording_set-group  .empty-form select, #channelrecording_set-group .empty-form .field-notes input")
+        new_data.prop('disabled', false)
+        new_data.removeAttr('readonly')
+        
+        $("#load-data").on("click", function() {
+            if ($("#channelrecording_set-group .form-row select[readonly]").attr('disabled')) {
+                initial_data.prop('disabled', false)
+                $("#load-data").text("  (CLICK to Disable data)")
+            } else {
+                initial_data.prop('disabled', true)
+                $("#load-data").text("  (CLICK to Load data)")
+            }
+            
+        })
+
+        $("#channelrecording_set-group .add-row a").on("click", function() {
+            new_data.prop('disabled', false)
+        })
+    }
 });
 // HACK: date widget in local timezone.
 (function($){

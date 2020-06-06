@@ -164,6 +164,8 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
         class AddChannelRecordingFormset(BaseInlineFormSet):
             def __init__(self, *args, **kwargs):
                 kwargs["initial"] = data
+                for f in self.form.base_fields:
+                    self.form.base_fields[f].widget.attrs["readonly"] = True
                 super(
                     AddChannelRecordingInline.AddChannelRecordingFormset, self
                 ).__init__(*args, **kwargs)
@@ -222,7 +224,6 @@ class AlwaysChangedFoodForm(ModelForm):
         self.fields["amount"].error_messages["required"] = "Min value is 0"
 
 
-
 class SessionFoodInline(admin.TabularInline):
     model = FoodLog
     form = AlwaysChangedFoodForm
@@ -272,7 +273,7 @@ class BuffaloSessionAdmin(admin.ModelAdmin):
             )
             if prev_session:
                 prev_channels = ChannelRecording.objects.filter(
-                    session=prev_session[0].id
+                    session=prev_session[0].id,
                 )
                 initial = []
                 for prev_channel in prev_channels:
@@ -337,6 +338,20 @@ class BuffaloSessionAdmin(admin.ModelAdmin):
         return super().change_view(
             request, object_id, form_url, extra_context=extra_context,
         )
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for obj in formset.deleted_objects:
+            obj.delete()
+
+        for instance in instances:
+            if isinstance(instance, ChannelRecording):
+                if instance.electrode is not None:
+                    instance.save()
+                else:
+                    continue
+            instance.save()
+        formset.save_m2m()
 
 
 class BuffaloWeight(BaseAdmin):
