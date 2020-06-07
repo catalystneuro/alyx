@@ -164,8 +164,7 @@ $(document).ready(function() {
         $("#sessiontask_set-group .form-row:not(.empty-form) .field-task_sequence input").last().val(task_sequence)
     })
 
-     $('#foodlog_set-group h2').append('<span class="btn btn-light"style="color:#fff; font-size: 9px;">  (This session is required)</span>'
-        )
+    $('#foodlog_set-group h2').append('<span class="btn btn-light"style="color:#fff; font-size: 9px;">  (This session is required)</span>')
     const current_location = window.location.href
     if (current_location.includes("buffalosession/add/?subject=")) {
         $('#channelrecording_set-group h2').append(

@@ -9,20 +9,6 @@ from actions import views as av
 from data import views as dv
 from misc import views as mv
 from buffalo import views as bf
-from buffalo.views import (
-    TaskCreateView,
-    SessionCreateView,
-    getTaskCategoryJson,
-    CreateTasksToSession,
-    TaskUpdateView,
-    subjectUpdateView,
-    TaskCreateVersionView,
-    SubjectWeighingCreateView,
-    SessionDetails,
-    SubjectDetailView,
-    getTaskDatasetType,
-)
-
 
 register_file = dv.RegisterFileViewSet.as_view({"post": "create"})
 sync_file_status = dv.SyncViewSet.as_view({"post": "sync", "get": "sync_status"})
@@ -33,18 +19,19 @@ user_list = mv.UserViewSet.as_view({"get": "list"})
 user_detail = mv.UserViewSet.as_view({"get": "retrieve"})
 
 
-#admin.site.site_header = "Alyx"
+# admin.site.site_header = "Alyx"
 admin.site.site_header = "Buffalo"
 
 urlpatterns = [
-    #path("", mv.api_root),
+    path("", include("buffalo.urls")),
     path("", admin.site.urls),
-    path("", include("experiments.urls")),
+    # path("", mv.api_root),
+    # path("", include("experiments.urls")),
     path("admin/", admin.site.urls),
-    #path("admin-subjects/", include("subjects.urls")),
-    #path("admin-actions/", include("actions.urls")),
-    #path("auth/", include("rest_framework.urls", namespace="rest_framework")),
-    #path("auth-token", authv.obtain_auth_token),
+    # path("admin-subjects/", include("subjects.urls")),
+    path("admin-actions/", include("actions.urls")),
+    # path("auth/", include("rest_framework.urls", namespace="rest_framework")),
+    # path("auth-token", authv.obtain_auth_token),
     path("data-formats", dv.DataFormatList.as_view(), name="dataformat-list"),
     path(
         "data-formats/<str:name>",
@@ -131,48 +118,4 @@ urlpatterns = [
     path("water-type/<str:name>", av.WaterTypeList.as_view(), name="watertype-detail"),
     path("weighings", av.WeighingAPIListCreate.as_view(), name="weighing-create"),
     path("weighings/<uuid:pk>", av.WeighingAPIDetail.as_view(), name="weighing-detail"),
-    path("buffalo-tasks/", TaskCreateView.as_view(), name="buffalo-tasks"),
-    path("buffalo-sessions/", SessionCreateView.as_view(), name="buffalo-sessions"),
-    
-    path(
-        "buffalo-get-task-category-json/",
-        getTaskCategoryJson.as_view(),
-        name="buffalo-get-task-category-json",
-    ),
-    path("buffalo-add-task/", CreateTasksToSession.as_view(), name="buffalo-add-task"),
-    path(
-        "buffalo-edit-task/<uuid:pk>/",
-        TaskUpdateView.as_view(),
-        name="buffalo-edit-task",
-    ),
-    path(
-        "buffalo-edit-subject/<uuid:pk>/",
-        subjectUpdateView.as_view(),
-        name="buffalo-edit-subject",
-    ),
-    path(
-        "buffalo-task-version/<uuid:pk>/",
-        TaskCreateVersionView.as_view(),
-        name="buffalo-task-version",
-    ),
-    path(
-        "buffalo-subject-weighing/",
-        SubjectWeighingCreateView.as_view(),
-        name="buffalo-subject-weighing",
-    ),
-    path(
-        "daily-observation/<uuid:subject_id>",
-        SubjectDetailView.as_view(),
-        name="daily-observation",
-    ),
-    path(
-        "session-details/<uuid:session_id>",
-        SessionDetails.as_view(),
-        name="session-details",
-    ),
-    path(
-        "buffalo-get-task-dataset-type/",
-        getTaskDatasetType.as_view(),
-        name="buffalo-get-task-dataset-type",
-    ),
 ]
