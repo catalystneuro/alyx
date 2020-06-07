@@ -91,6 +91,7 @@
                         <tr class="d-flex">
                             <th class="session-task-fields col-2" scope="col">Session Task</th>
                             <th class="session-task-fields col-1" scope="col">Task Version</th>
+                            <th class="session-task-fields col-1" scope="col">Task Sequence</th>
                             <th class="session-task-fields col-3" scope="col">Task Comments</th>
                             <th class="session-task-fields col-2" scope="col">Task Datetime (run)</th>
                             <th class="session-task-fields col-3" scope="col">File Name</th>
@@ -101,6 +102,7 @@
                             <tr class="d-flex">
                                 <td class="col-sm-2">{{session_task.task__name }}</td>
                                 <td class="col-sm-1">{{session_task.task__version}}</td>
+                                <td class="col-sm-1">{{session_task.task_sequence}}</td>
                                 <td class="col-sm-3">{{session_task.general_comments}}</td>
                                 <td class="col-sm-2">{{session_task.date_time|default:""}}</td>
                                 {% for s in session_task_dataset_type.items %}

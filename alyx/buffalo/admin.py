@@ -405,22 +405,22 @@ class BuffaloSessionTask(admin.ModelAdmin):
         qs = super(BuffaloSessionTask, self).get_queryset(request).distinct("session")
         return qs
 
-    list_display = ["session_", "tasks", "session_tasks_details"]
+    list_display = ["task_details", "tasks", "general_comments", "session_details"]
     model = SessionTask
 
-    def session_(self, obj):
+    def task_details(self, obj):
         if obj.session is None:
             return ""
         return obj.session.name
 
-    def session_tasks_details(self, obj):
+    def session_details(self, obj):
         try:
             url = reverse("session-details", kwargs={"session_id": obj.session.id})
         except AttributeError:
             url = ""
 
         return format_html(
-            '<a href="{url}">{name}</a>', url=url, name="Session Task Details"
+            '<a href="{url}">{name}</a>', url=url, name="Session Details"
         )
 
     def tasks(self, obj):
@@ -431,6 +431,15 @@ class BuffaloSessionTask(admin.ModelAdmin):
         return tasks_list
 
     ordering = ("session",)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class BuffaloTask(admin.ModelAdmin):
