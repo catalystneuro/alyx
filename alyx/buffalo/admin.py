@@ -220,7 +220,9 @@ class AlwaysChangedFoodForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(AlwaysChangedFoodForm, self).__init__(*args, **kwargs)
         self.fields["food"].required = True
+        self.fields["food"].help_text = "This fiels is required"
         self.fields["amount"].required = True
+        self.fields["amount"].help_text = "Min value is 0"
         self.fields["amount"].error_messages["required"] = "Min value is 0"
 
 

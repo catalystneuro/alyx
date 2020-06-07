@@ -164,10 +164,12 @@ $(document).ready(function() {
         $("#sessiontask_set-group .form-row:not(.empty-form) .field-task_sequence input").last().val(task_sequence)
     })
 
-    const current_location = window.location.pathname
-    if (current_location.includes("buffalosession/add")) {
+     $('#foodlog_set-group h2').append('<span class="btn btn-light"style="color:#fff; font-size: 9px;">  (This session is required)</span>'
+        )
+    const current_location = window.location.href
+    if (current_location.includes("buffalosession/add/?subject=")) {
         $('#channelrecording_set-group h2').append(
-            '<a id="load-data" class="btn btn-light" href="#channelrecording_set-group" style="color:#fff">  (CLICK to Load data)</a>'
+            '<a id="load-data" class="btn btn-light" href="#channelrecording_set-group" style="color:#fff;font-size: 10px;">  (CLICK to Load data)</a>'
         )
         const initial_data = $("#channelrecording_set-group .form-row select[readonly], #channelrecording_set-group .field-notes input[readonly]" )
         initial_data.prop('disabled', true)
