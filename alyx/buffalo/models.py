@@ -4,7 +4,7 @@ from django.core.validators import MinValueValidator
 
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
-from misc.models import LabMember, Food
+from misc.models import Food
 from actions.models import Session, Weighing, BaseAction, ProcedureType
 from subjects.models import Subject
 
@@ -43,21 +43,33 @@ ALIVE = [
 
 
 class Location(BaseModel):
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.name
 
 
 class Reward(BaseModel):
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.name
 
 
 class TaskCategory(BaseModel):
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.name
 
 
 class Platform(BaseModel):
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.name
 
@@ -69,8 +81,8 @@ class BuffaloSubject(Subject):
     code = models.CharField(
         max_length=2, blank=True, default="", help_text="Two letter code"
     )
-    # created = models.DateTimeField(auto_now_add=True)
-    # updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class BuffaloElectrodeSubject(BuffaloSubject):
@@ -183,7 +195,7 @@ class BuffaloSession(Session):
     class Meta:
         verbose_name = 'Session'
 
-class Electrode(models.Model):
+class Electrode(BaseAction):
     subject = models.ForeignKey(
         BuffaloSubject,
         null=True,
@@ -195,6 +207,9 @@ class Electrode(models.Model):
     turns_per_mm = models.FloatField(null=True, blank=True, default=8)
     channel_number = models.CharField(max_length=255, default="", blank=True)
     notes = models.CharField(max_length=255, default="", blank=True)
+    procedures = models.ManyToManyField(
+        "actions.ProcedureType", blank=True, help_text="The procedure(s) performed"
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -259,7 +274,7 @@ class ElectrodeLog(BaseAction):
         return str(location)
 
 
-class StartingPoint(models.Model):
+class StartingPoint(BaseAction):
     electrode = models.ForeignKey(
         Electrode,
         on_delete=models.SET_NULL,
@@ -273,12 +288,12 @@ class StartingPoint(models.Model):
     x_norm = models.FloatField(null=True)
     y_norm = models.FloatField(null=True)
     z_norm = models.FloatField(null=True)
-    lab_member = models.ForeignKey(
-        LabMember, on_delete=models.SET_NULL, null=True, blank=True
-    )
     depth = models.FloatField(null=True, blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     notes = models.CharField(max_length=255, default="", blank=True)
+    procedures = models.ManyToManyField(
+        "actions.ProcedureType", blank=True, help_text="The procedure(s) performed"
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -302,7 +317,7 @@ class STLFile(Dataset):
     updated = models.DateTimeField(auto_now=True)
 
 
-class ChannelRecording(models.Model):
+class ChannelRecording(BaseModel):
     electrode = models.ForeignKey(
         Electrode, null=True, blank=True, on_delete=models.SET_NULL
     )

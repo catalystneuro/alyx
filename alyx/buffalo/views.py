@@ -1,12 +1,10 @@
 import json
-import pdb
+
 from django.views.generic import (
     View,
     CreateView,
     TemplateView,
     FormView,
-    DetailView,
-    UpdateView,
 )
 from django.urls import reverse
 from django.http import JsonResponse
@@ -15,7 +13,6 @@ from django.contrib import messages
 from .utils import get_mat_file_info
 
 from actions.models import Session, Weighing
-from misc.models import Lab
 from subjects.models import Subject
 from .models import (
     Task,
@@ -30,10 +27,7 @@ from .models import (
 )
 from .forms import (
     TaskForm,
-    SubjectForm,
     TaskVersionForm,
-    WeighingForm,
-    SubjectFoodForm,
     ElectrodeBulkLoadForm,
 )
 
