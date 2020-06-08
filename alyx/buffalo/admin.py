@@ -482,7 +482,7 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
         return self.readonly_fields
 
 
-def TemplateInitialDataElectrodeLog(data, num_forms):
+def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
     class BuffaloElectrodeLog(admin.TabularInline):
         def get_queryset(self, request):
             self.request = request
@@ -494,6 +494,9 @@ def TemplateInitialDataElectrodeLog(data, num_forms):
                 super(BuffaloElectrodeLog.ElectrodeLogInlineFormSet, self).__init__(
                     *args, **kwargs
                 )
+                for form in self:
+                    form.fields["electrode"].queryset = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
+
 
         model = ElectrodeLog
         extra = num_forms
@@ -524,7 +527,7 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         initial = []
         for electrode in electrodes:
             initial.append({"electrode": electrode.id})
-        inlines = [TemplateInitialDataElectrodeLog(initial, len(initial))]
+        inlines = [TemplateInitialDataElectrodeLog(initial, len(initial), obj.id)]
         return [inline(self.model, self.admin_site) for inline in inlines]
 
     def response_change(self, request, obj):
