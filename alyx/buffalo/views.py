@@ -268,9 +268,12 @@ class ElectrodeBulkLoadView(FormView):
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         if form.is_valid():
+            structure_name = form.cleaned_data['structure_name']
             subject_id = form.cleaned_data['subject']
             subject = BuffaloSubject.objects.get(pk=subject_id)
-            electrodes_info = get_mat_file_info(form.cleaned_data['file'], subject.unique_id)
+            if (not structure_name):
+                structure_name = subject.unique_id
+            electrodes_info = get_mat_file_info(form.cleaned_data['file'], structure_name)
             for electrode_info in electrodes_info:
                 electrode = Electrode.objects.filter(
                     subject=subject_id,
