@@ -20,7 +20,7 @@ def validate_mat_file(file, unique_id):
                     'Error loading the file: {}'.format(file), 
                     code='invalid', 
                     params={'file': file}
-                    )
+                )
 
 def get_electrodes_clean(electrodes_mat):
     electrodes_clean = []
