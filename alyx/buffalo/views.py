@@ -272,7 +272,7 @@ class ElectrodeBulkLoadView(FormView):
             subject_id = form.cleaned_data['subject']
             subject = BuffaloSubject.objects.get(pk=subject_id)
             if (not structure_name):
-                structure_name = subject.unique_id
+                structure_name = subject.nickname
             electrodes_info = get_mat_file_info(form.cleaned_data['file'], structure_name)
             for electrode_info in electrodes_info:
                 electrode = Electrode.objects.filter(

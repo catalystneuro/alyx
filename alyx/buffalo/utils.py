@@ -8,7 +8,7 @@ def validate_mat_file(file, structure_name):
         electrodes = mat_file[structure_name].tolist()
     except:
         raise ValidationError(
-                            'It cannot find an structure called: {}, it got: {}'.format(structure_name, key), 
+                            'It cannot find an structure called: {}. It got: {}'.format(structure_name, key), 
                             code='invalid', 
                             params={'structure_name': structure_name}
                             )
@@ -47,5 +47,3 @@ def get_mat_file_info(file, structure_name):
     mat_file = loadmat(file)
     electrodes = mat_file[structure_name].tolist()
     return get_electrodes_clean(electrodes)
-
-    

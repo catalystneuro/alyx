@@ -207,8 +207,12 @@ class ElectrodeForm(forms.ModelForm):
 
 class ElectrodeBulkLoadForm(forms.Form):
     file = forms.FileField(validators=[FileExtensionValidator(['mat'])])
+    structure_name = forms.CharField(
+        label="Structure name",
+        required=False, 
+        max_length=250
+    )
     subject = forms.CharField(widget=forms.HiddenInput())
-    structure_name = forms.CharField(required=False, max_length=250)
 
     def clean(self):
         cleaned_data = super().clean()
@@ -219,5 +223,5 @@ class ElectrodeBulkLoadForm(forms.Form):
             validate_mat_file(file, structure)
         else:
             subject = BuffaloSubject.objects.get(pk=subject_id)
-            validate_mat_file(file, subject.unique_id)
+            validate_mat_file(file, subject.nickname)
 
