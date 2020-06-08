@@ -15,13 +15,6 @@ FOOD_UNITS = [
     ("gr", "gr"),
 ]
 
-
-UNITS = [
-    ("none", "0"),
-    ("few", "1"),
-    ("lots", "2"),
-]
-
 NUMBER_OF_CELLS = [
     ("1", "nothing"),
     ("2", "maybe 1 cell"),
@@ -127,7 +120,7 @@ class Task(BaseModel):
         return f"{self.name} (version: {self.version})"
 
     class Meta:
-        verbose_name = 'TaskType'
+        verbose_name = "TaskType"
 
 
 class SessionTask(BaseModel):
@@ -147,8 +140,11 @@ class SessionTask(BaseModel):
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Task'
-        unique_together = ('session', 'task_sequence',)
+        verbose_name = "Task"
+        unique_together = (
+            "session",
+            "task_sequence",
+        )
 
 
 class FoodType(BaseModel):
@@ -193,7 +189,8 @@ class BuffaloSession(Session):
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = 'Session'
+        verbose_name = "Session"
+
 
 class Electrode(BaseAction):
     subject = models.ForeignKey(
@@ -218,15 +215,15 @@ class Electrode(BaseAction):
         starting_point = self.starting_point.latest("updated")
         location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
         return location
-    
+
     def create_new_starting_point_from_mat(self, electrode_info):
         starting_point = StartingPoint()
-        starting_point.x = electrode_info['start_point'][0]
-        starting_point.y = electrode_info['start_point'][1]
-        starting_point.z = electrode_info['start_point'][2]
-        starting_point.x_norm = electrode_info['norms'][0]
-        starting_point.y_norm = electrode_info['norms'][1]
-        starting_point.z_norm = electrode_info['norms'][2]
+        starting_point.x = electrode_info["start_point"][0]
+        starting_point.y = electrode_info["start_point"][1]
+        starting_point.z = electrode_info["start_point"][2]
+        starting_point.x_norm = electrode_info["norms"][0]
+        starting_point.y_norm = electrode_info["norms"][1]
+        starting_point.z_norm = electrode_info["norms"][2]
         starting_point.electrode = self
         starting_point.save()
 
@@ -257,15 +254,23 @@ class ElectrodeLog(BaseAction):
         location = {}
         if electrode:
             starting_point = electrode.starting_point.latest("updated")
-            location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
+            location = {
+                "x": starting_point.x,
+                "y": starting_point.y,
+                "z": starting_point.z,
+            }
             if self.turn:
-                distance = (self.turn / self.electrode.turns_per_mm)
+                distance = self.turn / self.electrode.turns_per_mm
                 location_list = starting_point.get_norms()
                 initial_position = starting_point.get_start_position()
                 for i in range(len(location_list)):
                     location_list[i] *= distance
                     location_list[i] += initial_position[i]
-                location = {"x": location_list[0], "y": location_list[1], "z": location_list[2]}
+                location = {
+                    "x": location_list[0],
+                    "y": location_list[1],
+                    "z": location_list[2],
+                }
         return location
 
     @property
@@ -302,6 +307,7 @@ class StartingPoint(BaseAction):
 
     def get_norms(self):
         return [self.x_norm, self.y_norm, self.z_norm]
+
 
 class STLFile(Dataset):
     stl_file = models.CharField(
