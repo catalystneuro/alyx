@@ -2,8 +2,11 @@ from datetime import datetime
 from django import forms
 import django.forms
 from django.forms import ModelForm
+from django.core.validators import FileExtensionValidator
+from .utils import validate_mat_file
 
 from actions.models import Weighing
+
 
 from .models import (
     Task,
@@ -205,7 +208,6 @@ class ElectrodeForm(forms.ModelForm):
             "subject",
             "date_time",
             "millimeters",
-            "units",
             "channel_number",
             "notes",
         ]
@@ -218,3 +220,23 @@ class FoodTypeForm(forms.ModelForm):
             "name",
             "unit",
         ]
+class ElectrodeBulkLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(['mat'])])
+    structure_name = forms.CharField(
+        label="Structure name",
+        required=False, 
+        max_length=250
+    )
+    subject = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        subject_id = cleaned_data.get("subject")
+        structure = cleaned_data.get("structure_name")
+        if structure:
+            validate_mat_file(file, structure)
+        else:
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            validate_mat_file(file, subject.nickname)
+

@@ -91,14 +91,19 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
     def new_electrode_logs(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.id])
         return self.link(url, "New electrode logs")
+    
+    def set_electrodes_file(self, obj):
+        url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Set electrodes form")
 
     def options(self, obj):
-        select = "{} {} {} {}"
+        select = "{} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
             self.set_electrodes(obj),
             self.new_electrode_logs(obj),
+            self.set_electrodes_file(obj),
         )
         return format_html(select)
 
@@ -123,6 +128,13 @@ class ChannelRecordingInline(admin.TabularInline):
                 kwargs["queryset"] = Electrode.objects.filter(subject=session.subject)
             except KeyError:
                 pass
+            try:
+                subject = request.GET.get("subject", None)
+                if subject is not None:
+                    kwargs["queryset"] = Electrode.objects.filter(subject=subject)
+            except:
+                pass
+
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
@@ -155,6 +167,7 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
             subject = request.GET.get("subject", None)
             if db_field.name == "electrode" and subject is not None:
+                
                 try:
                     kwargs["queryset"] = Electrode.objects.filter(subject=subject)
                 except KeyError:
@@ -493,12 +506,13 @@ class StartingPointFormset(BaseInlineFormSet):
 class StartingPointInline(nested_admin.NestedTabularInline):
     model = StartingPoint
     formset = StartingPointFormset
-    fields = ("electrode", "x", "y", "z", "lab_member", "depth", "date_time", "notes")
+    fields = ("electrode", "x", "y", "z", "x_norm", "y_norm", "z_norm", "depth", "date_time", "notes")
     extra = 0
 
 
 class BuffaloElectrode(nested_admin.NestedTabularInline):
     model = Electrode
+    fields = ("channel_number", "turns_per_mm", "millimeters", "date_time", "notes")
     extra = 0
     inlines = [StartingPointInline]
 
@@ -541,7 +555,7 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
         return self.readonly_fields
 
 
-def TemplateInitialDataElectrodeLog(data, num_forms):
+def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
     class BuffaloElectrodeLog(admin.TabularInline):
         def get_queryset(self, request):
             self.request = request
@@ -553,6 +567,9 @@ def TemplateInitialDataElectrodeLog(data, num_forms):
                 super(BuffaloElectrodeLog.ElectrodeLogInlineFormSet, self).__init__(
                     *args, **kwargs
                 )
+                for form in self:
+                    form.fields["electrode"].queryset = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
+
 
         model = ElectrodeLog
         extra = num_forms
@@ -583,7 +600,7 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         initial = []
         for electrode in electrodes:
             initial.append({"electrode": electrode.id})
-        inlines = [TemplateInitialDataElectrodeLog(initial, len(initial))]
+        inlines = [TemplateInitialDataElectrodeLog(initial, len(initial), obj.id)]
         return [inline(self.model, self.admin_site) for inline in inlines]
 
     def response_change(self, request, obj):
@@ -607,7 +624,7 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
     form = ElectrodeForm
-    list_display = ["subject", "electrode", "turn", "impedance", "date_time"]
+    list_display = ["subject", "electrode", "turn", "impedance", "current_location", "date_time"]
     fields = ("subject", "electrode", "turn", "impedance", "date_time", "notes")
     search_fields = [
         "subject__nickname",
