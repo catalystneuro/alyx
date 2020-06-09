@@ -128,6 +128,13 @@ class ChannelRecordingInline(admin.TabularInline):
                 kwargs["queryset"] = Electrode.objects.filter(subject=session.subject)
             except KeyError:
                 pass
+            try:
+                subject = request.GET.get("subject", None)
+                if subject is not None:
+                    kwargs["queryset"] = Electrode.objects.filter(subject=subject)
+            except:
+                pass
+
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
@@ -160,6 +167,7 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
             subject = request.GET.get("subject", None)
             if db_field.name == "electrode" and subject is not None:
+                
                 try:
                     kwargs["queryset"] = Electrode.objects.filter(subject=subject)
                 except KeyError:
