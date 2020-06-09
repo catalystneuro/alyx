@@ -1,12 +1,10 @@
 import json
-import pdb
+
 from django.views.generic import (
     View,
     CreateView,
     TemplateView,
     FormView,
-    DetailView,
-    UpdateView,
 )
 from django.urls import reverse
 from django.http import JsonResponse
@@ -15,26 +13,21 @@ from django.contrib import messages
 from .utils import get_mat_file_info
 
 from actions.models import Session, Weighing
-from misc.models import Lab
 from subjects.models import Subject
 from .models import (
     Task,
     SessionTask,
-    SubjectFood,
+    FoodLog,
     ChannelRecording,
     TaskCategory,
+    BuffaloSession,
     BuffaloSubject,
     Electrode,
     StartingPoint,
 )
 from .forms import (
     TaskForm,
-    SessionForm,
-    SubjectForm,
-    SessionTaskForm,
     TaskVersionForm,
-    WeighingForm,
-    SubjectFoodForm,
     ElectrodeBulkLoadForm,
 )
 
@@ -53,20 +46,8 @@ class TaskCreateView(CreateView):
         return reverse("buffalo-tasks")
 
 
-class TaskUpdateView(UpdateView):
-    model = Task
-    form_class = TaskForm
-
-    def get_context_data(self, **kwargs):
-        context = super(TaskUpdateView, self).get_context_data(**kwargs)
-        return context
-
-    def get_success_url(self):
-        return reverse("buffalo-tasks")
-
-
 class TaskCreateVersionView(CreateView):
-    template_name = "buffalo/task_form.html"
+    template_name = "buffalo/admin_task_form.html"
     model = Task
     form_class = TaskVersionForm
 
@@ -86,8 +67,6 @@ class TaskCreateVersionView(CreateView):
 
     def get_form(self, form_class=None):
         if self.request.method == "GET":
-            if "buffalo/task/" in self.request.environ["HTTP_REFERER"]:
-                self.template_name = "buffalo/admin_task_form.html"
             task = Task.objects.get(pk=self.kwargs["pk"])
             form = TaskVersionForm(
                 initial=(
@@ -115,34 +94,6 @@ class TaskCreateVersionView(CreateView):
         return reverse("admin:index")
 
 
-class subjectUpdateView(UpdateView):
-    template_name = "buffalo/subject_form.html"
-    model = Subject
-    form_class = SubjectForm
-
-    def get_context_data(self, **kwargs):
-        context = super(subjectUpdateView, self).get_context_data(**kwargs)
-        return context
-
-    def get_success_url(self):
-        return reverse("buffalo-subjects")
-
-
-class SessionCreateView(CreateView):
-    template_name = "buffalo/session.html"
-    form_class = SessionForm
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["objects"] = Session.objects.exclude(name="")
-        context["form_task"] = SessionTaskForm()
-
-        return context
-
-    def get_success_url(self):
-        return reverse("buffalo-sessions")
-
-
 class getTaskCategoryJson(View):
     def get(self, request, *args, **kwargs):
         if request.is_ajax():
@@ -152,21 +103,6 @@ class getTaskCategoryJson(View):
             return JsonResponse({"category_json": data}, status=200)
 
 
-class CreateTasksToSession(CreateView):
-    template_name = "buffalo/tasks_selector_modal.html"
-    form_class = SessionTaskForm
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        sessions = Session.objects.all()
-        context["objects"] = sessions.select_related("subject", "lab", "project")
-
-        return context
-
-    def get_success_url(self):
-        return reverse("buffalo-sessions")
-
-
 class SubjectDetailView(TemplateView):
     template_name = "buffalo/admin_subject_details.html"
 
@@ -174,28 +110,19 @@ class SubjectDetailView(TemplateView):
         subject_id = self.kwargs["subject_id"]
         context = {
             "subject": Subject.objects.get(pk=subject_id),
-            "sessions": Session.objects.filter(subject=subject_id).order_by('-start_time'),
-            "weights": Weighing.objects.filter(subject=subject_id).order_by('-date_time'),
-            "food": SubjectFood.objects.filter(subject=subject_id),
+            "sessions": Session.objects.filter(subject=subject_id).order_by(
+                "-start_time"
+            ),
+            "weights": Weighing.objects.filter(subject=subject_id).order_by(
+                "-date_time"
+            ),
+            "food": FoodLog.objects.filter(subject=subject_id),
         }
 
         return self.render_to_response(context)
 
 
-class SubjectWeighingCreateView(CreateView):
-    template_name = "buffalo/subject_weight.html"
-    form_class = WeighingForm
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        return context
-
-    def get_success_url(self):
-        return reverse("buffalo-subjects")
-
-
-class SessionTaksDetails(TemplateView):
+class SessionDetails(TemplateView):
     template_name = "buffalo/admin_session_details.html"
 
     def get(self, request, *args, **kwargs):
@@ -233,15 +160,19 @@ class SessionTaksDetails(TemplateView):
                     {session_task_id: [session_task["dataset_type__name"]]}
                 )
         channels_recording = ChannelRecording.objects.filter(session=session_id,)
-
+        session = BuffaloSession.objects.get(pk=session_id)
         context = {
-            "session": Session.objects.get(pk=session_id),
+            "session": session,
+            "session_users": session.users.all(),
+            "session_foodlog": FoodLog.objects.filter(session=session_id).first(),
+            "session_dataset_types": session.dataset_type.all(),
             "session_tasks": session_tasks,
             "channels_recording": list(channels_recording),
             "session_task_dataset_type": session_task_dataset_type,
         }
 
         return self.render_to_response(context)
+
 
 class getTaskDatasetType(View):
     def get(self, request, *args, **kwargs):

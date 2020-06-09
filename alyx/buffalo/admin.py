@@ -20,7 +20,7 @@ from .models import (
     TaskCategory,
     Location,
     SessionTask,
-    SubjectFood,
+    FoodType,
     Electrode,
     StartingPoint,
     STLFile,
@@ -32,17 +32,20 @@ from .models import (
     BuffaloElectrodeLogSubject,
     Reward,
     Platform,
+    FoodLog,
+    BuffaloSession,
 )
 from .forms import (
     WeighingForm,
     SessionTaskForm,
     TaskForm,
-    SubjectFoodForm,
+    SubjectFoodLog,
     SubjectForm,
     SessionForm,
     TaskForm,
     TaskCategoryForm,
     ElectrodeForm,
+    FoodTypeForm,
 )
 
 
@@ -65,7 +68,7 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloSubjectAdmin, self).get_form(request, obj, **kwargs)
-        lab = Lab.objects.filter(name__icontains='buffalo').first()
+        lab = Lab.objects.filter(name__icontains="buffalo").first()
         form.base_fields["lab"].initial = lab
         return form
 
@@ -78,7 +81,7 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
         return self.link(url, "Daily observations")
 
     def add_session(self, obj):
-        url = "/actions/session/add/?subject=" + str(obj.id)
+        url = "/buffalo/buffalosession/add/?subject=" + str(obj.id)
         return self.link(url, "Add Session")
 
     def set_electrodes(self, obj):
@@ -125,6 +128,13 @@ class ChannelRecordingInline(admin.TabularInline):
                 kwargs["queryset"] = Electrode.objects.filter(subject=session.subject)
             except KeyError:
                 pass
+            try:
+                subject = request.GET.get("subject", None)
+                if subject is not None:
+                    kwargs["queryset"] = Electrode.objects.filter(subject=subject)
+            except:
+                pass
+
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
@@ -149,6 +159,7 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
 
     class AddChannelRecordingInline(admin.TabularInline):
         form = AlwaysChangedModelForm
+
         def get_queryset(self, request):
             self.request = request
             return ChannelRecording.objects.none()
@@ -156,6 +167,7 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
             subject = request.GET.get("subject", None)
             if db_field.name == "electrode" and subject is not None:
+                
                 try:
                     kwargs["queryset"] = Electrode.objects.filter(subject=subject)
                 except KeyError:
@@ -165,6 +177,8 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
         class AddChannelRecordingFormset(BaseInlineFormSet):
             def __init__(self, *args, **kwargs):
                 kwargs["initial"] = data
+                for f in self.form.base_fields:
+                    self.form.base_fields[f].widget.attrs["readonly"] = True
                 super(
                     AddChannelRecordingInline.AddChannelRecordingFormset, self
                 ).__init__(*args, **kwargs)
@@ -177,7 +191,64 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
     return AddChannelRecordingInline
 
 
-class BuffaloSession(admin.ModelAdmin):
+class BuffaloSubjectFood(admin.ModelAdmin):
+    form = SubjectFoodLog
+    change_form_template = "buffalo/change_form.html"
+    list_display = ["subject", "session_", "amount", "date_time"]
+    source = ""
+
+    def session_(self, obj):
+        try:
+            BuffaloSession.objects.get(pk=obj.session.id)
+            url = reverse("session-details", kwargs={"session_id": obj.session.id})
+        except AttributeError:
+            return "-"
+
+        return format_html(
+            '<a href="{url}">{name}</a>', url=url, name="Session Task Details"
+        )
+
+    def add_view(self, request, *args, **kwargs):
+        try:
+            if "daily" in request.environ["HTTP_REFERER"]:
+                self.source = "daily"
+        except KeyError:
+            pass
+        return super(BuffaloSubjectFood, self).add_view(request, *args, **kwargs)
+
+    def response_add(self, request, obj):
+        response = super(BuffaloSubjectFood, self).response_add(request, obj)
+        if self.source == "daily":
+            response["location"] = "/daily-observation/" + str(obj.subject_id)
+            self.source = ""
+        return response
+
+
+class AlwaysChangedFoodForm(ModelForm):
+    def has_changed(self):
+        """ Should returns True if data differs from initial.
+        By always returning true even unchanged inlines will get validated and saved."""
+        return True
+
+    def __init__(self, *args, **kwargs):
+        super(AlwaysChangedFoodForm, self).__init__(*args, **kwargs)
+        self.fields["food"].required = True
+        self.fields["food"].help_text = "This fiels is required"
+        self.fields["amount"].required = True
+        self.fields["amount"].help_text = "Min value is 0"
+        self.fields["amount"].error_messages["required"] = "Min value is 0"
+
+
+class SessionFoodInline(admin.TabularInline):
+    model = FoodLog
+    form = AlwaysChangedFoodForm
+    fields = ("session", "food", "amount")
+    extra = 0
+    min_num = 1
+    can_delete = False
+
+
+class BuffaloSessionAdmin(admin.ModelAdmin):
     form = SessionForm
     change_list_template = "buffalo/change_list.html"
     change_form_template = "buffalo/change_form.html"
@@ -193,16 +264,16 @@ class BuffaloSession(admin.ModelAdmin):
         "start_time",
         "end_time",
     ]
-    inlines = [SessionTaskInline, ChannelRecordingInline]
+    inlines = [SessionFoodInline, SessionTaskInline, ChannelRecordingInline]
     ordering = ("-start_time",)
 
     def get_form(self, request, obj=None, **kwargs):
-        form = super(BuffaloSession, self).get_form(request, obj, **kwargs)
+        form = super(BuffaloSessionAdmin, self).get_form(request, obj, **kwargs)
         subject = request.GET.get("subject", None)
-        lab = Lab.objects.filter(name__icontains='buffalo').first()
+        lab = Lab.objects.filter(name__icontains="buffalo").first()
         form.base_fields["lab"].initial = lab
         form.base_fields["users"].initial = [request.user]
-        
+
         if subject is not None:
             subject = BuffaloSubject.objects.get(pk=subject)
             session_name = f"{datetime.today().isoformat()}_{subject.nicknamesafe()}"
@@ -217,7 +288,7 @@ class BuffaloSession(admin.ModelAdmin):
             )
             if prev_session:
                 prev_channels = ChannelRecording.objects.filter(
-                    session=prev_session[0].id
+                    session=prev_session[0].id,
                 )
                 initial = []
                 for prev_channel in prev_channels:
@@ -231,12 +302,13 @@ class BuffaloSession(admin.ModelAdmin):
                         }
                     )
                 inlines = [
+                    SessionFoodInline,
                     SessionTaskInline,
                     TemplateInitialDataAddChannelRecording(initial, len(initial)),
                 ]
                 inlines = [inline(self.model, self.admin_site) for inline in inlines]
                 return inlines
-        return super(BuffaloSession, self).get_inline_instances(request, obj)
+        return super(BuffaloSessionAdmin, self).get_inline_instances(request, obj)
 
     def session_tasks(self, obj):
         tasks = SessionTask.objects.filter(session=obj.id)
@@ -246,7 +318,7 @@ class BuffaloSession(admin.ModelAdmin):
         return tasks_list
 
     def session_details(self, obj):
-        url = reverse("session-tasks", kwargs={"session_id": obj.id})
+        url = reverse("session-details", kwargs={"session_id": obj.id})
         return format_html(
             '<a href="{url}">{name}</a>', url=url, name="Session Details"
         )
@@ -257,30 +329,44 @@ class BuffaloSession(admin.ModelAdmin):
                 self.source = "daily"
         except KeyError:
             pass
-        return super(BuffaloSession, self).add_view(request, *args, **kwargs)
+        return super(BuffaloSessionAdmin, self).add_view(request, *args, **kwargs)
 
     def response_add(self, request, obj):
-        response = super(BuffaloSession, self).response_add(request, obj)
+        response = super(BuffaloSessionAdmin, self).response_add(request, obj)
 
-        response["location"] = "/session-tasks/" + str(obj.id)
+        response["location"] = "/session-details/" + str(obj.id)
         return response
 
     def response_change(self, request, obj):
-        response = super(BuffaloSession, self).response_add(request, obj)
-        response["location"] = "/session-tasks/" + str(obj.id)
+        response = super(BuffaloSessionAdmin, self).response_add(request, obj)
+        response["location"] = "/session-details/" + str(obj.id)
 
         return response
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}
         try:
-            if "session-tasks" in request.META["HTTP_REFERER"]:
+            if "session-details" in request.META["HTTP_REFERER"]:
                 extra_context.update({"channels": 1})
         except KeyError:
             pass
         return super().change_view(
             request, object_id, form_url, extra_context=extra_context,
         )
+
+    def save_formset(self, request, form, formset, change):
+        instances = formset.save(commit=False)
+        for obj in formset.deleted_objects:
+            obj.delete()
+
+        for instance in instances:
+            if isinstance(instance, ChannelRecording):
+                if instance.electrode is not None:
+                    instance.save()
+                else:
+                    continue
+            instance.save()
+        formset.save_m2m()
 
 
 class BuffaloWeight(BaseAdmin):
@@ -294,7 +380,7 @@ class BuffaloWeight(BaseAdmin):
         "user",
         "date_time",
     ]
-    
+
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloWeight, self).get_form(request, obj, **kwargs)
         subject = request.GET.get("subject", None)
@@ -332,22 +418,22 @@ class BuffaloSessionTask(admin.ModelAdmin):
         qs = super(BuffaloSessionTask, self).get_queryset(request).distinct("session")
         return qs
 
-    list_display = ["session_", "tasks", "session_tasks_details"]
+    list_display = ["task_details", "tasks", "general_comments", "session_details"]
     model = SessionTask
 
-    def session_(self, obj):
+    def task_details(self, obj):
         if obj.session is None:
             return ""
         return obj.session.name
 
-    def session_tasks_details(self, obj):
+    def session_details(self, obj):
         try:
-            url = reverse("session-tasks", kwargs={"session_id": obj.session.id})
+            url = reverse("session-details", kwargs={"session_id": obj.session.id})
         except AttributeError:
             url = ""
 
         return format_html(
-            '<a href="{url}">{name}</a>', url=url, name="Session Task Details"
+            '<a href="{url}">{name}</a>', url=url, name="Session Details"
         )
 
     def tasks(self, obj):
@@ -359,27 +445,14 @@ class BuffaloSessionTask(admin.ModelAdmin):
 
     ordering = ("session",)
 
+    def has_add_permission(self, request, obj=None):
+        return False
 
-class BuffaloSubjectFood(admin.ModelAdmin):
-    form = SubjectFoodForm
-    change_form_template = "buffalo/change_form.html"
-    list_display = ["subject", "amount", "date_time"]
-    source = ""
+    def has_change_permission(self, request, obj=None):
+        return False
 
-    def add_view(self, request, *args, **kwargs):
-        try:
-            if "daily" in request.environ["HTTP_REFERER"]:
-                self.source = "daily"
-        except KeyError:
-            pass
-        return super(BuffaloSubjectFood, self).add_view(request, *args, **kwargs)
-
-    def response_add(self, request, obj):
-        response = super(BuffaloSubjectFood, self).response_add(request, obj)
-        if self.source == "daily":
-            response["location"] = "/daily-observation/" + str(obj.subject_id)
-            self.source = ""
-        return response
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 class BuffaloTask(admin.ModelAdmin):
@@ -593,15 +666,24 @@ class BuffaloCategory(admin.ModelAdmin):
     form = TaskCategoryForm
 
 
+class FoodTypeAdmin(admin.ModelAdmin):
+    form = FoodTypeForm
+
+    def has_delete_permission(self, request, obj=None):
+        if "buffalo/buffalosession" in request.path:
+            return False
+        return True
+
+
 admin.site.register(BuffaloSubject, BuffaloSubjectAdmin)
 admin.site.register(BuffaloElectrodeSubject, BuffaloElectrodeSubjectAdmin)
 admin.site.register(BuffaloElectrodeLogSubject, BuffaloElectrodeLogSubjectAdmin)
 admin.site.register(ElectrodeLog, BuffaloElectrodeLogAdmin)
-admin.site.register(Session, BuffaloSession)
+admin.site.register(BuffaloSession, BuffaloSessionAdmin)
 admin.site.register(Weighing, BuffaloWeight)
 admin.site.register(SessionTask, BuffaloSessionTask)
 admin.site.register(Task, BuffaloTask)
-admin.site.register(SubjectFood, BuffaloSubjectFood)
+admin.site.register(FoodLog, BuffaloSubjectFood)
 admin.site.register(StartingPoint, BuffaloStartingPoint)
 admin.site.register(STLFile, BuffaloSTLFile)
 admin.site.register(ChannelRecording, BuffaloChannelRecording)
@@ -610,3 +692,4 @@ admin.site.register(TaskCategory, BuffaloCategory)
 admin.site.register(Location)
 admin.site.register(Reward)
 admin.site.register(Platform)
+admin.site.register(FoodType, FoodTypeAdmin)

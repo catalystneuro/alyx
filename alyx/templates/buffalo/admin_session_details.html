@@ -9,7 +9,7 @@
     <div class="breadcrumbs">
         <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
 
-&rsaquo; <a href="/admin/actions/session">{% trans 'Sessions' %}</a>
+&rsaquo; <a href="/admin/buffalo/buffalosession">{% trans 'Sessions' %}</a>
 
 </div>
 {% endblock breadcrumbs %}
@@ -21,7 +21,7 @@
         <ul class="object-tools">
             {% block object-tools-items %}
                 <li>
-                    <a href="/actions/session/{{session.id}}/change/" class="addlink">
+                    <a href="/buffalo/buffalosession/{{session.id}}/change/" class="addlink">
                     Add Channel Recording Info/ Add Session task
                     </a>
                 </li>
@@ -38,16 +38,56 @@
             <label><strong>Session </strong>{{session.name}}</label><br>
             <label><strong>Session start date </strong>{{session.start_time}}</label><br>
             <label><strong>Subject </strong>{{session.subject}}</label><br>
+            <label><strong>Food </strong>{{session_foodlog}}</label><br>
             <label>
                 <strong>Users </strong>
-                {% with users=session.users|get_users %}
-                    {{users}}
-                {% endwith %}
+                {% for user in session_users %}
+                    {{user.username}}, 
+                {% endfor %}
             </label><br>
             <label><strong>Narrative</strong>{{session.narrative}}</label><br>
         </div>
         <br><br>
     </div>
+    <div class="col-lg-10  offset-md-1">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr class="d-flex">
+                        <th class="session-task-fields col-2" scope="col">Food Log</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="d-flex">
+                        <td class="col-sm-2">{{session_foodlog.get_food_detail}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <br><br>
+    
+    {% if session_dataset_types %}
+        <div class="col-lg-10  offset-md-1">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr class="d-flex">
+                            <th class="session-task-fields col-2" scope="col">Session Dataset types</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session_dataset_type in session_dataset_types %}
+                            <tr class="d-flex">
+                                <td class="col-sm-2">{{session_dataset_type.name}}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <br><br>
+    {% endif %}
     {% if session_tasks %}
         <div class="col-lg-10  offset-md-1">
             <div class="table-responsive">
@@ -56,6 +96,7 @@
                         <tr class="d-flex">
                             <th class="session-task-fields col-2" scope="col">Session Task</th>
                             <th class="session-task-fields col-1" scope="col">Task Version</th>
+                            <th class="session-task-fields col-1" scope="col">Task Sequence</th>
                             <th class="session-task-fields col-3" scope="col">Task Comments</th>
                             <th class="session-task-fields col-2" scope="col">Task Datetime (run)</th>
                             <th class="session-task-fields col-3" scope="col">File Name</th>
@@ -66,6 +107,7 @@
                             <tr class="d-flex">
                                 <td class="col-sm-2">{{session_task.task__name }}</td>
                                 <td class="col-sm-1">{{session_task.task__version}}</td>
+                                <td class="col-sm-1">{{session_task.task_sequence}}</td>
                                 <td class="col-sm-3">{{session_task.general_comments}}</td>
                                 <td class="col-sm-2">{{session_task.date_time|default:""}}</td>
                                 {% for s in session_task_dataset_type.items %}

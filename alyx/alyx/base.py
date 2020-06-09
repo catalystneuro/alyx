@@ -236,19 +236,20 @@ def _get_category_list(app_list):
     order = ADMIN_PAGES
     extra_in_common = ["Adverse effects", "Cull subjects"]
     buffalo = [
-        "Buffalo subjects",
-        "Tasks",
+        "Buffalo subjects",        
         "Sessions",
-        "Session tasks",
-        "Subject foods",
+        "TaskTypes",
+        #"Tasks",
+        "Food logs",
+        "Food types",
         "Weighings",
         "Electrode logs",
         "Starting points",
-        "Processed recordings",
-        "Stl files",
         "Channel recordings",
+        "Stl files",
         "Dataset types",
         "Datasets",
+        "Processed recordings",
     ]
     order_models = flatten([models for app, models in order])
     models_dict = {
@@ -267,9 +268,11 @@ def _get_category_list(app_list):
         )
         for name, model_names in order
     ]
+    category_list[0].models =  [None] * 13
     for model_name, app_name in model_to_app.items():
         if model_name in buffalo:
-            category_list[0].models.append(models_dict[model_name])
+            idx = buffalo.index(model_name)
+            category_list[0].models[idx] = models_dict[model_name]
         if model_name in order_models:
             continue
         """ if model_name.startswith("Subject") or model_name in extra_in_common:
@@ -281,6 +284,7 @@ def _get_category_list(app_list):
     """ category_list[0].models.append(
         {"admin_url": reverse("training"), "name": "Training view", "perms": {},}
     ) """
+    
     return category_list
 
 

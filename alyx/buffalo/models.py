@@ -1,18 +1,18 @@
 from django.db import models
 from django.utils import timezone
-
+from django.core.validators import MinValueValidator
 
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
-from misc.models import LabMember, Food
-from actions.models import Session, Weighing, BaseAction, ProcedureType 
+from misc.models import Food
+from actions.models import Session, Weighing, BaseAction, ProcedureType
 from subjects.models import Subject
 
 
-UNITS = [
-    ("none", "0"),
-    ("few", "1"),
-    ("lots", "2"),
+FOOD_UNITS = [
+    ("ml", "ML"),
+    ("bucket", "Bucket"),
+    ("gr", "gr"),
 ]
 
 NUMBER_OF_CELLS = [
@@ -36,21 +36,33 @@ ALIVE = [
 
 
 class Location(BaseModel):
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.name
 
 
 class Reward(BaseModel):
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.name
 
 
 class TaskCategory(BaseModel):
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.name
 
 
 class Platform(BaseModel):
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.name
 
@@ -62,17 +74,16 @@ class BuffaloSubject(Subject):
     code = models.CharField(
         max_length=2, blank=True, default="", help_text="Two letter code"
     )
-    #created = models.DateTimeField(auto_now_add=True)
-    #updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class BuffaloElectrodeSubject(BuffaloSubject):
-
     class Meta:
         proxy = True
 
-class BuffaloElectrodeLogSubject(BuffaloSubject):
 
+class BuffaloElectrodeLogSubject(BuffaloSubject):
     class Meta:
         proxy = True
 
@@ -108,6 +119,9 @@ class Task(BaseModel):
             return self.name
         return f"{self.name} (version: {self.version})"
 
+    class Meta:
+        verbose_name = "TaskType"
+
 
 class SessionTask(BaseModel):
     task = models.ForeignKey(Task, null=True, blank=True, on_delete=models.SET_NULL)
@@ -125,24 +139,60 @@ class SessionTask(BaseModel):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        verbose_name = "Task"
+        unique_together = (
+            "session",
+            "task_sequence",
+        )
 
-class SubjectFood(BaseModel):
+
+class FoodType(BaseModel):
+    unit = models.CharField(max_length=255, choices=FOOD_UNITS, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        str_food_log = f"{self.name} - ({self.unit})"
+        return str_food_log
+
+
+class FoodLog(BaseModel):
     subject = models.ForeignKey(
         BuffaloSubject,
         null=True,
         on_delete=models.SET_NULL,
         help_text="The subject on which this action was performed",
     )
-    amount = models.FloatField(null=True, blank=True)
+    food = models.ForeignKey(FoodType, null=True, blank=True, on_delete=models.PROTECT)
+    amount = models.FloatField(
+        null=True, blank=True, validators=[MinValueValidator(limit_value=0)]
+    )
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL
+    )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.subject.nickname
+        return self.food.name
+
+    def get_food_detail(self):
+        food_detail = f"{self} {self.amount} ({self.food.unit})"
+        return food_detail
 
 
-class Electrode(models.Model):
+class BuffaloSession(Session):
+    dataset_type = models.ManyToManyField(DatasetType, blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Session"
+
+
+class Electrode(BaseAction):
     subject = models.ForeignKey(
         BuffaloSubject,
         null=True,
@@ -154,6 +204,9 @@ class Electrode(models.Model):
     turns_per_mm = models.FloatField(null=True, blank=True, default=8)
     channel_number = models.CharField(max_length=255, default="", blank=True)
     notes = models.CharField(max_length=255, default="", blank=True)
+    procedures = models.ManyToManyField(
+        "actions.ProcedureType", blank=True, help_text="The procedure(s) performed"
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -162,15 +215,15 @@ class Electrode(models.Model):
         starting_point = self.starting_point.latest("updated")
         location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
         return location
-    
+
     def create_new_starting_point_from_mat(self, electrode_info):
         starting_point = StartingPoint()
-        starting_point.x = electrode_info['start_point'][0]
-        starting_point.y = electrode_info['start_point'][1]
-        starting_point.z = electrode_info['start_point'][2]
-        starting_point.x_norm = electrode_info['norms'][0]
-        starting_point.y_norm = electrode_info['norms'][1]
-        starting_point.z_norm = electrode_info['norms'][2]
+        starting_point.x = electrode_info["start_point"][0]
+        starting_point.y = electrode_info["start_point"][1]
+        starting_point.z = electrode_info["start_point"][2]
+        starting_point.x_norm = electrode_info["norms"][0]
+        starting_point.y_norm = electrode_info["norms"][1]
+        starting_point.z_norm = electrode_info["norms"][2]
         starting_point.electrode = self
         starting_point.save()
 
@@ -183,17 +236,15 @@ class Electrode(models.Model):
 
 class ElectrodeLog(BaseAction):
     electrode = models.ForeignKey(
-        Electrode, 
-        on_delete=models.SET_NULL, 
-        null=True,
-        blank=True,
+        Electrode, on_delete=models.SET_NULL, null=True, blank=True,
     )
     turn = models.FloatField(null=True, blank=True)
     impedance = models.FloatField(null=True, blank=True)
     notes = models.CharField(max_length=255, default="", blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    procedures = models.ManyToManyField('actions.ProcedureType', blank=True,
-                                        help_text="The procedure(s) performed")
+    procedures = models.ManyToManyField(
+        "actions.ProcedureType", blank=True, help_text="The procedure(s) performed"
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -203,15 +254,23 @@ class ElectrodeLog(BaseAction):
         location = {}
         if electrode:
             starting_point = electrode.starting_point.latest("updated")
-            location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
+            location = {
+                "x": starting_point.x,
+                "y": starting_point.y,
+                "z": starting_point.z,
+            }
             if self.turn:
-                distance = (self.turn / self.electrode.turns_per_mm)
+                distance = self.turn / self.electrode.turns_per_mm
                 location_list = starting_point.get_norms()
                 initial_position = starting_point.get_start_position()
                 for i in range(len(location_list)):
                     location_list[i] *= distance
                     location_list[i] += initial_position[i]
-                location = {"x": location_list[0], "y": location_list[1], "z": location_list[2]}
+                location = {
+                    "x": location_list[0],
+                    "y": location_list[1],
+                    "z": location_list[2],
+                }
         return location
 
     @property
@@ -220,7 +279,7 @@ class ElectrodeLog(BaseAction):
         return str(location)
 
 
-class StartingPoint(models.Model):
+class StartingPoint(BaseAction):
     electrode = models.ForeignKey(
         Electrode,
         on_delete=models.SET_NULL,
@@ -234,12 +293,12 @@ class StartingPoint(models.Model):
     x_norm = models.FloatField(null=True)
     y_norm = models.FloatField(null=True)
     z_norm = models.FloatField(null=True)
-    lab_member = models.ForeignKey(
-        LabMember, on_delete=models.SET_NULL, null=True, blank=True
-    )
     depth = models.FloatField(null=True, blank=True)
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     notes = models.CharField(max_length=255, default="", blank=True)
+    procedures = models.ManyToManyField(
+        "actions.ProcedureType", blank=True, help_text="The procedure(s) performed"
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -248,6 +307,7 @@ class StartingPoint(models.Model):
 
     def get_norms(self):
         return [self.x_norm, self.y_norm, self.z_norm]
+
 
 class STLFile(Dataset):
     stl_file = models.CharField(
@@ -263,7 +323,7 @@ class STLFile(Dataset):
     updated = models.DateTimeField(auto_now=True)
 
 
-class ChannelRecording(models.Model):
+class ChannelRecording(BaseModel):
     electrode = models.ForeignKey(
         Electrode, null=True, blank=True, on_delete=models.SET_NULL
     )

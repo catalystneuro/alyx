@@ -127,7 +127,7 @@ $(document).ready(function() {
     })
     
     get_dataset_types = () => {
-        $('select').on('change',function() {
+        $('#sessiontask_set-group select').on('change',function() {
             const task_id = $(this).val()
             dataset_type_select = $(this).parents('.field-task').siblings('.field-dataset_type')
             dataset_type_select_id = dataset_type_select.find('select')
@@ -159,7 +159,39 @@ $(document).ready(function() {
         $('.module:lt(1)').addClass("hidden");
         
     }
-    
+    $("#sessiontask_set-group .add-row a").on("click", function() {
+        task_sequence = $("#sessiontask_set-group .field-task_sequence").length - 1
+        $("#sessiontask_set-group .form-row:not(.empty-form) .field-task_sequence input").last().val(task_sequence)
+    })
+
+    $('#foodlog_set-group h2').append('<span class="btn btn-light"style="color:#fff; font-size: 9px;">  (This session is required)</span>')
+    const current_location = window.location.href
+    if (current_location.includes("buffalosession/add/?subject=")) {
+        $('#channelrecording_set-group h2').append(
+            '<a id="load-data" class="btn btn-light" href="#channelrecording_set-group" style="color:#fff;font-size: 10px;">  (CLICK to Load data)</a>'
+        )
+        const initial_data = $("#channelrecording_set-group .form-row select[readonly], #channelrecording_set-group .field-notes input[readonly]" )
+        initial_data.prop('disabled', true)
+        const new_data = $("#channelrecording_set-group  .empty-form select, #channelrecording_set-group .empty-form .field-notes input")
+        new_data.prop('disabled', false)
+        new_data.removeAttr('readonly')
+        
+        $("#load-data").on("click", function() {
+            if ($("#channelrecording_set-group .form-row select[readonly]").attr('disabled')) {
+                initial_data.prop('disabled', false)
+                $("#load-data").text("  (CLICK to Disable data)")
+            } else {
+                initial_data.prop('disabled', true)
+                new_data.prop('disabled', false)
+                $("#load-data").text("  (CLICK to Load data)")
+            }
+            
+        })
+
+        $("#channelrecording_set-group .add-row a").on("click", function() {
+            new_data.prop('disabled', false)
+        })
+    }
 });
 // HACK: date widget in local timezone.
 (function($){
@@ -167,10 +199,10 @@ $(document).ready(function() {
     today = moment(today).toISOString()
      $('#id_subject').change(function(){
         let subject = $("#id_subject option:selected").text()
-        $("#session_form #id_name").val("")
-        $("#session_form #id_name").val(today + "_" + subject)
+        $("#buffalosession_form #id_name").val("")
+        $("#buffalosession_form #id_name").val(today + "_" + subject)
     })
-    
+
   $(function(){
     document.body.setAttribute("data-admin-utc-offset", (new Date()).getTimezoneOffset() * -60);
   })
