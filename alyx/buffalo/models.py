@@ -216,7 +216,7 @@ class Electrode(BaseAction):
         location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
         return location
 
-    def create_new_starting_point_from_mat(self, electrode_info):
+    def create_new_starting_point_from_mat(self, electrode_info, subject):
         starting_point = StartingPoint()
         starting_point.x = electrode_info["start_point"][0]
         starting_point.y = electrode_info["start_point"][1]
@@ -225,6 +225,7 @@ class Electrode(BaseAction):
         starting_point.y_norm = electrode_info["norms"][1]
         starting_point.z_norm = electrode_info["norms"][2]
         starting_point.electrode = self
+        starting_point.subject = subject
         starting_point.save()
 
     def is_in_location(self, stl):
