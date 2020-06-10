@@ -211,13 +211,13 @@ class ElectrodeBulkLoadView(FormView):
                     channel_number=str(electrode_info['channel'])
                 ).first()
                 if electrode:
-                    electrode.create_new_starting_point_from_mat(electrode_info)
+                    electrode.create_new_starting_point_from_mat(electrode_info, subject)
                 else:
                     new_electrode = Electrode()
                     new_electrode.subject = subject
                     new_electrode.channel_number = str(electrode_info['channel'])
                     new_electrode.save()
-                    new_electrode.create_new_starting_point_from_mat(electrode_info)
+                    new_electrode.create_new_starting_point_from_mat(electrode_info, subject)
             messages.success(request, 'File loaded successful.')
             return self.form_valid(form)
         else:
