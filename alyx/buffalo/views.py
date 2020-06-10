@@ -11,6 +11,8 @@ from django.urls import reverse
 from django.http import JsonResponse
 from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib import messages
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
 from .utils import get_mat_file_info
 
 from actions.models import Session, Weighing
@@ -31,6 +33,7 @@ from .forms import (
     TaskForm,
     TaskVersionForm,
     ElectrodeBulkLoadForm,
+    PlotFilterForm,
 )
 
 
@@ -206,7 +209,8 @@ class ElectrodeBulkLoadView(FormView):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             # Create a new Starting point set
             starting_point_set = StartingPointSet()
-            starting_point_set.name = "Created in a bulk load - %s" % (datetime.now())
+            starting_point_set.name = "Bulk load - %s" % (datetime.datetime.now())
+            starting_point_set.subject = subject
             starting_point_set.save()
 
             if (not structure_name):
@@ -232,3 +236,21 @@ class ElectrodeBulkLoadView(FormView):
     
     def get_success_url(self):
         return reverse("admin:buffalo_buffalosubject_changelist")
+
+class PlotsView(View):
+    form_class = PlotFilterForm
+    template_name = 'buffalo/plots.html'
+
+    def get(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(subject_id=subject_id)
+        return render(request, self.template_name, {'form': form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST, subject_id=subject_id)
+        if form.is_valid():
+            print(form.cleaned_data)
+            return render(request, self.template_name, {'form': form})
+
+        return render(request, self.template_name, {'form': form})

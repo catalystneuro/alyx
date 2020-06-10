@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from django import forms
 import django.forms
 from django.forms import ModelForm
@@ -18,6 +18,8 @@ from .models import (
     FoodType,
     FoodLog,
     BuffaloSession,
+    STLFile,
+    StartingPointSet,
 )
 
 
@@ -239,4 +241,15 @@ class ElectrodeBulkLoadForm(forms.Form):
         else:
             subject = BuffaloSubject.objects.get(pk=subject_id)
             validate_mat_file(file, subject.nickname)
+
+class PlotFilterForm(forms.Form):
+    stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
+    starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
+    date = forms.DateField(widget=forms.SelectDateWidget())
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop('subject_id')
+        super(PlotFilterForm, self).__init__(*args, **kwargs)
+        self.fields['stl'].queryset = STLFile.objects.filter(subject=subject_id)
+        self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)
 

@@ -100,8 +100,12 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
         url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Set electrodes form")
 
+    def plots(self, obj):
+        url = reverse("plots", kwargs={"subject_id": obj.id})
+        return self.link(url, "View plots")
+
     def options(self, obj):
-        select = "{} {} {} {} {} {}"
+        select = "{} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
@@ -109,6 +113,7 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
             self.set_electrodes(obj),
             self.new_electrode_logs(obj),
             self.set_electrodes_file(obj),
+            self.plots(obj),
         )
         return format_html(select)
 
@@ -511,7 +516,7 @@ class StartingPointFormset(BaseInlineFormSet):
 class StartingPointInline(nested_admin.NestedTabularInline):
     model = StartingPoint
     formset = StartingPointFormset
-    fields = ("electrode", "x", "y", "z", "x_norm", "y_norm", "z_norm", "depth", "date_time", "notes")
+    fields = ("electrode", "x", "y", "z", "x_norm", "y_norm", "z_norm", "starting_point_set", "depth", "date_time", "notes")
     extra = 0
 
 
