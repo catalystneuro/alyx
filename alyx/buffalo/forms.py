@@ -91,7 +91,9 @@ class SubjectForm(ModelForm):
             "sex",
             "description",
         ]
-
+        widgets = {
+            "lab": forms.HiddenInput(),
+        }
 
 class SessionForm(ModelForm):
     name = forms.CharField(
@@ -105,7 +107,7 @@ class SessionForm(ModelForm):
     subject = forms.ModelChoiceField(
         queryset=BuffaloSubject.objects.all(), required=True
     )
-
+    
     class Meta:
         model = BuffaloSession
         fields = [
@@ -118,7 +120,9 @@ class SessionForm(ModelForm):
             "start_time",
             "end_time",
         ]
-
+        widgets = {
+            "lab": forms.HiddenInput(),
+        }
 
 class CustomModelChoiceField(django.forms.ModelChoiceField):
     """Subclasses Django's ModelChoiceField and adds one parameter, `obj_label`.

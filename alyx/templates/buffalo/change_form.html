@@ -8,7 +8,7 @@
 <div class="breadcrumbs">
 <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
 &rsaquo;
-<a href="/admin/{{ opts.app_label }}/{{ opts.model_name }}/">{{ opts.verbose_name_plural|capfirst }}</a>
+<a href="/{{ opts.app_label }}/{{ opts.model_name }}/">{{ opts.verbose_name_plural|capfirst }}</a>
 &rsaquo; {{ opts.model_name }}
 </div>
 {% endblock %}
