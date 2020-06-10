@@ -83,6 +83,10 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
     def add_session(self, obj):
         url = "/buffalo/buffalosession/add/?subject=" + str(obj.id)
         return self.link(url, "Add Session")
+    
+    def add_stl(self, obj):
+        url = "/buffalo/stlfile/add/?subject=" + str(obj.id)
+        return self.link(url, "Add STL file")
 
     def set_electrodes(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodesubject_change", args=[obj.id])
@@ -97,10 +101,11 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
         return self.link(url, "Set electrodes form")
 
     def options(self, obj):
-        select = "{} {} {} {} {}"
+        select = "{} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
+            self.add_stl(obj),
             self.set_electrodes(obj),
             self.new_electrode_logs(obj),
             self.set_electrodes_file(obj),
@@ -655,6 +660,15 @@ class BuffaloChannelRecording(admin.ModelAdmin):
 
 class BuffaloSTLFile(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
+
+    fields = ('stl_file', 'subject')
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super(BuffaloSTLFile, self).get_form(request, obj, **kwargs)
+        subject_id = request.GET.get('subject', None)
+        if subject_id:
+            form.base_fields['subject'].initial = subject_id
+        return form
 
 
 class BuffaloStartingPoint(admin.ModelAdmin):
