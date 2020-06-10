@@ -1,4 +1,5 @@
 import json
+import datetime
 
 from django.views.generic import (
     View,
@@ -24,6 +25,7 @@ from .models import (
     BuffaloSubject,
     Electrode,
     StartingPoint,
+    StartingPointSet,
 )
 from .forms import (
     TaskForm,
@@ -202,6 +204,11 @@ class ElectrodeBulkLoadView(FormView):
             structure_name = form.cleaned_data['structure_name']
             subject_id = form.cleaned_data['subject']
             subject = BuffaloSubject.objects.get(pk=subject_id)
+            # Create a new Starting point set
+            starting_point_set = StartingPointSet()
+            starting_point_set.name = "Created in a bulk load - %s" % (datetime.now())
+            starting_point_set.save()
+
             if (not structure_name):
                 structure_name = subject.nickname
             electrodes_info = get_mat_file_info(form.cleaned_data['file'], structure_name)
@@ -211,13 +218,13 @@ class ElectrodeBulkLoadView(FormView):
                     channel_number=str(electrode_info['channel'])
                 ).first()
                 if electrode:
-                    electrode.create_new_starting_point_from_mat(electrode_info, subject)
+                    electrode.create_new_starting_point_from_mat(electrode_info, subject, starting_point_set)
                 else:
                     new_electrode = Electrode()
                     new_electrode.subject = subject
                     new_electrode.channel_number = str(electrode_info['channel'])
                     new_electrode.save()
-                    new_electrode.create_new_starting_point_from_mat(electrode_info, subject)
+                    new_electrode.create_new_starting_point_from_mat(electrode_info, subject, starting_point_set)
             messages.success(request, 'File loaded successful.')
             return self.form_valid(form)
         else:
