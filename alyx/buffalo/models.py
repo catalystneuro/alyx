@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, FileExtensionValidator
 
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
@@ -308,10 +308,13 @@ class StartingPoint(BaseAction):
     def get_norms(self):
         return [self.x_norm, self.y_norm, self.z_norm]
 
+def stl_directory_path(instance, filename):
+    return 'stl/subject_{0}/{1}'.format(instance.subject.id, filename)
 
 class STLFile(Dataset):
-    stl_file = models.CharField(
-        max_length=1000, blank=True, help_text="Path to STL file"
+    stl_file = models.FileField(
+        upload_to=stl_directory_path,
+        validators=[FileExtensionValidator(['stl'])]
     )
     subject = models.ForeignKey(
         BuffaloSubject,
@@ -321,6 +324,13 @@ class STLFile(Dataset):
     )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        date = self.created_datetime.strftime('%d/%m/%Y at %H:%M')
+        return "<Dataset %s - %s created on %s>" % (
+            str(self.pk)[:8], 
+            self.subject.nickname,
+            date)
 
 
 class ChannelRecording(BaseModel):
