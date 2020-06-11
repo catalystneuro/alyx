@@ -257,28 +257,61 @@ class PlotsView(View):
         subject_id = self.kwargs["subject_id"]
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
-
+            electrodes = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
+            electrode_logs = ElectrodeLog.objects \
+                                .prefetch_related('electrode') \
+                                .filter(subject=subject_id) \
+                                .exclude(turn=None) \
+                                .filter(
+                                    date_time__year=form.cleaned_data["date"].year,
+                                    date_time__month=form.cleaned_data["date"].month,
+                                    date_time__day=form.cleaned_data["date"].day
+                                )
             mesh = trimesh.load(settings.UPLOADED_PATH + form.cleaned_data["stl"].stl_file.name)
             x_stl, y_stl, z_stl = mesh.vertices.T
             i, j, k = mesh.faces.T
 
-            electrodes = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
-            electrode_logs = ElectrodeLog.objects.prefetch_related('electrode').filter(subject=subject_id)
+            # Electrodes starting points data
             x = []
             y = []
             z = []
+            ht = []
             for electrode in electrodes:
                 sp = electrode.starting_point.latest("updated")
                 x.append(sp.x)
                 y.append(sp.y)
                 z.append(sp.z)
+                ht.append(electrode.channel_number)
+            # Electrode logs data
+            x_el = []
+            y_el = []
+            z_el = []
+            ht_el = []
+            for electrode_log in electrode_logs:
+                location = electrode_log.get_current_location()
+                x_el.append(location["x"])
+                y_el.append(location["y"])
+                z_el.append(location["z"])
+                ht_el.append(electrode_log.electrode.channel_number)
 
             fig = make_subplots()
             electrodes_trace = go.Scatter3d(
                 x=tuple(x),
                 y=tuple(y),
                 z=tuple(z),
-                mode='markers', hovertext=['1','2']
+                mode='markers',
+                marker= dict(size=4),
+                hovertext=ht,
+                name = "Starting points"
+            )
+            electrode_logs_trace = go.Scatter3d(
+                x=tuple(x_el),
+                y=tuple(y_el),
+                z=tuple(z_el),
+                mode='markers', 
+                marker= dict(color="darkred", size=4),
+                hovertext=ht_el,
+                name = "Electrode log position"
             )
             stl_trace = go.Mesh3d(
                 x=x_stl,
@@ -292,7 +325,12 @@ class PlotsView(View):
                 hoverinfo="skip"
             )
             fig.add_trace(stl_trace)
+            fig.add_trace(electrode_logs_trace)
             fig.add_trace(electrodes_trace)
+            fig.update_layout(
+                autosize=True,
+                height=900
+            )
 
             graph = opy.plot(fig, auto_open=False, output_type='div')
 

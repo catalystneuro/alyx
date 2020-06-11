@@ -243,13 +243,15 @@ class ElectrodeBulkLoadForm(forms.Form):
             validate_mat_file(file, subject.nickname)
 
 class PlotFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
     starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
-    date = forms.DateField(widget=forms.SelectDateWidget())
+    date = forms.DateField(initial=date.today)
 
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop('subject_id')
         super(PlotFilterForm, self).__init__(*args, **kwargs)
         self.fields['stl'].queryset = STLFile.objects.filter(subject=subject_id)
         self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)
-
