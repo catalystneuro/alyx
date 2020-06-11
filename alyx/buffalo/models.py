@@ -328,9 +328,12 @@ class STLFile(Dataset):
 
     def __str__(self):
         date = self.created_datetime.strftime('%d/%m/%Y at %H:%M')
+        name = "deleted"
+        if self.subject:
+            name = self.subject.nickname
         return "<Dataset %s - %s created on %s>" % (
             str(self.pk)[:8], 
-            self.subject.nickname,
+            name,
             date)
 
 
