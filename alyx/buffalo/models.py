@@ -232,7 +232,10 @@ class Electrode(BaseAction):
         return self.current_location in stl
 
     def __str__(self):
-        return f"{self.subject.nickname} - {self.channel_number}"
+        name = "deleted"
+        if self.subject:
+            name = self.subject.nickname
+        return f"{name} - {self.channel_number}"
 
 
 class ElectrodeLog(BaseAction):
