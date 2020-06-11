@@ -1,6 +1,11 @@
 import json
 import datetime
 
+from plotly.subplots import make_subplots
+import plotly.offline as opy
+import plotly.graph_objs as go
+import trimesh
+
 from django.views.generic import (
     View,
     CreateView,
@@ -13,6 +18,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
+from django.conf import settings
 from .utils import get_mat_file_info
 
 from actions.models import Session, Weighing
@@ -26,6 +32,7 @@ from .models import (
     BuffaloSession,
     BuffaloSubject,
     Electrode,
+    ElectrodeLog,
     StartingPoint,
     StartingPointSet,
 )
@@ -250,7 +257,45 @@ class PlotsView(View):
         subject_id = self.kwargs["subject_id"]
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
-            print(form.cleaned_data)
-            return render(request, self.template_name, {'form': form})
+
+            mesh = trimesh.load(settings.UPLOADED_PATH + form.cleaned_data["stl"].stl_file.name)
+            x_stl, y_stl, z_stl = mesh.vertices.T
+            i, j, k = mesh.faces.T
+
+            electrodes = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
+            electrode_logs = ElectrodeLog.objects.prefetch_related('electrode').filter(subject=subject_id)
+            x = []
+            y = []
+            z = []
+            for electrode in electrodes:
+                sp = electrode.starting_point.latest("updated")
+                x.append(sp.x)
+                y.append(sp.y)
+                z.append(sp.z)
+
+            fig = make_subplots()
+            electrodes_trace = go.Scatter3d(
+                x=tuple(x),
+                y=tuple(y),
+                z=tuple(z),
+                mode='markers', hovertext=['1','2']
+            )
+            stl_trace = go.Mesh3d(
+                x=x_stl,
+                y=y_stl,
+                z=z_stl,
+                i=i,
+                j=j,
+                k=k,
+                showscale=True,
+                opacity=.4,
+                hoverinfo="skip"
+            )
+            fig.add_trace(stl_trace)
+            fig.add_trace(electrodes_trace)
+
+            graph = opy.plot(fig, auto_open=False, output_type='div')
+
+            return render(request, self.template_name, {'form': form, 'graph': graph})
 
         return render(request, self.template_name, {'form': form})

@@ -24,8 +24,13 @@
                     {{ form.as_p }}
                     <input  class="btn btn-primary btn-sm submit-button"  type="submit" value="Submit">
                 </form>
-                
-            </div>
+                <div class="col-lg-4 offset-md-4 card card-body">
+                    {% if graph %}
+                    <div style="width:600;height:500">
+                    {{ graph|safe }}
+                    </div>
+                    {% endif %}
+                </div>
         </div>
     </div>
 {% endblock %}
