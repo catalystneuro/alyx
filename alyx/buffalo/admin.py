@@ -3,20 +3,21 @@ from datetime import datetime
 from django.contrib import admin
 from django import forms
 from django.forms import BaseInlineFormSet, ModelForm
-
+from django_admin_listfilter_dropdown.filters import (
+    RelatedDropdownFilter,
+    DropdownFilter,
+)
 from django.urls import reverse
 from django.utils.html import format_html
-
 from django.shortcuts import redirect
-
 from reversion.admin import VersionAdmin
-
 import nested_admin
 
 from subjects.models import Subject
 from actions.models import Session, Weighing
 from alyx.base import BaseAdmin
 from misc.models import Lab
+from alyx.base import DefaultListFilter
 from .models import (
     Task,
     TaskCategory,
@@ -259,6 +260,47 @@ class SessionFoodInline(admin.TabularInline):
     can_delete = False
 
 
+class SessionTaskListFilter(DefaultListFilter):
+    title = "Task"
+    parameter_name = "task"
+
+    def lookups(self, request, model_admin):
+        sessionsTasks = set([c.task for c in SessionTask.objects.all()])
+        return [("all", "All")] + [(c.id, c) for c in sessionsTasks]
+
+    def queryset(self, request, queryset):
+        if self.value() == "all":
+            return queryset.all()
+
+        elif self.value() is not None:
+            sessions = (
+                SessionTask.objects.filter(task=self.value())
+                .exclude(session=None)
+                .values_list("session")
+            )
+            return queryset.filter(id__in=sessions)
+        return queryset.all()
+
+
+class SessionTaskTrainingFilter(DefaultListFilter):
+    title = "Training"
+    parameter_name = "training"
+
+    def lookups(self, request, model_admin):
+        return [("all", "All"), ("training", "Training")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "all":
+            return queryset.all()
+        elif self.value() == "training":
+            sessions = (
+                SessionTask.objects.filter(task__training=True)
+                .exclude(session=None)
+                .values_list("session")
+            )
+            return queryset.filter(id__in=sessions)
+
+
 class BuffaloSessionAdmin(VersionAdmin, admin.ModelAdmin):
     form = SessionForm
     # change_list_template = "buffalo/change_list.html"
@@ -276,7 +318,13 @@ class BuffaloSessionAdmin(VersionAdmin, admin.ModelAdmin):
         "end_time",
     ]
     inlines = [SessionFoodInline, SessionTaskInline, ChannelRecordingInline]
-    ordering = ("-start_time",)
+    ordering = ("-updated",)
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+        ("start_time", DropdownFilter),
+        SessionTaskListFilter,
+        SessionTaskTrainingFilter,
+    ]
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloSessionAdmin, self).get_form(request, obj, **kwargs)
