@@ -22,7 +22,7 @@ NUMBER_OF_CELLS = [
     ("4", "2+ good cells"),
 ]
 
-RIPLES = [
+RIPPLES = [
     ("yes", "Yes"),
     ("no", "No"),
     ("maybe", "Maybe"),
@@ -327,7 +327,7 @@ class ChannelRecording(BaseModel):
     electrode = models.ForeignKey(
         Electrode, null=True, blank=True, on_delete=models.SET_NULL
     )
-    riples = models.CharField(max_length=180, choices=RIPLES, default="", blank=True)
+    ripples = models.CharField(max_length=180, choices=RIPPLES, default="", blank=True)
     notes = models.CharField(max_length=255, default="", blank=True)
     alive = models.CharField(max_length=180, choices=ALIVE, default="", blank=True)
     number_of_cells = models.CharField(

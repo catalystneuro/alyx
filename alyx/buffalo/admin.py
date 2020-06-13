@@ -119,7 +119,7 @@ class ChannelRecordingFormset(BaseInlineFormSet):
 class ChannelRecordingInline(admin.TabularInline):
     model = ChannelRecording
     formset = ChannelRecordingFormset
-    fields = ("electrode", "riples", "alive", "number_of_cells", "notes")
+    fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
     extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -355,7 +355,7 @@ class BuffaloSessionAdmin(VersionAdmin, admin.ModelAdmin):
                     initial.append(
                         {
                             "electrode": prev_channel.electrode,
-                            "riples": prev_channel.riples,
+                            "ripples": prev_channel.ripples,
                             "alive": prev_channel.alive,
                             "number_of_cells": prev_channel.number_of_cells,
                             "notes": prev_channel.notes,
