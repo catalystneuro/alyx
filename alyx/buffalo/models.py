@@ -183,8 +183,21 @@ class FoodLog(BaseModel):
         return food_detail
 
 
+class WeighingLog(Weighing):
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        str_weight = f"{self.weight} kg"
+        return str_weight
+
+
 class BuffaloSession(Session):
     dataset_type = models.ManyToManyField(DatasetType, blank=True)
+    needs_review = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

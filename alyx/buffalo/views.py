@@ -24,6 +24,7 @@ from .models import (
     BuffaloSubject,
     Electrode,
     StartingPoint,
+    WeighingLog,
 )
 from .forms import (
     TaskForm,
@@ -164,6 +165,7 @@ class SessionDetails(TemplateView):
         context = {
             "session": session,
             "session_users": session.users.all(),
+            "session_weightlog": WeighingLog.objects.filter(session=session_id).first(),
             "session_foodlog": FoodLog.objects.filter(session=session_id).first(),
             "session_dataset_types": session.dataset_type.all(),
             "session_tasks": session_tasks,

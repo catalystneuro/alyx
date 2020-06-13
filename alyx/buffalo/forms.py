@@ -5,9 +5,6 @@ from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
 from .utils import validate_mat_file
 
-from actions.models import Weighing
-
-
 from .models import (
     Task,
     SessionTask,
@@ -18,6 +15,7 @@ from .models import (
     FoodType,
     FoodLog,
     BuffaloSession,
+    WeighingLog
 )
 
 
@@ -154,18 +152,18 @@ class SessionTaskForm(ModelForm):
         ]
 
 
-class WeighingForm(forms.ModelForm):
+class SubjectWeighingForm(forms.ModelForm):
     subject = forms.ModelChoiceField(
         queryset=BuffaloSubject.objects.all(), required=False
     )
     weight = forms.FloatField(help_text="Weight in Kg")
 
     def __init__(self, *args, **kwargs):
-        super(WeighingForm, self).__init__(*args, **kwargs)
+        super(SubjectWeighingForm, self).__init__(*args, **kwargs)
         self.fields["weight"].widget.attrs = {"min": 0, "max": 35}
 
     class Meta:
-        model = Weighing
+        model = WeighingLog
         fields = ["subject", "date_time", "weight", "user"]
 
 
