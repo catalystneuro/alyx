@@ -15,7 +15,7 @@ from .models import (
     FoodType,
     FoodLog,
     BuffaloSession,
-    WeighingLog
+    WeighingLog,
 )
 
 
@@ -93,6 +93,7 @@ class SubjectForm(ModelForm):
             "lab": forms.HiddenInput(),
         }
 
+
 class SessionForm(ModelForm):
     name = forms.CharField(
         label="Session name",
@@ -105,7 +106,16 @@ class SessionForm(ModelForm):
     subject = forms.ModelChoiceField(
         queryset=BuffaloSubject.objects.all(), required=True
     )
-    
+
+    def clean(self):
+        cleaned_data = super().clean()
+        needs_review = cleaned_data.get("needs_review")
+        narrative = cleaned_data.get("narrative")
+        if needs_review and not narrative:
+            raise forms.ValidationError(
+                "This session needs review. Please add data to 'Narrative'."
+            )
+
     class Meta:
         model = BuffaloSession
         fields = [
@@ -114,6 +124,7 @@ class SessionForm(ModelForm):
             "users",
             "lab",
             "dataset_type",
+            "needs_review",
             "narrative",
             "start_time",
             "end_time",
@@ -121,6 +132,7 @@ class SessionForm(ModelForm):
         widgets = {
             "lab": forms.HiddenInput(),
         }
+
 
 class CustomModelChoiceField(django.forms.ModelChoiceField):
     """Subclasses Django's ModelChoiceField and adds one parameter, `obj_label`.
@@ -222,12 +234,12 @@ class FoodTypeForm(forms.ModelForm):
             "name",
             "unit",
         ]
+
+
 class ElectrodeBulkLoadForm(forms.Form):
-    file = forms.FileField(validators=[FileExtensionValidator(['mat'])])
+    file = forms.FileField(validators=[FileExtensionValidator(["mat"])])
     structure_name = forms.CharField(
-        label="Structure name",
-        required=False, 
-        max_length=250
+        label="Structure name", required=False, max_length=250
     )
     subject = forms.CharField(widget=forms.HiddenInput())
 
@@ -241,4 +253,3 @@ class ElectrodeBulkLoadForm(forms.Form):
         else:
             subject = BuffaloSubject.objects.get(pk=subject_id)
             validate_mat_file(file, subject.nickname)
-

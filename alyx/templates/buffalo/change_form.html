@@ -192,7 +192,23 @@ $(document).ready(function() {
             new_data.prop('disabled', false)
         })
     }
+    
+    make_narrative_required()
+    $("#id_needs_review").change(function() {
+         make_narrative_required()    
+    })
 });
+
+make_narrative_required = () => {
+    if ($("#id_needs_review").prop('checked')) {
+        $("#id_narrative").siblings("label").wrapInner("<strong class='wrapper'><strong />")
+        $("#id_narrative").parent('div').append('<div class="help narrative-help vLargeTextField">This field is now required</div>')
+    } else {
+        $("label strong").contents().unwrap()
+        $(".narrative-help").remove()
+    }
+}
+
 // HACK: date widget in local timezone.
 (function($){
     let today = new Date()

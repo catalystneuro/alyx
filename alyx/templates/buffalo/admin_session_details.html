@@ -34,18 +34,18 @@
         </ul>
     {% endblock %}
     <div class="col-sm-10 offset-md-1 subject-info">
-        <div class="col-sm-3">
+        <div class="col-sm-3" style="line-height: 20px;">
             <label><strong>Session </strong>{{session.name}}</label><br>
             <label><strong>Session start date </strong>{{session.start_time}}</label><br>
             <label><strong>Subject </strong>{{session.subject}}</label><br>
-            <label><strong>Food </strong>{{session_foodlog}}</label><br>
             <label>
                 <strong>Users </strong>
                 {% for user in session_users %}
                     {{user.username}}, 
                 {% endfor %}
             </label><br>
-            <label><strong>Narrative</strong>{{session.narrative}}</label><br>
+            <label><strong>Needs Review</strong> {{session.needs_review|yesno|title}}</label><br>
+            <label><strong>Narrative</strong> {{session.narrative}}</label><br>
         </div>
         <br><br>
     </div>
