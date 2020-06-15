@@ -1,5 +1,7 @@
 from scipy.io import loadmat
+import csv
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 
 def validate_mat_file(file, structure_name):
     if not file:
@@ -50,3 +52,28 @@ def get_mat_file_info(file, structure_name):
     mat_file = loadmat(file)
     electrodes = mat_file[structure_name].tolist()
     return get_electrodes_clean(electrodes)
+
+def download_csv_points_mesh(subject_name, date, electrode_logs, stl_file):
+    response = HttpResponse(content_type='text/csv')
+    filename = f"{subject_name}-{date}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response)
+    row = [
+        "Datetime",
+        "x",
+        "y",
+        "z",
+        "is in stl"
+    ]
+    for electrode_log in electrode_logs:
+        location = electrode_log.get_current_location()
+        is_in = electrode_log.is_in_stl(stl_file)
+        row = [
+            electrode_log.date_time,
+            location["x"],
+            location["y"],
+            location["z"],
+            is_in
+        ]
+        writer.writerow(row)
+    return response

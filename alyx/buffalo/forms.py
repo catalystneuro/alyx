@@ -264,6 +264,7 @@ class PlotFilterForm(forms.Form):
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
     starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
     date = forms.DateField(initial=date.today)
+    download_points = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop('subject_id')
