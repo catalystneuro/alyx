@@ -69,6 +69,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
     search_fields = [
         "nickname",
     ]
+    ordering = ("-updated",)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloSubjectAdmin, self).get_form(request, obj, **kwargs)
