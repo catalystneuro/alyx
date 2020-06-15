@@ -25,7 +25,7 @@
                     </a>
                 </li>
                 <li>
-                    <a href="/actions/weighing/add/?subject={{subject.id}}" class="addlink">
+                    <a href="/buffalo/weighinglog/add/?subject={{subject.id}}" class="addlink">
                         Add weighing
                     </a>
                 </li>
@@ -44,18 +44,17 @@
     {% endblock %}
 
     <div class="col-sm-10 offset-md-1 subject-info">
-        
-            <div class="col-sm-3">
-                <label><strong>Subject </strong> {{subject.nickname}}</label><br>
-                <label><strong>Responsible </strong>{{subject.responsible_user}}</label><br>
-                <label><strong>Birth Date </strong>{{subject.birth_date}}</label><br>
-                <label><strong>Sex </strong></label>{{subject.sex}}<br>
-                <label><strong>Death Date </strong>{{subject.death_date|default:""}}</label><br>
-                <label><strong>General Comments </strong> {{subject.general_comments}}</label><br><br>
-            </div>
+        <div class="col-sm-3" style="line-height: 20px;">
+            <label><strong>Subject </strong> {{subject.nickname}}</label><br>
+            <label><strong>Responsible </strong>{{subject.responsible_user}}</label><br>
+            <label><strong>Birth Date </strong>{{subject.birth_date}}</label><br>
+            <label><strong>Sex </strong></label>{{subject.sex}}<br>
+            <label><strong>Death Date </strong>{{subject.death_date|default:""}}</label><br>
+            <label><strong>General Comments </strong> {{subject.general_comments}}</label><br><br>
         </div>
+    </div>
     
-    <div class="col-lg-8  offset-md-2"" >
+    <div class="col-lg-8  offset-md-2" >
         <div class="col-lg-8  offset-md-2">
             <h5>Weight</h5>
             <table class="table table-striped">

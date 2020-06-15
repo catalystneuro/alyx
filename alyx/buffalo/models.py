@@ -22,7 +22,7 @@ NUMBER_OF_CELLS = [
     ("4", "2+ good cells"),
 ]
 
-RIPLES = [
+RIPPLES = [
     ("yes", "Yes"),
     ("no", "No"),
     ("maybe", "Maybe"),
@@ -136,6 +136,7 @@ class SessionTask(BaseModel):
         blank=True,
         help_text="Indicates the relative position of a task within the session it belongs to",
     )
+    needs_review = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -183,8 +184,21 @@ class FoodLog(BaseModel):
         return food_detail
 
 
+class WeighingLog(Weighing):
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        str_weight = f"{self.weight} kg"
+        return str_weight
+
+
 class BuffaloSession(Session):
     dataset_type = models.ManyToManyField(DatasetType, blank=True)
+    needs_review = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -344,7 +358,7 @@ class ChannelRecording(BaseModel):
     electrode = models.ForeignKey(
         Electrode, null=True, blank=True, on_delete=models.SET_NULL
     )
-    riples = models.CharField(max_length=180, choices=RIPLES, default="", blank=True)
+    ripples = models.CharField(max_length=180, choices=RIPPLES, default="", blank=True)
     notes = models.CharField(max_length=255, default="", blank=True)
     alive = models.CharField(max_length=180, choices=ALIVE, default="", blank=True)
     number_of_cells = models.CharField(
