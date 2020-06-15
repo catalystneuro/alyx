@@ -146,11 +146,28 @@ class SessionTaskFormset(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
         super(SessionTaskFormset, self).__init__(*args, **kwargs)
 
+    def clean(self):
+        super(SessionTaskFormset, self).clean()
+        for form in self.forms:
+            if form.cleaned_data.get("needs_review") and not form.cleaned_data.get(
+                "general_comments"
+            ):
+                raise forms.ValidationError(
+                    "A task needs review. Please add data to 'General Comments' for that task"
+                )
+
 
 class SessionTaskInline(admin.TabularInline):
     model = SessionTask
     formset = SessionTaskFormset
-    fields = ("task", "session", "task_sequence", "dataset_type", "general_comments")
+    fields = (
+        "task",
+        "session",
+        "task_sequence",
+        "dataset_type",
+        "needs_review",
+        "general_comments",
+    )
     extra = 0
 
 

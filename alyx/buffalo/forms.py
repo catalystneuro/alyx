@@ -159,6 +159,7 @@ class SessionTaskForm(ModelForm):
             "session",
             "date_time",
             "dataset_type",
+            "needs_review",
             "general_comments",
             "task_sequence",
         ]
