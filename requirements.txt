@@ -29,3 +29,4 @@ django-nested-admin
 scipy
 plotly
 trimesh
+django-cleanup
