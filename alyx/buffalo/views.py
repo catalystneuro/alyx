@@ -277,7 +277,8 @@ class PlotsView(View):
             if form.cleaned_data["download_points"]:
                 return download_csv_points_mesh(
                     subject.nickname,
-                    form.cleaned_data["date"], 
+                    form.cleaned_data["date"],
+                    electrodes,
                     electrode_logs,
                     slt_file_name
                 )
