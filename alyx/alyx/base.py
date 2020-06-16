@@ -242,7 +242,7 @@ def _get_category_list(app_list):
         #"Tasks",
         "Food logs",
         "Food types",
-        "Weighings",
+        "Weighing logs",
         "Electrode logs",
         "Starting points",
         "Channel recordings",
