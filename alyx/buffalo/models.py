@@ -22,7 +22,7 @@ NUMBER_OF_CELLS = [
     ("4", "2+ good cells"),
 ]
 
-RIPLES = [
+RIPPLES = [
     ("yes", "Yes"),
     ("no", "No"),
     ("maybe", "Maybe"),
@@ -136,6 +136,7 @@ class SessionTask(BaseModel):
         blank=True,
         help_text="Indicates the relative position of a task within the session it belongs to",
     )
+    needs_review = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -183,8 +184,21 @@ class FoodLog(BaseModel):
         return food_detail
 
 
+class WeighingLog(Weighing):
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        str_weight = f"{self.weight} kg"
+        return str_weight
+
+
 class BuffaloSession(Session):
     dataset_type = models.ManyToManyField(DatasetType, blank=True)
+    needs_review = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -216,7 +230,7 @@ class Electrode(BaseAction):
         location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
         return location
 
-    def create_new_starting_point_from_mat(self, electrode_info, subject):
+    def create_new_starting_point_from_mat(self, electrode_info, subject, starting_point_set):
         starting_point = StartingPoint()
         starting_point.x = electrode_info["start_point"][0]
         starting_point.y = electrode_info["start_point"][1]
@@ -226,6 +240,7 @@ class Electrode(BaseAction):
         starting_point.z_norm = electrode_info["norms"][2]
         starting_point.electrode = self
         starting_point.subject = subject
+        starting_point.starting_point_set = starting_point_set
         starting_point.save()
 
     def is_in_location(self, stl):
@@ -282,6 +297,19 @@ class ElectrodeLog(BaseAction):
         location = self.get_current_location()
         return str(location)
 
+class StartingPointSet(BaseModel):
+    name = models.CharField(max_length=255, default="", blank=True)
+    subject = models.ForeignKey(
+        BuffaloSubject,
+        null=True,
+        on_delete=models.SET_NULL,
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
 
 class StartingPoint(BaseAction):
     electrode = models.ForeignKey(
@@ -302,6 +330,13 @@ class StartingPoint(BaseAction):
     notes = models.CharField(max_length=255, default="", blank=True)
     procedures = models.ManyToManyField(
         "actions.ProcedureType", blank=True, help_text="The procedure(s) performed"
+    )
+    starting_point_set = models.ForeignKey(
+        StartingPointSet,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="starting_point",
     )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -344,7 +379,7 @@ class ChannelRecording(BaseModel):
     electrode = models.ForeignKey(
         Electrode, null=True, blank=True, on_delete=models.SET_NULL
     )
-    riples = models.CharField(max_length=180, choices=RIPLES, default="", blank=True)
+    ripples = models.CharField(max_length=180, choices=RIPPLES, default="", blank=True)
     notes = models.CharField(max_length=255, default="", blank=True)
     alive = models.CharField(max_length=180, choices=ALIVE, default="", blank=True)
     number_of_cells = models.CharField(

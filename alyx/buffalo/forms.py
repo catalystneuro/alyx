@@ -1,12 +1,9 @@
-from datetime import datetime
+from datetime import datetime, date
 from django import forms
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
 from .utils import validate_mat_file
-
-from actions.models import Weighing
-
 
 from .models import (
     Task,
@@ -18,6 +15,9 @@ from .models import (
     FoodType,
     FoodLog,
     BuffaloSession,
+    WeighingLog,
+    STLFile,
+    StartingPointSet,
 )
 
 
@@ -91,6 +91,9 @@ class SubjectForm(ModelForm):
             "sex",
             "description",
         ]
+        widgets = {
+            "lab": forms.HiddenInput(),
+        }
 
 
 class SessionForm(ModelForm):
@@ -106,6 +109,15 @@ class SessionForm(ModelForm):
         queryset=BuffaloSubject.objects.all(), required=True
     )
 
+    def clean(self):
+        cleaned_data = super().clean()
+        needs_review = cleaned_data.get("needs_review")
+        narrative = cleaned_data.get("narrative")
+        if needs_review and not narrative:
+            raise forms.ValidationError(
+                "This session needs review. Please add data to 'Narrative'."
+            )
+
     class Meta:
         model = BuffaloSession
         fields = [
@@ -114,10 +126,14 @@ class SessionForm(ModelForm):
             "users",
             "lab",
             "dataset_type",
+            "needs_review",
             "narrative",
             "start_time",
             "end_time",
         ]
+        widgets = {
+            "lab": forms.HiddenInput(),
+        }
 
 
 class CustomModelChoiceField(django.forms.ModelChoiceField):
@@ -145,23 +161,24 @@ class SessionTaskForm(ModelForm):
             "session",
             "date_time",
             "dataset_type",
+            "needs_review",
             "general_comments",
             "task_sequence",
         ]
 
 
-class WeighingForm(forms.ModelForm):
+class SubjectWeighingForm(forms.ModelForm):
     subject = forms.ModelChoiceField(
         queryset=BuffaloSubject.objects.all(), required=False
     )
     weight = forms.FloatField(help_text="Weight in Kg")
 
     def __init__(self, *args, **kwargs):
-        super(WeighingForm, self).__init__(*args, **kwargs)
+        super(SubjectWeighingForm, self).__init__(*args, **kwargs)
         self.fields["weight"].widget.attrs = {"min": 0, "max": 35}
 
     class Meta:
-        model = Weighing
+        model = WeighingLog
         fields = ["subject", "date_time", "weight", "user"]
 
 
@@ -220,12 +237,12 @@ class FoodTypeForm(forms.ModelForm):
             "name",
             "unit",
         ]
+
+
 class ElectrodeBulkLoadForm(forms.Form):
-    file = forms.FileField(validators=[FileExtensionValidator(['mat'])])
+    file = forms.FileField(validators=[FileExtensionValidator(["mat"])])
     structure_name = forms.CharField(
-        label="Structure name",
-        required=False, 
-        max_length=250
+        label="Structure name", required=False, max_length=250
     )
     subject = forms.CharField(widget=forms.HiddenInput())
 
@@ -240,3 +257,16 @@ class ElectrodeBulkLoadForm(forms.Form):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             validate_mat_file(file, subject.nickname)
 
+class PlotFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+
+    stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
+    starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
+    date = forms.DateField(initial=date.today)
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop('subject_id')
+        super(PlotFilterForm, self).__init__(*args, **kwargs)
+        self.fields['stl'].queryset = STLFile.objects.filter(subject=subject_id)
+        self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)

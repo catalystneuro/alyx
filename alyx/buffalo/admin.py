@@ -3,18 +3,21 @@ from datetime import datetime
 from django.contrib import admin
 from django import forms
 from django.forms import BaseInlineFormSet, ModelForm
-
+from django_admin_listfilter_dropdown.filters import (
+    RelatedDropdownFilter,
+    DropdownFilter,
+)
 from django.urls import reverse
 from django.utils.html import format_html
-
 from django.shortcuts import redirect
-
+from reversion.admin import VersionAdmin
 import nested_admin
 
 from subjects.models import Subject
 from actions.models import Session, Weighing
 from alyx.base import BaseAdmin
 from misc.models import Lab
+from alyx.base import DefaultListFilter
 from .models import (
     Task,
     TaskCategory,
@@ -34,9 +37,10 @@ from .models import (
     Platform,
     FoodLog,
     BuffaloSession,
+    WeighingLog,
 )
 from .forms import (
-    WeighingForm,
+    SubjectWeighingForm,
     SessionTaskForm,
     TaskForm,
     SubjectFoodLog,
@@ -49,7 +53,7 @@ from .forms import (
 )
 
 
-class BuffaloSubjectAdmin(admin.ModelAdmin):
+class BuffaloSubjectAdmin(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     form = SubjectForm
 
@@ -95,13 +99,17 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
     def new_electrode_logs(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.id])
         return self.link(url, "New electrode logs")
-    
+
     def set_electrodes_file(self, obj):
         url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Set electrodes form")
 
+    def plots(self, obj):
+        url = reverse("plots", kwargs={"subject_id": obj.id})
+        return self.link(url, "View plots")
+
     def options(self, obj):
-        select = "{} {} {} {} {} {}"
+        select = "{} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
@@ -109,6 +117,7 @@ class BuffaloSubjectAdmin(admin.ModelAdmin):
             self.set_electrodes(obj),
             self.new_electrode_logs(obj),
             self.set_electrodes_file(obj),
+            self.plots(obj),
         )
         return format_html(select)
 
@@ -121,7 +130,7 @@ class ChannelRecordingFormset(BaseInlineFormSet):
 class ChannelRecordingInline(admin.TabularInline):
     model = ChannelRecording
     formset = ChannelRecordingFormset
-    fields = ("electrode", "riples", "alive", "number_of_cells", "notes")
+    fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
     extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -147,11 +156,28 @@ class SessionTaskFormset(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
         super(SessionTaskFormset, self).__init__(*args, **kwargs)
 
+    def clean(self):
+        super(SessionTaskFormset, self).clean()
+        for form in self.forms:
+            if form.cleaned_data.get("needs_review") and not form.cleaned_data.get(
+                "general_comments"
+            ):
+                raise forms.ValidationError(
+                    "A task needs review. Please add data to 'General Comments' for that task"
+                )
+
 
 class SessionTaskInline(admin.TabularInline):
     model = SessionTask
     formset = SessionTaskFormset
-    fields = ("task", "session", "task_sequence", "dataset_type", "general_comments")
+    fields = (
+        "task",
+        "session",
+        "task_sequence",
+        "dataset_type",
+        "needs_review",
+        "general_comments",
+    )
     extra = 0
 
 
@@ -172,7 +198,7 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
             subject = request.GET.get("subject", None)
             if db_field.name == "electrode" and subject is not None:
-                
+
                 try:
                     kwargs["queryset"] = Electrode.objects.filter(subject=subject)
                 except KeyError:
@@ -190,13 +216,13 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
 
         model = ChannelRecording
         extra = num_forms
-        fields = ("electrode", "riples", "alive", "number_of_cells", "notes")
+        fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
         formset = AddChannelRecordingFormset
 
     return AddChannelRecordingInline
 
 
-class BuffaloSubjectFood(admin.ModelAdmin):
+class BuffaloSubjectFood(BaseAdmin):
     form = SubjectFoodLog
     change_form_template = "buffalo/change_form.html"
     list_display = ["subject", "session_", "amount", "date_time"]
@@ -228,15 +254,24 @@ class BuffaloSubjectFood(admin.ModelAdmin):
             self.source = ""
         return response
 
+    def has_delete_permission(self, request, obj=None):
+        try:
+            if obj.session is not None or obj.subject is not None:
+                return False
+        except:
+            return True
 
-class AlwaysChangedFoodForm(ModelForm):
-    def has_changed(self):
-        """ Should returns True if data differs from initial.
-        By always returning true even unchanged inlines will get validated and saved."""
-        return True
+    def has_change_permission(self, request, obj=None):
+        try:
+            if obj.session is not None or obj.subject is not None:
+                return False
+        except:
+            return True
 
+
+class SessionFoodForm(ModelForm):
     def __init__(self, *args, **kwargs):
-        super(AlwaysChangedFoodForm, self).__init__(*args, **kwargs)
+        super(SessionFoodForm, self).__init__(*args, **kwargs)
         self.fields["food"].required = True
         self.fields["food"].help_text = "This fiels is required"
         self.fields["amount"].required = True
@@ -246,16 +281,74 @@ class AlwaysChangedFoodForm(ModelForm):
 
 class SessionFoodInline(admin.TabularInline):
     model = FoodLog
-    form = AlwaysChangedFoodForm
+    form = SessionFoodForm
     fields = ("session", "food", "amount")
     extra = 0
     min_num = 1
     can_delete = False
 
 
-class BuffaloSessionAdmin(admin.ModelAdmin):
+class SessionWeighingForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(SessionWeighingForm, self).__init__(*args, **kwargs)
+        self.fields["weight"].required = False
+        self.fields["weight"].widget.attrs = {"min": 0, "max": 35}
+        self.fields["weight"].help_text = "Weight in Kg"
+
+
+class SessionWeighingInline(admin.TabularInline):
+    model = WeighingLog
+    form = SessionWeighingForm
+    fields = ("session", "weight")
+    min_num = 1
+    max_num = 1
+    can_delete = False
+
+
+class SessionTaskListFilter(DefaultListFilter):
+    title = "Task"
+    parameter_name = "task"
+
+    def lookups(self, request, model_admin):
+        sessionsTasks = set([c.task for c in SessionTask.objects.all()])
+        return [("all", "All")] + [(c.id, c) for c in sessionsTasks]
+
+    def queryset(self, request, queryset):
+        if self.value() == "all":
+            return queryset.all()
+
+        elif self.value() is not None:
+            sessions = (
+                SessionTask.objects.filter(task=self.value())
+                .exclude(session=None)
+                .values_list("session")
+            )
+            return queryset.filter(id__in=sessions)
+        return queryset.all()
+
+
+class SessionTaskTrainingFilter(DefaultListFilter):
+    title = "Training"
+    parameter_name = "training"
+
+    def lookups(self, request, model_admin):
+        return [("all", "All"), ("training", "Training")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "all":
+            return queryset.all()
+        elif self.value() == "training":
+            sessions = (
+                SessionTask.objects.filter(task__training=True)
+                .exclude(session=None)
+                .values_list("session")
+            )
+            return queryset.filter(id__in=sessions)
+
+
+class BuffaloSessionAdmin(VersionAdmin, admin.ModelAdmin):
     form = SessionForm
-    change_list_template = "buffalo/change_list.html"
+    # change_list_template = "buffalo/change_list.html"
     change_form_template = "buffalo/change_form.html"
     source = ""
     extra = 0
@@ -269,8 +362,19 @@ class BuffaloSessionAdmin(admin.ModelAdmin):
         "start_time",
         "end_time",
     ]
-    inlines = [SessionFoodInline, SessionTaskInline, ChannelRecordingInline]
-    ordering = ("-start_time",)
+    inlines = [
+        SessionWeighingInline,
+        SessionFoodInline,
+        SessionTaskInline,
+        ChannelRecordingInline,
+    ]
+    ordering = ("-updated",)
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+        ("start_time", DropdownFilter),
+        SessionTaskListFilter,
+        SessionTaskTrainingFilter,
+    ]
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloSessionAdmin, self).get_form(request, obj, **kwargs)
@@ -283,6 +387,7 @@ class BuffaloSessionAdmin(admin.ModelAdmin):
             subject = BuffaloSubject.objects.get(pk=subject)
             session_name = f"{datetime.today().isoformat()}_{subject.nicknamesafe()}"
             form.base_fields["name"].initial = session_name
+            form.base_fields["subject"].initial = subject
         return form
 
     def get_inline_instances(self, request, obj=None):
@@ -300,13 +405,14 @@ class BuffaloSessionAdmin(admin.ModelAdmin):
                     initial.append(
                         {
                             "electrode": prev_channel.electrode,
-                            "riples": prev_channel.riples,
+                            "ripples": prev_channel.ripples,
                             "alive": prev_channel.alive,
                             "number_of_cells": prev_channel.number_of_cells,
                             "notes": prev_channel.notes,
                         }
                     )
                 inlines = [
+                    SessionWeighingInline,
                     SessionFoodInline,
                     SessionTaskInline,
                     TemplateInitialDataAddChannelRecording(initial, len(initial)),
@@ -365,6 +471,8 @@ class BuffaloSessionAdmin(admin.ModelAdmin):
             obj.delete()
 
         for instance in instances:
+            if isinstance(instance, WeighingLog):
+                instance.subject = form.instance.subject
             if isinstance(instance, ChannelRecording):
                 if instance.electrode is not None:
                     instance.save()
@@ -375,7 +483,7 @@ class BuffaloSessionAdmin(admin.ModelAdmin):
 
 
 class BuffaloWeight(BaseAdmin):
-    form = WeighingForm
+    form = SubjectWeighingForm
     change_form_template = "buffalo/change_form.html"
     source = ""
 
@@ -385,6 +493,7 @@ class BuffaloWeight(BaseAdmin):
         "user",
         "date_time",
     ]
+    ordering = ("-updated",)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloWeight, self).get_form(request, obj, **kwargs)
@@ -414,8 +523,19 @@ class BuffaloWeight(BaseAdmin):
             self.source = ""
         return response
 
+    def has_change_permission(self, request, obj=None):
+        if obj is not None and obj.session is not None:
+            return False
 
-class BuffaloSessionTask(admin.ModelAdmin):
+        return True
+
+    def has_delete_permission(self, request, obj=None):
+        if obj is not None and obj.session is not None:
+            return False
+        return True
+
+
+class BuffaloSessionTask(BaseAdmin):
     form = SessionTaskForm
     change_form_template = "buffalo/change_form.html"
 
@@ -460,7 +580,7 @@ class BuffaloSessionTask(admin.ModelAdmin):
         return False
 
 
-class BuffaloTask(admin.ModelAdmin):
+class BuffaloTask(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     form = TaskForm
     list_display = [
@@ -492,6 +612,22 @@ class BuffaloTask(admin.ModelAdmin):
     def dataset_type_name(self, obj):
         return "\n".join([d.name for d in obj.dataset_type.all()])
 
+    def has_delete_permission(self, request, obj=None):
+        if "buffalosession/add/" in request.path:
+            return False
+        if "buffalo/task" in request.path:
+            try:
+                task = SessionTask.objects.filter(
+                    task=request.resolver_match.kwargs["object_id"]
+                ).exists()
+
+                if task:
+                    return False
+            except KeyError:
+                pass
+
+        return True
+
     def save_model(self, request, obj, form, change):
         if change is False and obj.first_version is True:
             obj.version = "1"
@@ -511,7 +647,7 @@ class StartingPointFormset(BaseInlineFormSet):
 class StartingPointInline(nested_admin.NestedTabularInline):
     model = StartingPoint
     formset = StartingPointFormset
-    fields = ("electrode", "x", "y", "z", "x_norm", "y_norm", "z_norm", "depth", "date_time", "notes")
+    fields = ("electrode", "x", "y", "z", "x_norm", "y_norm", "z_norm", "starting_point_set", "depth", "date_time", "notes")
     extra = 0
 
 
@@ -573,8 +709,11 @@ def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
                     *args, **kwargs
                 )
                 for form in self:
-                    form.fields["electrode"].queryset = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
-
+                    form.fields[
+                        "electrode"
+                    ].queryset = Electrode.objects.prefetch_related("subject").filter(
+                        subject=subject_id
+                    )
 
         model = ElectrodeLog
         extra = num_forms
@@ -629,7 +768,14 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
     form = ElectrodeForm
-    list_display = ["subject", "electrode", "turn", "impedance", "current_location", "date_time"]
+    list_display = [
+        "subject",
+        "electrode",
+        "turn",
+        "impedance",
+        "current_location",
+        "date_time",
+    ]
     fields = ("subject", "electrode", "turn", "impedance", "date_time", "notes")
     search_fields = [
         "subject__nickname",
@@ -637,7 +783,7 @@ class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
     ordering = ["-date_time"]
 
 
-class BuffaloChannelRecording(admin.ModelAdmin):
+class BuffaloChannelRecording(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     list_display = [
         "subject_recorded",
@@ -658,7 +804,7 @@ class BuffaloChannelRecording(admin.ModelAdmin):
         return session.subject
 
 
-class BuffaloSTLFile(admin.ModelAdmin):
+class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
 
     fields = ('stl_file', 'subject')
@@ -675,12 +821,12 @@ class BuffaloStartingPoint(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
 
 
-class BuffaloCategory(admin.ModelAdmin):
+class BuffaloCategory(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     form = TaskCategoryForm
 
 
-class FoodTypeAdmin(admin.ModelAdmin):
+class FoodTypeAdmin(BaseAdmin):
     form = FoodTypeForm
 
     def has_delete_permission(self, request, obj=None):
@@ -694,7 +840,7 @@ admin.site.register(BuffaloElectrodeSubject, BuffaloElectrodeSubjectAdmin)
 admin.site.register(BuffaloElectrodeLogSubject, BuffaloElectrodeLogSubjectAdmin)
 admin.site.register(ElectrodeLog, BuffaloElectrodeLogAdmin)
 admin.site.register(BuffaloSession, BuffaloSessionAdmin)
-admin.site.register(Weighing, BuffaloWeight)
+admin.site.register(WeighingLog, BuffaloWeight)
 admin.site.register(SessionTask, BuffaloSessionTask)
 admin.site.register(Task, BuffaloTask)
 admin.site.register(FoodLog, BuffaloSubjectFood)

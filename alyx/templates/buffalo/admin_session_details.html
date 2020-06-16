@@ -9,7 +9,7 @@
     <div class="breadcrumbs">
         <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
 
-&rsaquo; <a href="/admin/buffalo/buffalosession">{% trans 'Sessions' %}</a>
+&rsaquo; <a href="/buffalo/buffalosession">{% trans 'Sessions' %}</a>
 
 </div>
 {% endblock breadcrumbs %}
@@ -34,21 +34,38 @@
         </ul>
     {% endblock %}
     <div class="col-sm-10 offset-md-1 subject-info">
-        <div class="col-sm-3">
+        <div class="col-sm-3" style="line-height: 20px;">
             <label><strong>Session </strong>{{session.name}}</label><br>
             <label><strong>Session start date </strong>{{session.start_time}}</label><br>
             <label><strong>Subject </strong>{{session.subject}}</label><br>
-            <label><strong>Food </strong>{{session_foodlog}}</label><br>
             <label>
                 <strong>Users </strong>
                 {% for user in session_users %}
                     {{user.username}}, 
                 {% endfor %}
             </label><br>
-            <label><strong>Narrative</strong>{{session.narrative}}</label><br>
+            <label><strong>Needs Review</strong> {{session.needs_review|yesno|title}}</label><br>
+            <label><strong>Narrative</strong> {{session.narrative}}</label><br>
         </div>
         <br><br>
     </div>
+    <div class="col-lg-10  offset-md-1">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr class="d-flex">
+                        <th class="session-task-fields col-2" scope="col">Weight Log</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="d-flex">
+                        <td class="col-sm-2">{{session_weightlog}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <br><br>
     <div class="col-lg-10  offset-md-1">
         <div class="table-responsive">
             <table class="table table-striped">
@@ -97,6 +114,7 @@
                             <th class="session-task-fields col-2" scope="col">Session Task</th>
                             <th class="session-task-fields col-1" scope="col">Task Version</th>
                             <th class="session-task-fields col-1" scope="col">Task Sequence</th>
+                            <th class="session-task-fields col-3" scope="col">Needs review</th>
                             <th class="session-task-fields col-3" scope="col">Task Comments</th>
                             <th class="session-task-fields col-2" scope="col">Task Datetime (run)</th>
                             <th class="session-task-fields col-3" scope="col">File Name</th>
@@ -108,6 +126,7 @@
                                 <td class="col-sm-2">{{session_task.task__name }}</td>
                                 <td class="col-sm-1">{{session_task.task__version}}</td>
                                 <td class="col-sm-1">{{session_task.task_sequence}}</td>
+                                <td class="col-sm-3">{{session_task.needs_review|yesno|title}}</td>
                                 <td class="col-sm-3">{{session_task.general_comments}}</td>
                                 <td class="col-sm-2">{{session_task.date_time|default:""}}</td>
                                 {% for s in session_task_dataset_type.items %}
@@ -152,7 +171,7 @@
                             {% if channel_recording %}
                                 <tr class="d-flex">
                                     <td class="col-sm-1">{{channel_recording.electrode.channel_number}}</td>
-                                    <td class="col-sm-1">{{channel_recording.riples}}</td>
+                                    <td class="col-sm-1">{{channel_recording.ripples}}</td>
                                     <td class="col-sm-1">{{channel_recording.alive}}</td>
                                     <td class="col-sm-3">{{channel_recording.number_of_cells}}</td>
                                     <td class="col-sm-3">{{channel_recording.notes}}</td>

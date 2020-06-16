@@ -1,4 +1,10 @@
 import json
+import datetime
+
+from plotly.subplots import make_subplots
+import plotly.offline as opy
+import plotly.graph_objs as go
+import trimesh
 
 from django.views.generic import (
     View,
@@ -10,6 +16,9 @@ from django.urls import reverse
 from django.http import JsonResponse
 from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib import messages
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
+from django.conf import settings
 from .utils import get_mat_file_info
 
 from actions.models import Session, Weighing
@@ -23,12 +32,16 @@ from .models import (
     BuffaloSession,
     BuffaloSubject,
     Electrode,
+    ElectrodeLog,
     StartingPoint,
+    WeighingLog,
+    StartingPointSet,
 )
 from .forms import (
     TaskForm,
     TaskVersionForm,
     ElectrodeBulkLoadForm,
+    PlotFilterForm,
 )
 
 
@@ -109,7 +122,8 @@ class SubjectDetailView(TemplateView):
     def get(self, request, *args, **kwargs):
         subject_id = self.kwargs["subject_id"]
         context = {
-            "subject": Subject.objects.get(pk=subject_id),
+            "subject": BuffaloSubject.objects.get(pk=subject_id),
+            
             "sessions": Session.objects.filter(subject=subject_id).order_by(
                 "-start_time"
             ),
@@ -137,6 +151,7 @@ class SessionDetails(TemplateView):
                 "session__name",
                 "session__start_time",
                 "date_time",
+                "needs_review",
                 "general_comments",
                 "task_sequence",
                 "dataset_type__name",
@@ -164,6 +179,7 @@ class SessionDetails(TemplateView):
         context = {
             "session": session,
             "session_users": session.users.all(),
+            "session_weightlog": WeighingLog.objects.filter(session=session_id).first(),
             "session_foodlog": FoodLog.objects.filter(session=session_id).first(),
             "session_dataset_types": session.dataset_type.all(),
             "session_tasks": session_tasks,
@@ -181,47 +197,147 @@ class getTaskDatasetType(View):
             task = Task.objects.filter(id=task_id).values("dataset_type__id")
             data = json.dumps(list(task), cls=DjangoJSONEncoder)
             return JsonResponse({"task_dataset_type": data}, status=200)
-            
+
+
 class ElectrodeBulkLoadView(FormView):
     form_class = ElectrodeBulkLoadForm
     template_name = "buffalo/electrode_bulk_load.html"
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        subject_id = self.kwargs.pop('subject_id', None)
+        subject_id = self.kwargs.pop("subject_id", None)
         if subject_id:
-            kwargs['initial'] = {
-                "subject": subject_id
-            }
+            kwargs["initial"] = {"subject": subject_id}
         return kwargs
 
     def post(self, request, *args, **kwargs):
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         if form.is_valid():
-            structure_name = form.cleaned_data['structure_name']
-            subject_id = form.cleaned_data['subject']
+            structure_name = form.cleaned_data["structure_name"]
+            subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
+            # Create a new Starting point set
+            starting_point_set = StartingPointSet()
+            starting_point_set.name = "Bulk load - %s" % (datetime.datetime.now())
+            starting_point_set.subject = subject
+            starting_point_set.save()
+
             if (not structure_name):
                 structure_name = subject.nickname
-            electrodes_info = get_mat_file_info(form.cleaned_data['file'], structure_name)
+            electrodes_info = get_mat_file_info(
+                form.cleaned_data["file"], structure_name
+            )
             for electrode_info in electrodes_info:
                 electrode = Electrode.objects.filter(
-                    subject=subject_id,
-                    channel_number=str(electrode_info['channel'])
+                    subject=subject_id, channel_number=str(electrode_info["channel"])
                 ).first()
                 if electrode:
-                    electrode.create_new_starting_point_from_mat(electrode_info, subject)
+                    electrode.create_new_starting_point_from_mat(electrode_info, subject, starting_point_set)
                 else:
                     new_electrode = Electrode()
                     new_electrode.subject = subject
-                    new_electrode.channel_number = str(electrode_info['channel'])
+                    new_electrode.channel_number = str(electrode_info["channel"])
                     new_electrode.save()
-                    new_electrode.create_new_starting_point_from_mat(electrode_info, subject)
+                    new_electrode.create_new_starting_point_from_mat(electrode_info, subject, starting_point_set)
             messages.success(request, 'File loaded successful.')
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
-    
+
     def get_success_url(self):
         return reverse("admin:buffalo_buffalosubject_changelist")
+
+class PlotsView(View):
+    form_class = PlotFilterForm
+    template_name = 'buffalo/plots.html'
+
+    def get(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(subject_id=subject_id)
+        return render(request, self.template_name, {'form': form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST, subject_id=subject_id)
+        if form.is_valid():
+            electrodes = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
+            electrode_logs = ElectrodeLog.objects \
+                                .prefetch_related('electrode') \
+                                .filter(subject=subject_id) \
+                                .exclude(turn=None) \
+                                .filter(
+                                    date_time__year=form.cleaned_data["date"].year,
+                                    date_time__month=form.cleaned_data["date"].month,
+                                    date_time__day=form.cleaned_data["date"].day
+                                )
+            mesh = trimesh.load(settings.UPLOADED_PATH + form.cleaned_data["stl"].stl_file.name)
+            x_stl, y_stl, z_stl = mesh.vertices.T
+            i, j, k = mesh.faces.T
+
+            # Electrodes starting points data
+            x = []
+            y = []
+            z = []
+            ht = []
+            for electrode in electrodes:
+                sp = electrode.starting_point.latest("updated")
+                x.append(sp.x)
+                y.append(sp.y)
+                z.append(sp.z)
+                ht.append(electrode.channel_number)
+            # Electrode logs data
+            x_el = []
+            y_el = []
+            z_el = []
+            ht_el = []
+            for electrode_log in electrode_logs:
+                location = electrode_log.get_current_location()
+                x_el.append(location["x"])
+                y_el.append(location["y"])
+                z_el.append(location["z"])
+                ht_el.append(electrode_log.electrode.channel_number)
+
+            fig = make_subplots()
+            electrodes_trace = go.Scatter3d(
+                x=tuple(x),
+                y=tuple(y),
+                z=tuple(z),
+                mode='markers',
+                marker= dict(size=4),
+                hovertext=ht,
+                name = "Starting points"
+            )
+            electrode_logs_trace = go.Scatter3d(
+                x=tuple(x_el),
+                y=tuple(y_el),
+                z=tuple(z_el),
+                mode='markers', 
+                marker= dict(color="darkred", size=4),
+                hovertext=ht_el,
+                name = "Electrode log position"
+            )
+            stl_trace = go.Mesh3d(
+                x=x_stl,
+                y=y_stl,
+                z=z_stl,
+                i=i,
+                j=j,
+                k=k,
+                showscale=True,
+                opacity=.4,
+                hoverinfo="skip"
+            )
+            fig.add_trace(stl_trace)
+            fig.add_trace(electrode_logs_trace)
+            fig.add_trace(electrodes_trace)
+            fig.update_layout(
+                autosize=True,
+                height=900
+            )
+
+            graph = opy.plot(fig, auto_open=False, output_type='div')
+
+            return render(request, self.template_name, {'form': form, 'graph': graph})
+
+        return render(request, self.template_name, {'form': form})

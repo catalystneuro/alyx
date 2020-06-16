@@ -27,3 +27,5 @@ django-extensions
 django-crispy-forms
 django-nested-admin
 scipy
+plotly
+trimesh

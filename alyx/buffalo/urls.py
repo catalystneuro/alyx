@@ -7,7 +7,8 @@ from buffalo.views import (
     SessionDetails,
     SubjectDetailView,
     getTaskDatasetType,
-    ElectrodeBulkLoadView
+    ElectrodeBulkLoadView,
+    PlotsView,
 )
 
 urlpatterns = [
@@ -41,5 +42,10 @@ urlpatterns = [
         "electrode-bulk-load/<uuid:subject_id>",
         ElectrodeBulkLoadView.as_view(),
         name="electrode-bulk-load",
+    ),
+    path(
+        "plots/<uuid:subject_id>",
+        PlotsView.as_view(),
+        name="plots",
     ),
 ]
