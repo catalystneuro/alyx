@@ -657,6 +657,7 @@ class BuffaloElectrode(nested_admin.NestedTabularInline):
     fields = ("channel_number", "turns_per_mm", "millimeters", "date_time", "notes")
     extra = 0
     inlines = [StartingPointInline]
+    ordering = ("created",)
 
 
 class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
