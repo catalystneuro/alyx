@@ -55,6 +55,6 @@ class STLUploadTests(TestCase):
             follow=True,
             format='multipart'
         )
-        self.assertContains(resp, "was added successfully")
+        self.assertContains(resp, "File uploaded successful")
         stl_files = STLFile.objects.filter(subject=spock.id)
         self.assertEquals(1, len(stl_files))
