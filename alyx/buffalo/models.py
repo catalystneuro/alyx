@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, FileExtensionValidator
 
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
@@ -230,7 +230,7 @@ class Electrode(BaseAction):
         location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
         return location
 
-    def create_new_starting_point_from_mat(self, electrode_info):
+    def create_new_starting_point_from_mat(self, electrode_info, subject, starting_point_set):
         starting_point = StartingPoint()
         starting_point.x = electrode_info["start_point"][0]
         starting_point.y = electrode_info["start_point"][1]
@@ -239,13 +239,18 @@ class Electrode(BaseAction):
         starting_point.y_norm = electrode_info["norms"][1]
         starting_point.z_norm = electrode_info["norms"][2]
         starting_point.electrode = self
+        starting_point.subject = subject
+        starting_point.starting_point_set = starting_point_set
         starting_point.save()
 
     def is_in_location(self, stl):
         return self.current_location in stl
 
     def __str__(self):
-        return f"{self.subject.nickname} - {self.channel_number}"
+        name = "deleted"
+        if self.subject:
+            name = self.subject.nickname
+        return f"{name} - {self.channel_number}"
 
 
 class ElectrodeLog(BaseAction):
@@ -292,6 +297,19 @@ class ElectrodeLog(BaseAction):
         location = self.get_current_location()
         return str(location)
 
+class StartingPointSet(BaseModel):
+    name = models.CharField(max_length=255, default="", blank=True)
+    subject = models.ForeignKey(
+        BuffaloSubject,
+        null=True,
+        on_delete=models.SET_NULL,
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
 
 class StartingPoint(BaseAction):
     electrode = models.ForeignKey(
@@ -313,6 +331,13 @@ class StartingPoint(BaseAction):
     procedures = models.ManyToManyField(
         "actions.ProcedureType", blank=True, help_text="The procedure(s) performed"
     )
+    starting_point_set = models.ForeignKey(
+        StartingPointSet,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="starting_point",
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -322,10 +347,13 @@ class StartingPoint(BaseAction):
     def get_norms(self):
         return [self.x_norm, self.y_norm, self.z_norm]
 
+def stl_directory_path(instance, filename):
+    return 'stl/subject_{0}/{1}'.format(instance.subject.id, filename)
 
 class STLFile(Dataset):
-    stl_file = models.CharField(
-        max_length=1000, blank=True, help_text="Path to STL file"
+    stl_file = models.FileField(
+        upload_to=stl_directory_path,
+        validators=[FileExtensionValidator(['stl'])]
     )
     subject = models.ForeignKey(
         BuffaloSubject,
@@ -335,6 +363,16 @@ class STLFile(Dataset):
     )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        date = self.created_datetime.strftime('%d/%m/%Y at %H:%M')
+        name = "deleted"
+        if self.subject:
+            name = self.subject.nickname
+        return "<Dataset %s - %s created on %s>" % (
+            str(self.pk)[:8], 
+            name,
+            date)
 
 
 class ChannelRecording(BaseModel):

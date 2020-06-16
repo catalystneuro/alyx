@@ -42,8 +42,8 @@ if 'TRAVIS' in os.environ:
 # Custom User model with UUID primary key
 AUTH_USER_MODEL = 'misc.LabMember'
 
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOADED_PATH = os.path.dirname(BASE_DIR) + "/uploaded/"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 

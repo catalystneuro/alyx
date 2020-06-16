@@ -2,6 +2,9 @@ from scipy.io import loadmat
 from django.core.exceptions import ValidationError
 
 def validate_mat_file(file, structure_name):
+    if not file:
+        return
+
     try:
         mat_file = loadmat(file)
         key = get_struct_name(list(mat_file.keys()))

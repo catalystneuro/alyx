@@ -87,6 +87,10 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def add_session(self, obj):
         url = "/buffalo/buffalosession/add/?subject=" + str(obj.id)
         return self.link(url, "Add Session")
+    
+    def add_stl(self, obj):
+        url = "/buffalo/stlfile/add/?subject=" + str(obj.id)
+        return self.link(url, "Add STL file")
 
     def set_electrodes(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodesubject_change", args=[obj.id])
@@ -100,14 +104,20 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Set electrodes form")
 
+    def plots(self, obj):
+        url = reverse("plots", kwargs={"subject_id": obj.id})
+        return self.link(url, "View plots")
+
     def options(self, obj):
-        select = "{} {} {} {} {}"
+        select = "{} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
+            self.add_stl(obj),
             self.set_electrodes(obj),
             self.new_electrode_logs(obj),
             self.set_electrodes_file(obj),
+            self.plots(obj),
         )
         return format_html(select)
 
@@ -637,18 +647,7 @@ class StartingPointFormset(BaseInlineFormSet):
 class StartingPointInline(nested_admin.NestedTabularInline):
     model = StartingPoint
     formset = StartingPointFormset
-    fields = (
-        "electrode",
-        "x",
-        "y",
-        "z",
-        "x_norm",
-        "y_norm",
-        "z_norm",
-        "depth",
-        "date_time",
-        "notes",
-    )
+    fields = ("electrode", "x", "y", "z", "x_norm", "y_norm", "z_norm", "starting_point_set", "depth", "date_time", "notes")
     extra = 0
 
 
@@ -807,6 +806,15 @@ class BuffaloChannelRecording(BaseAdmin):
 
 class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
+
+    fields = ('stl_file', 'subject')
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super(BuffaloSTLFile, self).get_form(request, obj, **kwargs)
+        subject_id = request.GET.get('subject', None)
+        if subject_id:
+            form.base_fields['subject'].initial = subject_id
+        return form
 
 
 class BuffaloStartingPoint(admin.ModelAdmin):
