@@ -232,7 +232,10 @@ class Electrode(BaseAction):
         return self.current_location in stl
 
     def __str__(self):
-        return f"{self.subject.nickname} - {self.channel_number}"
+        name = "deleted"
+        if self.subject:
+            name = self.subject.nickname
+        return f"{name} - {self.channel_number}"
 
 
 class ElectrodeLog(BaseAction):
@@ -328,9 +331,12 @@ class STLFile(Dataset):
 
     def __str__(self):
         date = self.created_datetime.strftime('%d/%m/%Y at %H:%M')
+        name = "deleted"
+        if self.subject:
+            name = self.subject.nickname
         return "<Dataset %s - %s created on %s>" % (
             str(self.pk)[:8], 
-            self.subject.nickname,
+            name,
             date)
 
 
