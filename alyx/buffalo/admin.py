@@ -10,6 +10,7 @@ from django_admin_listfilter_dropdown.filters import (
 from django.urls import reverse
 from django.utils.html import format_html
 from django.shortcuts import redirect
+from django.contrib import messages
 from reversion.admin import VersionAdmin
 import nested_admin
 
@@ -808,6 +809,17 @@ class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
 
     fields = ('stl_file', 'subject')
+
+    def response_add(self, request, obj):
+        messages.success(request, 'File uploaded successful.')
+        return redirect("/buffalo/buffalosubject")
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloSTLFile, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloSTLFile, self).get_form(request, obj, **kwargs)
