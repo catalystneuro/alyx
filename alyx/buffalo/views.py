@@ -110,7 +110,8 @@ class SubjectDetailView(TemplateView):
     def get(self, request, *args, **kwargs):
         subject_id = self.kwargs["subject_id"]
         context = {
-            "subject": Subject.objects.get(pk=subject_id),
+            "subject": BuffaloSubject.objects.get(pk=subject_id),
+            
             "sessions": Session.objects.filter(subject=subject_id).order_by(
                 "-start_time"
             ),
