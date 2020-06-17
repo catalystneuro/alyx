@@ -754,6 +754,7 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
                         datetime_base = inline_form.instance.date_time
                     inline_form.instance.date_time = datetime_base + timedelta(seconds=delta)
                     delta += 1
+                    super().save_formset(request, form, formset, change)
         super().save_formset(request, form, formset, change)
 
     def get_inline_instances(self, request, obj=None):
