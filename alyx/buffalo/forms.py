@@ -95,6 +95,32 @@ class SubjectForm(ModelForm):
             "lab": forms.HiddenInput(),
         }
 
+class ElectrodeLogSubjectForm(ModelForm):
+    nickname = forms.CharField(label="Name", required=True, max_length=150)
+    code = forms.CharField(label="Code", required=False, max_length=150)
+    prior_order = forms.BooleanField(
+        required=False, 
+        help_text="Save logs based on the order. It takes the first changed \
+            row datetime like base and add one second between records.",
+        label="Prioritize order"
+    )
+
+    class Meta:
+        model = BuffaloSubject
+        fields = [
+            "nickname",
+            "unique_id",
+            "code",
+            "lab",
+            "responsible_user",
+            "birth_date",
+            "sex",
+            "description",
+        ]
+        widgets = {
+            "lab": forms.HiddenInput(),
+        }
+
 
 class SessionForm(ModelForm):
     name = forms.CharField(

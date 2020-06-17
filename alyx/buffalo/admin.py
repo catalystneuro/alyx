@@ -50,6 +50,7 @@ from .forms import (
     TaskCategoryForm,
     ElectrodeForm,
     FoodTypeForm,
+    ElectrodeLogSubjectForm,
 )
 
 
@@ -728,7 +729,7 @@ def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
 class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 
     change_form_template = "buffalo/change_form.html"
-    form = SubjectForm
+    form = ElectrodeLogSubjectForm
     list_display = [
         "nickname",
         "birth_date",
@@ -736,21 +737,22 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         "description",
         "responsible_user",
     ]
-    fields = ["nickname", "unique_id", "name"]
+    fields = ["nickname", "unique_id", "name","prior_order"]
     search_fields = [
         "nickname",
     ]
 
     def save_formset(self, request, form, formset, change):
-        delta = 0
-        datetime_base = datetime.now()
-        for inline_form in formset.forms:
-            if inline_form.has_changed():
-                if delta == 0:
-                    datetime_base = inline_form.instance.date_time
-                inline_form.instance.date_time = datetime_base + timedelta(seconds=delta)
-                delta += 1
-                super().save_formset(request, form, formset, change)
+        if "prior_order" in form.cleaned_data and form.cleaned_data["prior_order"]:
+            delta = 0
+            datetime_base = datetime.now()
+            for inline_form in formset.forms:
+                if inline_form.has_changed():
+                    if delta == 0:
+                        datetime_base = inline_form.instance.date_time
+                    inline_form.instance.date_time = datetime_base + timedelta(seconds=delta)
+                    delta += 1
+        super().save_formset(request, form, formset, change)
 
     def get_inline_instances(self, request, obj=None):
         electrodes = Electrode.objects.filter(subject=obj.id)
