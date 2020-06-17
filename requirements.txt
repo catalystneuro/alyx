@@ -30,3 +30,4 @@ scipy
 plotly
 trimesh
 django-cleanup
+rtree
