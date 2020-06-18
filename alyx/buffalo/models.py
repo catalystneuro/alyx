@@ -137,6 +137,7 @@ class SessionTask(BaseModel):
         help_text="Indicates the relative position of a task within the session it belongs to",
     )
     needs_review = models.BooleanField(default=False)
+    start_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -196,8 +197,18 @@ class WeighingLog(Weighing):
         return str_weight
 
 
+class BuffaloDataset(Dataset):
+    file_name = models.CharField(
+        blank=True, null=True, max_length=255, help_text="file name"
+    )
+    session_task = models.ForeignKey(
+        SessionTask, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
 class BuffaloSession(Session):
-    dataset_type = models.ManyToManyField(DatasetType, blank=True)
     needs_review = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -230,7 +241,9 @@ class Electrode(BaseAction):
         location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
         return location
 
-    def create_new_starting_point_from_mat(self, electrode_info, subject, starting_point_set):
+    def create_new_starting_point_from_mat(
+        self, electrode_info, subject, starting_point_set
+    ):
         starting_point = StartingPoint()
         starting_point.x = electrode_info["start_point"][0]
         starting_point.y = electrode_info["start_point"][1]
@@ -297,13 +310,10 @@ class ElectrodeLog(BaseAction):
         location = self.get_current_location()
         return str(location)
 
+
 class StartingPointSet(BaseModel):
     name = models.CharField(max_length=255, default="", blank=True)
-    subject = models.ForeignKey(
-        BuffaloSubject,
-        null=True,
-        on_delete=models.SET_NULL,
-    )
+    subject = models.ForeignKey(BuffaloSubject, null=True, on_delete=models.SET_NULL,)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -347,13 +357,14 @@ class StartingPoint(BaseAction):
     def get_norms(self):
         return [self.x_norm, self.y_norm, self.z_norm]
 
+
 def stl_directory_path(instance, filename):
-    return 'stl/subject_{0}/{1}'.format(instance.subject.id, filename)
+    return "stl/subject_{0}/{1}".format(instance.subject.id, filename)
+
 
 class STLFile(Dataset):
     stl_file = models.FileField(
-        upload_to=stl_directory_path,
-        validators=[FileExtensionValidator(['stl'])]
+        upload_to=stl_directory_path, validators=[FileExtensionValidator(["stl"])]
     )
     subject = models.ForeignKey(
         BuffaloSubject,
@@ -365,14 +376,11 @@ class STLFile(Dataset):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        date = self.created_datetime.strftime('%d/%m/%Y at %H:%M')
+        date = self.created_datetime.strftime("%d/%m/%Y at %H:%M")
         name = "deleted"
         if self.subject:
             name = self.subject.nickname
-        return "<Dataset %s - %s created on %s>" % (
-            str(self.pk)[:8], 
-            name,
-            date)
+        return "<Dataset %s - %s created on %s>" % (str(self.pk)[:8], name, date)
 
 
 class ChannelRecording(BaseModel):

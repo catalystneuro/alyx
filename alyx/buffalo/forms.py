@@ -18,6 +18,7 @@ from .models import (
     WeighingLog,
     STLFile,
     StartingPointSet,
+    BuffaloDataset,
 )
 
 
@@ -38,7 +39,6 @@ class TaskForm(forms.ModelForm):
             "json",
             "reward",
             "location",
-            "dataset_type",
         ]
         widgets = {
             "version": forms.HiddenInput(),
@@ -92,7 +92,7 @@ class SubjectForm(ModelForm):
             "description",
         ]
         widgets = {
-            "lab": forms.HiddenInput(),
+            #"lab": forms.HiddenInput(),
         }
 
 
@@ -125,14 +125,13 @@ class SessionForm(ModelForm):
             "subject",
             "users",
             "lab",
-            "dataset_type",
             "needs_review",
             "narrative",
             "start_time",
             "end_time",
         ]
         widgets = {
-            "lab": forms.HiddenInput(),
+            #"lab": forms.HiddenInput(),
         }
 
 
@@ -160,9 +159,10 @@ class SessionTaskForm(ModelForm):
             "task",
             "session",
             "date_time",
-            "dataset_type",
+            #"dataset_type",
             "needs_review",
             "general_comments",
+            "json",
             "task_sequence",
         ]
 
