@@ -8,6 +8,7 @@ from buffalo.views import (
     SubjectDetailView,
     ElectrodeBulkLoadView,
     PlotsView,
+    SessionQueriesView,
 )
 
 urlpatterns = [
@@ -41,5 +42,10 @@ urlpatterns = [
         "plots/<uuid:subject_id>",
         PlotsView.as_view(),
         name="plots",
+    ),
+    path(
+        "session-queries/<uuid:subject_id>",
+        SessionQueriesView.as_view(),
+        name="session-queries",
     ),
 ]
