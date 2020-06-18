@@ -249,6 +249,7 @@ def _get_category_list(app_list):
         "Stl files",
         "Dataset types",
         "Datasets",
+        "Buffalo datasets",
         "Processed recordings",
     ]
     order_models = flatten([models for app, models in order])
@@ -268,7 +269,7 @@ def _get_category_list(app_list):
         )
         for name, model_names in order
     ]
-    category_list[0].models =  [None] * 13
+    category_list[0].models =  [None] * 14
     for model_name, app_name in model_to_app.items():
         if model_name in buffalo:
             idx = buffalo.index(model_name)
