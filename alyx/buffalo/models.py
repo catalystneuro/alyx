@@ -1,12 +1,15 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, FileExtensionValidator
+from django.conf import settings
 
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
 from misc.models import Food
 from actions.models import Session, Weighing, BaseAction, ProcedureType
 from subjects.models import Subject
+import trimesh
+from trimesh import proximity
 
 
 FOOD_UNITS = [
@@ -268,7 +271,6 @@ class ElectrodeLog(BaseAction):
     updated = models.DateTimeField(auto_now=True)
 
     def get_current_location(self):
-        """queries related channel recordings"""
         electrode = self.electrode
         location = {}
         if electrode:
@@ -291,6 +293,18 @@ class ElectrodeLog(BaseAction):
                     "z": location_list[2],
                 }
         return location
+    
+    def is_in_stl(self, stl_file_name):
+        electrode = self.electrode
+        if electrode:
+            if self.turn:
+                curr_location = self.get_current_location()
+                location_list = [curr_location['x'], curr_location['y'], curr_location['z']]
+                mesh = trimesh.load(settings.UPLOADED_PATH + stl_file_name)
+                dist = proximity.signed_distance(mesh, [location_list])
+                if dist[0] > 0:
+                    return True
+        return False
 
     @property
     def current_location(self):

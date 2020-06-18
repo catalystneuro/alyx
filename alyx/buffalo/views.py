@@ -19,7 +19,7 @@ from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.conf import settings
-from .utils import get_mat_file_info
+from .utils import get_mat_file_info, download_csv_points_mesh
 
 from actions.models import Session, Weighing
 from subjects.models import Subject
@@ -261,6 +261,7 @@ class PlotsView(View):
         subject_id = self.kwargs["subject_id"]
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
+            subject = BuffaloSubject.objects.get(pk=subject_id)
             electrodes = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
             electrode_logs = ElectrodeLog.objects \
                                 .prefetch_related('electrode') \
@@ -271,7 +272,19 @@ class PlotsView(View):
                                     date_time__month=form.cleaned_data["date"].month,
                                     date_time__day=form.cleaned_data["date"].day
                                 )
-            mesh = trimesh.load(settings.UPLOADED_PATH + form.cleaned_data["stl"].stl_file.name)
+            slt_file_name = form.cleaned_data["stl"].stl_file.name
+
+            if form.cleaned_data["download_points"]:
+                return download_csv_points_mesh(
+                    subject.nickname,
+                    form.cleaned_data["date"],
+                    electrodes,
+                    electrode_logs,
+                    slt_file_name
+                )
+            
+            mesh = trimesh.load(settings.UPLOADED_PATH + slt_file_name)
+
             x_stl, y_stl, z_stl = mesh.vertices.T
             i, j, k = mesh.faces.T
 

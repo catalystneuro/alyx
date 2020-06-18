@@ -8,7 +8,7 @@
     <div class="breadcrumbs">
         <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
 
-&rsaquo; <a href="/admin/subjects/subject/">Subjects</a>
+&rsaquo; <a href="/buffalo/buffalosubject/">Subjects</a>
 
 </div>
 {% endblock breadcrumbs %}
@@ -23,29 +23,8 @@
                     {% csrf_token %}
                     {{ form.as_p }}
                     <input  class="btn btn-primary btn-sm submit-button"  type="submit" value="Submit">
-                    <!--a  class="btn btn-light btn-sm submit-button" href="{% url 'admin:index' %}">Cancel</a>-->
                 </form>
-                
             </div>
         </div>
     </div>
-    <script>
-        $(document).ready(function() {
-            $('#id_category').change(function(){
-                const task_category_id = $("#id_category option:selected").val()
-                $.ajax({
-                    type: 'GET',
-                    url: "{% url 'buffalo-get-task-category-json' %}",
-                    data: {"task_category_id": task_category_id  },
-                    success: function (response) {
-                        $("#id_json").val("")
-                        $("#id_json").val(response.category_json)
-                    },
-                    error: function (response) {
-                        console.log(response)
-                    }
-                })
-            })
-        })
-    </script>
 {% endblock %}

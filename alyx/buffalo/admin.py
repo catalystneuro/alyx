@@ -1,5 +1,5 @@
 # Register the modules to show up at the admin page https://server/admin
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.contrib import admin
 from django import forms
 from django.forms import BaseInlineFormSet, ModelForm
@@ -10,6 +10,7 @@ from django_admin_listfilter_dropdown.filters import (
 from django.urls import reverse
 from django.utils.html import format_html
 from django.shortcuts import redirect
+from django.contrib import messages
 from reversion.admin import VersionAdmin
 import nested_admin
 
@@ -50,6 +51,7 @@ from .forms import (
     TaskCategoryForm,
     ElectrodeForm,
     FoodTypeForm,
+    ElectrodeLogSubjectForm,
 )
 
 
@@ -198,7 +200,6 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
             subject = request.GET.get("subject", None)
             if db_field.name == "electrode" and subject is not None:
-
                 try:
                     kwargs["queryset"] = Electrode.objects.filter(subject=subject)
                 except KeyError:
@@ -656,6 +657,7 @@ class BuffaloElectrode(nested_admin.NestedTabularInline):
     fields = ("channel_number", "turns_per_mm", "millimeters", "date_time", "notes")
     extra = 0
     inlines = [StartingPointInline]
+    ordering = ("created",)
 
 
 class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
@@ -698,9 +700,18 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
 
 def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
     class BuffaloElectrodeLog(admin.TabularInline):
+
         def get_queryset(self, request):
             self.request = request
             return ElectrodeLog.objects.none()
+
+        def formfield_for_foreignkey(self, db_field, request, **kwargs):
+            if db_field.name == "electrode":
+                try:
+                    kwargs["queryset"] = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
+                except KeyError:
+                    pass
+            return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
         class ElectrodeLogInlineFormSet(BaseInlineFormSet):
             def __init__(self, *args, **kwargs):
@@ -708,12 +719,6 @@ def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
                 super(BuffaloElectrodeLog.ElectrodeLogInlineFormSet, self).__init__(
                     *args, **kwargs
                 )
-                for form in self:
-                    form.fields[
-                        "electrode"
-                    ].queryset = Electrode.objects.prefetch_related("subject").filter(
-                        subject=subject_id
-                    )
 
         model = ElectrodeLog
         extra = num_forms
@@ -726,7 +731,7 @@ def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
 class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 
     change_form_template = "buffalo/change_form.html"
-    form = SubjectForm
+    form = ElectrodeLogSubjectForm
     list_display = [
         "nickname",
         "birth_date",
@@ -734,10 +739,23 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         "description",
         "responsible_user",
     ]
-    fields = ["nickname", "unique_id", "name"]
+    fields = ["nickname", "unique_id", "name","prior_order"]
     search_fields = [
         "nickname",
     ]
+
+    def save_formset(self, request, form, formset, change):
+        if "prior_order" in form.cleaned_data and form.cleaned_data["prior_order"]:
+            delta = 0
+            datetime_base = datetime.now()
+            for inline_form in formset.forms:
+                if inline_form.has_changed():
+                    if delta == 0:
+                        datetime_base = inline_form.instance.date_time
+                    inline_form.instance.date_time = datetime_base + timedelta(seconds=delta)
+                    delta += 1
+                    super().save_formset(request, form, formset, change)
+        super().save_formset(request, form, formset, change)
 
     def get_inline_instances(self, request, obj=None):
         electrodes = Electrode.objects.filter(subject=obj.id)
@@ -808,6 +826,17 @@ class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
 
     fields = ('stl_file', 'subject')
+
+    def response_add(self, request, obj):
+        messages.success(request, 'File uploaded successful.')
+        return redirect("/buffalo/buffalosubject")
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloSTLFile, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloSTLFile, self).get_form(request, obj, **kwargs)
