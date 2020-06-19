@@ -63,7 +63,7 @@
                 {% for session_dataset_type in session_datasets %}
                     <tr class="d-flex">
                         <td class="col-sm-2">{{session_dataset_type.dataset_type}}</td>
-                        <td class="col-sm-2">{{session_dataset_type.directory}}</td>
+                        <td class="col-sm-2">{{session_dataset_type.collection}}</td>
                         <td class="col-sm-2">{{session_dataset_type.file_name}}</td>
                     </tr>
                 {% endfor %}
@@ -107,7 +107,6 @@
     </div>
     <br><br>
     
-    {% endif %}
     {% if session_tasks %}
         <div class="col-lg-10  offset-md-1">
             <div class="table-responsive">
