@@ -288,11 +288,6 @@ class ElectrodeLog(BaseAction):
         location = {}
         if electrode:
             starting_point = electrode.starting_point.latest("updated")
-            location = {
-                "x": starting_point.x,
-                "y": starting_point.y,
-                "z": starting_point.z,
-            }
             if self.turn:
                 distance = self.turn / self.electrode.turns_per_mm
                 location_list = starting_point.get_norms()
