@@ -1,0 +1,66 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block branding %}
+    <h1 id="site-name">{% trans "Buffalo" %}</h1>
+{% endblock %}
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+
+&rsaquo; <a href="/buffalo/buffalosubject/">Subjects</a>
+
+</div>
+{% endblock breadcrumbs %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-lg-4 offset-md-4">
+            <h5>Load electrodes</h5>
+        </div>
+        <div class="col-lg-4 offset-md-4 card card-body">
+                <form action="" method="post" >
+                    {% csrf_token %}
+                    {{ form }}
+                    <input  class="btn btn-primary btn-sm submit-button"  type="submit" value="Submit">
+                </form>
+        </div>
+        {% if sessions %}
+            
+        <div class="col-lg-10  offset-md-1">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr class="d-flex">
+                            <th class="session-task-fields col-2" scope="col">Subject</th>
+                            <th class="session-task-fields col-3" scope="col">Narrative</th>
+                            <th class="session-task-fields col-2" scope="col">Start time</th>
+                            <th class="session-task-fields col-2" scope="col">Electrodes</th>
+                            <th class="session-task-fields col-3" scope="col">Directory/File Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                            <tr class="d-flex">
+                                <td class="col-sm-2">{{session.session.subject.nickname }}</td>
+                                <td class="col-sm-3">{{session.session.narrative}}</td>
+                                <td class="col-sm-1">{{session.session.start_time}}</td>
+                                <td class="col-sm-3">
+                                    {% for electrode in session.electrodes %}
+                                        {{electrode}}<br>
+                                    {% endfor %}
+                                </td>
+                                <td class="col-sm-3">
+                                    {% for dataset in session.datasets %}
+                                        {{dataset.collection}} {{dataset.file_name}}<br>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -18,6 +18,7 @@ from .models import (
     WeighingLog,
     STLFile,
     StartingPointSet,
+    BuffaloDataset,
 )
 
 
@@ -38,7 +39,6 @@ class TaskForm(forms.ModelForm):
             "json",
             "reward",
             "location",
-            "dataset_type",
         ]
         widgets = {
             "version": forms.HiddenInput(),
@@ -92,7 +92,7 @@ class SubjectForm(ModelForm):
             "description",
         ]
         widgets = {
-            "lab": forms.HiddenInput(),
+            #"lab": forms.HiddenInput(),
         }
 
 class ElectrodeLogSubjectForm(ModelForm):
@@ -151,14 +151,13 @@ class SessionForm(ModelForm):
             "subject",
             "users",
             "lab",
-            "dataset_type",
             "needs_review",
             "narrative",
             "start_time",
             "end_time",
         ]
         widgets = {
-            "lab": forms.HiddenInput(),
+            #"lab": forms.HiddenInput(),
         }
 
 
@@ -186,9 +185,10 @@ class SessionTaskForm(ModelForm):
             "task",
             "session",
             "date_time",
-            "dataset_type",
+            #"dataset_type",
             "needs_review",
             "general_comments",
+            "json",
             "task_sequence",
         ]
 
@@ -297,3 +297,23 @@ class PlotFilterForm(forms.Form):
         super(PlotFilterForm, self).__init__(*args, **kwargs)
         self.fields['stl'].queryset = STLFile.objects.filter(subject=subject_id)
         self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)
+
+class SessionQueriesForm(forms.Form):
+    cur_year = datetime.today().year
+    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+
+    stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
+    starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
+    task = forms.ModelChoiceField(queryset=SessionTask.objects.none())
+    is_in_stl = forms.BooleanField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        
+        subject_id = kwargs.pop('subject_id')
+        super(SessionQueriesForm, self).__init__(*args, **kwargs)
+        self.fields['stl'].queryset = STLFile.objects.filter(subject=subject_id)
+        self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)
+        session_tasks = SessionTask.objects.filter(session__subject=subject_id).values("task")
+        self.fields['task'].queryset = Task.objects.filter(id__in=session_tasks)
+        #self.fields['task'].queryset = Task.objects.all()
+        #import pdb; pdb.set_trace()

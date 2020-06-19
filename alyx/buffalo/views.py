@@ -36,12 +36,14 @@ from .models import (
     StartingPoint,
     WeighingLog,
     StartingPointSet,
+    BuffaloDataset,
 )
 from .forms import (
     TaskForm,
     TaskVersionForm,
     ElectrodeBulkLoadForm,
     PlotFilterForm,
+    SessionQueriesForm,
 )
 
 
@@ -123,7 +125,6 @@ class SubjectDetailView(TemplateView):
         subject_id = self.kwargs["subject_id"]
         context = {
             "subject": BuffaloSubject.objects.get(pk=subject_id),
-            
             "sessions": Session.objects.filter(subject=subject_id).order_by(
                 "-start_time"
             ),
@@ -160,19 +161,19 @@ class SessionDetails(TemplateView):
         )
         channels_recording = []
         session_task_dataset_type = {}
+
         session_tasks = []
         for session_task in all_session_tasks:
             session_task_id = session_task["task__id"]
-
+            session_task_datasets = BuffaloDataset.objects.filter(
+                session_task=session_task["id"]
+            ).values("file_name", "collection")
             if session_task_id in session_task_dataset_type:
-
-                session_task_dataset_type[session_task_id].append(
-                    session_task["dataset_type__name"]
-                )
+                session_task_dataset_type[session_task_id].append(session_task_datasets)
             else:
                 session_tasks.append(session_task)
                 session_task_dataset_type.update(
-                    {session_task_id: [session_task["dataset_type__name"]]}
+                    {session_task_id: [session_task_datasets]}
                 )
         channels_recording = ChannelRecording.objects.filter(session=session_id,)
         session = BuffaloSession.objects.get(pk=session_id)
@@ -181,22 +182,15 @@ class SessionDetails(TemplateView):
             "session_users": session.users.all(),
             "session_weightlog": WeighingLog.objects.filter(session=session_id).first(),
             "session_foodlog": FoodLog.objects.filter(session=session_id).first(),
-            "session_dataset_types": session.dataset_type.all(),
             "session_tasks": session_tasks,
             "channels_recording": list(channels_recording),
             "session_task_dataset_type": session_task_dataset_type,
+            "session_datasets": BuffaloDataset.objects.filter(
+                session=session_id, session_task=None
+            ),
         }
 
         return self.render_to_response(context)
-
-
-class getTaskDatasetType(View):
-    def get(self, request, *args, **kwargs):
-        if request.is_ajax():
-            task_id = request.GET.get("task_id")
-            task = Task.objects.filter(id=task_id).values("dataset_type__id")
-            data = json.dumps(list(task), cls=DjangoJSONEncoder)
-            return JsonResponse({"task_dataset_type": data}, status=200)
 
 
 class ElectrodeBulkLoadView(FormView):
@@ -223,7 +217,7 @@ class ElectrodeBulkLoadView(FormView):
             starting_point_set.subject = subject
             starting_point_set.save()
 
-            if (not structure_name):
+            if not structure_name:
                 structure_name = subject.nickname
             electrodes_info = get_mat_file_info(
                 form.cleaned_data["file"], structure_name
@@ -233,14 +227,18 @@ class ElectrodeBulkLoadView(FormView):
                     subject=subject_id, channel_number=str(electrode_info["channel"])
                 ).first()
                 if electrode:
-                    electrode.create_new_starting_point_from_mat(electrode_info, subject, starting_point_set)
+                    electrode.create_new_starting_point_from_mat(
+                        electrode_info, subject, starting_point_set
+                    )
                 else:
                     new_electrode = Electrode()
                     new_electrode.subject = subject
                     new_electrode.channel_number = str(electrode_info["channel"])
                     new_electrode.save()
-                    new_electrode.create_new_starting_point_from_mat(electrode_info, subject, starting_point_set)
-            messages.success(request, 'File loaded successful.')
+                    new_electrode.create_new_starting_point_from_mat(
+                        electrode_info, subject, starting_point_set
+                    )
+            messages.success(request, "File loaded successful.")
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
@@ -248,14 +246,15 @@ class ElectrodeBulkLoadView(FormView):
     def get_success_url(self):
         return reverse("admin:buffalo_buffalosubject_changelist")
 
+
 class PlotsView(View):
     form_class = PlotFilterForm
-    template_name = 'buffalo/plots.html'
+    template_name = "buffalo/plots.html"
 
     def get(self, request, *args, **kwargs):
         subject_id = self.kwargs["subject_id"]
         form = self.form_class(subject_id=subject_id)
-        return render(request, self.template_name, {'form': form})
+        return render(request, self.template_name, {"form": form})
 
     def post(self, request, *args, **kwargs):
         subject_id = self.kwargs["subject_id"]
@@ -316,19 +315,19 @@ class PlotsView(View):
                 x=tuple(x),
                 y=tuple(y),
                 z=tuple(z),
-                mode='markers',
-                marker= dict(size=4),
+                mode="markers",
+                marker=dict(size=4),
                 hovertext=ht,
-                name = "Starting points"
+                name="Starting points",
             )
             electrode_logs_trace = go.Scatter3d(
                 x=tuple(x_el),
                 y=tuple(y_el),
                 z=tuple(z_el),
-                mode='markers', 
-                marker= dict(color="darkred", size=4),
+                mode="markers",
+                marker=dict(color="darkred", size=4),
                 hovertext=ht_el,
-                name = "Electrode log position"
+                name="Electrode log position",
             )
             stl_trace = go.Mesh3d(
                 x=x_stl,
@@ -338,19 +337,75 @@ class PlotsView(View):
                 j=j,
                 k=k,
                 showscale=True,
-                opacity=.4,
-                hoverinfo="skip"
+                opacity=0.4,
+                hoverinfo="skip",
             )
             fig.add_trace(stl_trace)
             fig.add_trace(electrode_logs_trace)
             fig.add_trace(electrodes_trace)
-            fig.update_layout(
-                autosize=True,
-                height=900
+            fig.update_layout(autosize=True, height=900)
+
+            graph = opy.plot(fig, auto_open=False, output_type="div")
+
+            return render(request, self.template_name, {"form": form, "graph": graph})
+
+        return render(request, self.template_name, {"form": form})
+
+class SessionQueriesView(View):
+    form_class = SessionQueriesForm
+    template_name = "buffalo/admin_session_queries.html"
+
+    def get(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(subject_id=subject_id)
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST, subject_id=subject_id)
+        if form.is_valid():
+            slt_file_name = form.cleaned_data["stl"].stl_file.name
+            sessions = SessionTask.objects.filter(
+                session__subject=subject_id,
+                task=form.cleaned_data["task"]
             )
-
-            graph = opy.plot(fig, auto_open=False, output_type='div')
-
-            return render(request, self.template_name, {'form': form, 'graph': graph})
-
-        return render(request, self.template_name, {'form': form})
+            channel_recordings = ChannelRecording.objects.filter(
+                session__in=sessions.values("session"),
+                alive="yes",
+                ripples="yes"
+            )
+            queried_sessions = set()
+            electrodes = {}
+            if form.cleaned_data["is_in_stl"]:
+                for record in channel_recordings:
+                    electrode_logs = ElectrodeLog.objects.filter(
+                        electrode=record.electrode,
+                        date_time__year=record.session.start_time.year,
+                        date_time__month=record.session.start_time.month,
+                        date_time__day=record.session.start_time.day
+                    )
+                    for electrode_log in electrode_logs:
+                        if electrode_log.is_in_stl(slt_file_name):
+                            queried_sessions.add(record.session)
+                            if record.session.id not in electrodes:
+                                electrodes[record.session.id] = set()
+                            electrodes[record.session.id].add(electrode_log.electrode)
+            else:
+                for record in channel_recordings :
+                    queried_sessions.add(record.session)
+            final_sessions = []
+            for session in list(queried_sessions):
+                datasets = BuffaloDataset.objects.filter(session=session)
+                session_electrodes = []
+                if session.id in electrodes:
+                    session_electrodes = list(electrodes[session.id])
+                session_dict = {
+                    "session": session,
+                    "datasets": datasets,
+                    "electrodes": session_electrodes,
+                }
+                final_sessions.append(session_dict)
+            
+            #import pdb; pdb.set_trace()
+        return render(request, self.template_name, {"form": form, "sessions": final_sessions})
+        

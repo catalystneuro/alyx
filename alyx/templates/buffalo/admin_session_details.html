@@ -54,12 +54,35 @@
             <table class="table table-striped">
                 <thead>
                     <tr class="d-flex">
+                        <th class="session-task-fields col-2" scope="col">Session Datasets types</th>
+                        <th class="session-task-fields col-2" scope="col">Session Datasets Directory</th>
+                        <th class="session-task-fields col-2" scope="col">Session Datasets File name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for session_dataset_type in session_datasets %}
+                    <tr class="d-flex">
+                        <td class="col-sm-2">{{session_dataset_type.dataset_type}}</td>
+                        <td class="col-sm-2">{{session_dataset_type.collection}}</td>
+                        <td class="col-sm-2">{{session_dataset_type.file_name}}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <br><br>
+    <div class="col-lg-10  offset-md-1">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr class="d-flex">
                         <th class="session-task-fields col-2" scope="col">Weight Log</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr class="d-flex">
-                        <td class="col-sm-2">{{session_weightlog}}</td>
+                        <td class="col-sm-2">{{session_weightlog|default:""}}</td>
                     </tr>
                 </tbody>
             </table>
@@ -84,27 +107,6 @@
     </div>
     <br><br>
     
-    {% if session_dataset_types %}
-        <div class="col-lg-10  offset-md-1">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr class="d-flex">
-                            <th class="session-task-fields col-2" scope="col">Session Dataset types</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for session_dataset_type in session_dataset_types %}
-                            <tr class="d-flex">
-                                <td class="col-sm-2">{{session_dataset_type.name}}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <br><br>
-    {% endif %}
     {% if session_tasks %}
         <div class="col-lg-10  offset-md-1">
             <div class="table-responsive">
@@ -117,7 +119,7 @@
                             <th class="session-task-fields col-3" scope="col">Needs review</th>
                             <th class="session-task-fields col-3" scope="col">Task Comments</th>
                             <th class="session-task-fields col-2" scope="col">Task Datetime (run)</th>
-                            <th class="session-task-fields col-3" scope="col">File Name</th>
+                            <th class="session-task-fields col-3" scope="col">Directory/File Name</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -132,8 +134,8 @@
                                 {% for s in session_task_dataset_type.items %}
                                     {% ifequal session_task.task__id s.0 %}
                                         <td class="col-sm-3">
-                                        {% for dt in s.1 %}
-                                            {{dt|default:""}}<br>
+                                        {% for dt in s.1.0%}
+                                            {{dt.collection|default:""}}/{{dt.file_name|default:""}}<br>
                                         {% endfor %}
                                         </td>
                                     {% endifequal %}
