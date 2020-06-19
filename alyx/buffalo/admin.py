@@ -689,6 +689,15 @@ class StartingPointInline(nested_admin.NestedTabularInline):
     )
     extra = 0
 
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "starting_point_set":
+            try:
+                subject_id = request.resolver_match.kwargs["object_id"]
+                kwargs["queryset"] = StartingPointSet.objects.prefetch_related('subject').filter(subject=subject_id)
+            except KeyError:
+                pass
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
 
 class BuffaloElectrode(nested_admin.NestedTabularInline):
     model = Electrode
