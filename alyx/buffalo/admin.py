@@ -42,6 +42,7 @@ from .models import (
     BuffaloSession,
     WeighingLog,
     BuffaloDataset,
+    StartingPointSet,
 )
 from .forms import (
     SubjectWeighingForm,
@@ -885,6 +886,20 @@ class BuffaloSTLFile(BaseAdmin):
 class BuffaloStartingPoint(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
 
+class BuffaloStartingPointSet(BaseAdmin):
+    change_form_template = "buffalo/change_form.html"
+
+    fields = [
+        "name",
+        "subject"
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloStartingPointSet, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
 
 class BuffaloCategory(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
@@ -973,6 +988,7 @@ admin.site.register(SessionTask, BuffaloSessionTask)
 admin.site.register(Task, BuffaloTask)
 admin.site.register(FoodLog, BuffaloSubjectFood)
 admin.site.register(StartingPoint, BuffaloStartingPoint)
+admin.site.register(StartingPointSet, BuffaloStartingPointSet)
 admin.site.register(STLFile, BuffaloSTLFile)
 admin.site.register(ChannelRecording, BuffaloChannelRecording)
 admin.site.register(ProcessedRecording)
