@@ -148,6 +148,7 @@ INSTALLED_APPS = (
     'buffalo',
     'crispy_forms',
     'nested_admin',
+    'django_cleanup',
 )
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
