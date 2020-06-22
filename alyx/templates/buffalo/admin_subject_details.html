@@ -20,6 +20,11 @@
         <ul class="object-tools">
             {% block object-tools-items %}
                 <li>
+                    <a href="/buffalo/buffalosession/?subject__id__exact={{subject.id}}" class="link">
+                        See Subject Sessions
+                    </a>
+                </li>
+                <li>
                     <a href="/buffalo/buffalosession/add/?subject={{subject.id}}" class="addlink">
                         Add Session
                     </a>
@@ -46,6 +51,8 @@
     <div class="col-sm-10 offset-md-1 subject-info">
         <div class="col-sm-3" style="line-height: 20px;">
             <label><strong>Subject </strong> {{subject.nickname}}</label><br>
+            <label><strong>Unique id </strong> {{subject.unique_id}}</label><br>
+            <label><strong>Code</strong> {{subject.code}}</label><br>
             <label><strong>Responsible </strong>{{subject.responsible_user}}</label><br>
             <label><strong>Birth Date </strong>{{subject.birth_date}}</label><br>
             <label><strong>Sex </strong></label>{{subject.sex}}<br>

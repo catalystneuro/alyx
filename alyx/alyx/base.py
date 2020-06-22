@@ -138,7 +138,7 @@ def alyx_mail(to, subject, text=""):
         return False
 
 
-"""ADMIN_PAGES = [
+ADMIN_PAGES = [
     (
         "Common",
         [
@@ -152,7 +152,6 @@ def alyx_mail(to, subject, text=""):
             "Water restrictions",
             "Weighings",
             "Subject requests",
-            "Behavioral Task",
         ],
     ),
     (
@@ -198,11 +197,6 @@ def alyx_mail(to, subject, text=""):
             "Lab memberships",
         ],
     ),
-    ("Buffalo", ["Subjects",]),
-]"""
-
-ADMIN_PAGES = [
-    ("Buffalo", [],),
 ]
 
 
@@ -233,24 +227,10 @@ def _iter_history_changes(obj, field):
 
 
 def _get_category_list(app_list):
-    order = ADMIN_PAGES
+    order = settings.ADMIN_PAGES if settings.CUSTOM_MENU else ADMIN_PAGES
+
     extra_in_common = ["Adverse effects", "Cull subjects"]
-    buffalo = [
-        "Buffalo subjects",        
-        "Sessions",
-        "TaskTypes",
-        #"Tasks",
-        "Food logs",
-        "Food types",
-        "Weighings",
-        "Electrode logs",
-        "Starting points",
-        "Channel recordings",
-        "Stl files",
-        "Dataset types",
-        "Datasets",
-        "Processed recordings",
-    ]
+
     order_models = flatten([models for app, models in order])
     models_dict = {
         str(model["name"]): model for app in app_list for model in app["models"]
@@ -264,27 +244,23 @@ def _get_category_list(app_list):
         Bunch(
             name=name,
             models=[models_dict[m] for m in model_names if m in models_dict],
-            collapsed="",  # if name == "Common" else "collapsed",
+            collapsed="" if name == "Common" or name == "Start Here" else "collapsed",
         )
         for name, model_names in order
     ]
-    category_list[0].models =  [None] * 13
-    for model_name, app_name in model_to_app.items():
-        if model_name in buffalo:
-            idx = buffalo.index(model_name)
-            category_list[0].models[idx] = models_dict[model_name]
-        if model_name in order_models:
-            continue
-        """ if model_name.startswith("Subject") or model_name in extra_in_common:
-            category_list[0].models.append(models_dict[model_name])
-        else:
+    if not settings.CUSTOM_MENU:
+        for model_name, app_name in model_to_app.items():
+            if model_name in order_models:
+                continue
+            if model_name.startswith("Subject") or model_name in extra_in_common:
+                category_list[0].models.append(models_dict[model_name])
+            else:
+                category_list[3].models.append(models_dict[model_name])
+        # Add link to training view in 'Common' panel.
+        category_list[0].models.append(
+            {"admin_url": reverse("training"), "name": "Training view", "perms": {},}
+        )
 
-            category_list[3].models.append(models_dict[model_name]) """
-    # Add link to training view in 'Common' panel.
-    """ category_list[0].models.append(
-        {"admin_url": reverse("training"), "name": "Training view", "perms": {},}
-    ) """
-    
     return category_list
 
 
@@ -452,12 +428,8 @@ def base_json_filter(fieldname, queryset, name, value):
 
 
 mysite = MyAdminSite()
-""" mysite.site_header = "Alyx"
-mysite.site_title = "Alyx"
-mysite.site_url = None
-mysite.index_title = "Welcome to Alyx" """
-mysite.site_header = "Buffalo"
-mysite.site_title = "Buffalo"
-mysite.site_url = None
-mysite.index_title = "Welcome to Buffalo"
+mysite.site_header = settings.SITE_HEADER
+mysite.site_title = settings.SITE_TITLE
+mysite.site_url = settings.SITE_URL
+mysite.index_title = settings.SITE_INDEX_TITLE
 admin.site = mysite

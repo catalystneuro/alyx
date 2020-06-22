@@ -126,34 +126,6 @@ $(document).ready(function() {
         })
     })
     
-    get_dataset_types = () => {
-        $('#sessiontask_set-group select').on('change',function() {
-            const task_id = $(this).val()
-            dataset_type_select = $(this).parents('.field-task').siblings('.field-dataset_type')
-            dataset_type_select_id = dataset_type_select.find('select')
-            dataset_type_select_id.find("option:selected").prop("selected", false)
-            if (task_id) {
-                $.ajax({
-                    type: 'GET',
-                    url: "{% url 'buffalo-get-task-dataset-type' %}",
-                    data: {"task_id": task_id  },
-                    success: function (response) {
-                        dataset_type_select_id.prop("selected", false)
-                        datasets = tasks = JSON.parse(response['task_dataset_type'])
-                        datasets.forEach(dataset_type => console.log(dataset_type_select_id.find(" option[value='"+dataset_type.dataset_type__id+"']").prop('selected', true)));
-                    },
-                    error: function (response) {
-                        console.log(response)
-                    }
-                })
-            }
-        })
-    }
-    $("#sessiontask_set-group .add-row a").on('click', function () {
-         get_dataset_types()
-    })
-    get_dataset_types()
-
    const channels = "{{channels}}"
     if (channels) {
         $('.module:lt(1)').addClass("hidden");
@@ -161,7 +133,7 @@ $(document).ready(function() {
     }
     $("#sessiontask_set-group .add-row a").on("click", function() {
         task_sequence = $("#sessiontask_set-group .field-task_sequence").length - 1
-        $("#sessiontask_set-group .form-row:not(.empty-form) .field-task_sequence input").last().val(task_sequence)
+        $("#sessiontask_set-group .djn-inline-form:not(.empty-form) .field-task_sequence input").last().val(task_sequence)        
         $(document).on( "click", $(".dynamic-sessiontask_set:not(.has_original) .field-needs_review input"), function() {
             initial_general_comments_required()
         } );

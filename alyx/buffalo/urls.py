@@ -6,8 +6,8 @@ from buffalo.views import (
     TaskCreateVersionView,
     SessionDetails,
     SubjectDetailView,
-    getTaskDatasetType,
-    ElectrodeBulkLoadView
+    ElectrodeBulkLoadView,
+    PlotsView,
 )
 
 urlpatterns = [
@@ -33,13 +33,13 @@ urlpatterns = [
         name="session-details",
     ),
     path(
-        "buffalo-get-task-dataset-type/",
-        getTaskDatasetType.as_view(),
-        name="buffalo-get-task-dataset-type",
-    ),
-    path(
         "electrode-bulk-load/<uuid:subject_id>",
         ElectrodeBulkLoadView.as_view(),
         name="electrode-bulk-load",
+    ),
+    path(
+        "plots/<uuid:subject_id>",
+        PlotsView.as_view(),
+        name="plots",
     ),
 ]

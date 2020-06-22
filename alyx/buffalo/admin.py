@@ -1,5 +1,5 @@
 # Register the modules to show up at the admin page https://server/admin
-from datetime import datetime
+from datetime import datetime, timedelta
 from django.contrib import admin
 from django import forms
 from django.forms import BaseInlineFormSet, ModelForm
@@ -7,17 +7,20 @@ from django_admin_listfilter_dropdown.filters import (
     RelatedDropdownFilter,
     DropdownFilter,
 )
+from rangefilter.filter import DateRangeFilter
 from django.urls import reverse
 from django.utils.html import format_html
 from django.shortcuts import redirect
+from django.contrib import messages
 from reversion.admin import VersionAdmin
 import nested_admin
 
-from subjects.models import Subject
-from actions.models import Session, Weighing
+from actions.models import Session
 from alyx.base import BaseAdmin
 from misc.models import Lab
 from alyx.base import DefaultListFilter
+from data.admin import BaseExperimentalDataAdmin
+
 from .models import (
     Task,
     TaskCategory,
@@ -38,6 +41,7 @@ from .models import (
     FoodLog,
     BuffaloSession,
     WeighingLog,
+    BuffaloDataset,
 )
 from .forms import (
     SubjectWeighingForm,
@@ -46,10 +50,10 @@ from .forms import (
     SubjectFoodLog,
     SubjectForm,
     SessionForm,
-    TaskForm,
     TaskCategoryForm,
     ElectrodeForm,
     FoodTypeForm,
+    ElectrodeLogSubjectForm,
 )
 
 
@@ -88,7 +92,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def add_session(self, obj):
         url = "/buffalo/buffalosession/add/?subject=" + str(obj.id)
         return self.link(url, "Add Session")
-    
+
     def add_stl(self, obj):
         url = "/buffalo/stlfile/add/?subject=" + str(obj.id)
         return self.link(url, "Add STL file")
@@ -105,8 +109,12 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Set electrodes form")
 
+    def plots(self, obj):
+        url = reverse("plots", kwargs={"subject_id": obj.id})
+        return self.link(url, "View plots")
+
     def options(self, obj):
-        select = "{} {} {} {} {} {}"
+        select = "{} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
@@ -114,6 +122,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
             self.set_electrodes(obj),
             self.new_electrode_logs(obj),
             self.set_electrodes_file(obj),
+            self.plots(obj),
         )
         return format_html(select)
 
@@ -123,7 +132,7 @@ class ChannelRecordingFormset(BaseInlineFormSet):
         super(ChannelRecordingFormset, self).__init__(*args, **kwargs)
 
 
-class ChannelRecordingInline(admin.TabularInline):
+class ChannelRecordingInline(nested_admin.NestedTabularInline):
     model = ChannelRecording
     formset = ChannelRecordingFormset
     fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
@@ -163,18 +172,26 @@ class SessionTaskFormset(BaseInlineFormSet):
                 )
 
 
-class SessionTaskInline(admin.TabularInline):
+class SessionDataNestedsetInline(nested_admin.NestedTabularInline):
+    model = BuffaloDataset
+    fields = ("session_task", "dataset_type", "collection", "file_name")
+    extra = 0
+
+
+class SessionTaskInline(nested_admin.NestedTabularInline):
     model = SessionTask
     formset = SessionTaskFormset
     fields = (
         "task",
         "session",
         "task_sequence",
-        "dataset_type",
         "needs_review",
         "general_comments",
+        "json",
+        "start_time",
     )
     extra = 0
+    inlines = [SessionDataNestedsetInline]
 
 
 def TemplateInitialDataAddChannelRecording(data, num_forms):
@@ -184,7 +201,7 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
             By always returning true even unchanged inlines will get validated and saved."""
             return True
 
-    class AddChannelRecordingInline(admin.TabularInline):
+    class AddChannelRecordingInline(nested_admin.NestedTabularInline):
         form = AlwaysChangedModelForm
 
         def get_queryset(self, request):
@@ -194,7 +211,6 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
             subject = request.GET.get("subject", None)
             if db_field.name == "electrode" and subject is not None:
-
                 try:
                     kwargs["queryset"] = Electrode.objects.filter(subject=subject)
                 except KeyError:
@@ -275,7 +291,7 @@ class SessionFoodForm(ModelForm):
         self.fields["amount"].error_messages["required"] = "Min value is 0"
 
 
-class SessionFoodInline(admin.TabularInline):
+class SessionFoodInline(nested_admin.NestedTabularInline):
     model = FoodLog
     form = SessionFoodForm
     fields = ("session", "food", "amount")
@@ -292,7 +308,7 @@ class SessionWeighingForm(ModelForm):
         self.fields["weight"].help_text = "Weight in Kg"
 
 
-class SessionWeighingInline(admin.TabularInline):
+class SessionWeighingInline(nested_admin.NestedTabularInline):
     model = WeighingLog
     form = SessionWeighingForm
     fields = ("session", "weight")
@@ -342,7 +358,18 @@ class SessionTaskTrainingFilter(DefaultListFilter):
             return queryset.filter(id__in=sessions)
 
 
-class BuffaloSessionAdmin(VersionAdmin, admin.ModelAdmin):
+class SessionDatasetForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(SessionDatasetForm, self).__init__(*args, **kwargs)
+
+
+class SessionDatasetInline(nested_admin.NestedTabularInline):
+    model = BuffaloDataset
+    fields = ("session", "dataset_type", "collection", "file_name")
+    extra = 0
+
+
+class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
     form = SessionForm
     # change_list_template = "buffalo/change_list.html"
     change_form_template = "buffalo/change_form.html"
@@ -359,6 +386,7 @@ class BuffaloSessionAdmin(VersionAdmin, admin.ModelAdmin):
         "end_time",
     ]
     inlines = [
+        SessionDatasetInline,
         SessionWeighingInline,
         SessionFoodInline,
         SessionTaskInline,
@@ -408,6 +436,7 @@ class BuffaloSessionAdmin(VersionAdmin, admin.ModelAdmin):
                         }
                     )
                 inlines = [
+                    SessionDatasetInline,
                     SessionWeighingInline,
                     SessionFoodInline,
                     SessionTaskInline,
@@ -462,6 +491,7 @@ class BuffaloSessionAdmin(VersionAdmin, admin.ModelAdmin):
         )
 
     def save_formset(self, request, form, formset, change):
+
         instances = formset.save(commit=False)
         for obj in formset.deleted_objects:
             obj.delete()
@@ -587,7 +617,6 @@ class BuffaloTask(BaseAdmin):
         "category",
         "reward",
         "location",
-        "dataset_type_name",
         "new_version",
     ]
     ordering = ("-updated",)
@@ -604,9 +633,6 @@ class BuffaloTask(BaseAdmin):
             )
 
         return ""
-
-    def dataset_type_name(self, obj):
-        return "\n".join([d.name for d in obj.dataset_type.all()])
 
     def has_delete_permission(self, request, obj=None):
         if "buffalosession/add/" in request.path:
@@ -651,6 +677,7 @@ class StartingPointInline(nested_admin.NestedTabularInline):
         "x_norm",
         "y_norm",
         "z_norm",
+        "starting_point_set",
         "depth",
         "date_time",
         "notes",
@@ -663,6 +690,7 @@ class BuffaloElectrode(nested_admin.NestedTabularInline):
     fields = ("channel_number", "turns_per_mm", "millimeters", "date_time", "notes")
     extra = 0
     inlines = [StartingPointInline]
+    ordering = ("created",)
 
 
 class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
@@ -705,9 +733,18 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
 
 def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
     class BuffaloElectrodeLog(admin.TabularInline):
+
         def get_queryset(self, request):
             self.request = request
             return ElectrodeLog.objects.none()
+
+        def formfield_for_foreignkey(self, db_field, request, **kwargs):
+            if db_field.name == "electrode":
+                try:
+                    kwargs["queryset"] = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
+                except KeyError:
+                    pass
+            return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
         class ElectrodeLogInlineFormSet(BaseInlineFormSet):
             def __init__(self, *args, **kwargs):
@@ -715,12 +752,6 @@ def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
                 super(BuffaloElectrodeLog.ElectrodeLogInlineFormSet, self).__init__(
                     *args, **kwargs
                 )
-                for form in self:
-                    form.fields[
-                        "electrode"
-                    ].queryset = Electrode.objects.prefetch_related("subject").filter(
-                        subject=subject_id
-                    )
 
         model = ElectrodeLog
         extra = num_forms
@@ -733,7 +764,7 @@ def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
 class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 
     change_form_template = "buffalo/change_form.html"
-    form = SubjectForm
+    form = ElectrodeLogSubjectForm
     list_display = [
         "nickname",
         "birth_date",
@@ -741,10 +772,23 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         "description",
         "responsible_user",
     ]
-    fields = ["nickname", "unique_id", "name"]
+    fields = ["nickname", "unique_id", "name","prior_order"]
     search_fields = [
         "nickname",
     ]
+
+    def save_formset(self, request, form, formset, change):
+        if "prior_order" in form.cleaned_data and form.cleaned_data["prior_order"]:
+            delta = 0
+            datetime_base = datetime.now()
+            for inline_form in formset.forms:
+                if inline_form.has_changed():
+                    if delta == 0:
+                        datetime_base = inline_form.instance.date_time
+                    inline_form.instance.date_time = datetime_base + timedelta(seconds=delta)
+                    delta += 1
+                    super().save_formset(request, form, formset, change)
+        super().save_formset(request, form, formset, change)
 
     def get_inline_instances(self, request, obj=None):
         electrodes = Electrode.objects.filter(subject=obj.id)
@@ -813,14 +857,24 @@ class BuffaloChannelRecording(BaseAdmin):
 
 class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
+    fields = ("stl_file", "subject")
 
-    fields = ('stl_file', 'subject')
+    def response_add(self, request, obj):
+        messages.success(request, 'File uploaded successful.')
+        return redirect("/buffalo/buffalosubject")
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloSTLFile, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloSTLFile, self).get_form(request, obj, **kwargs)
-        subject_id = request.GET.get('subject', None)
+        subject_id = request.GET.get("subject", None)
         if subject_id:
-            form.base_fields['subject'].initial = subject_id
+            form.base_fields["subject"].initial = subject_id
         return form
 
 
@@ -842,6 +896,69 @@ class FoodTypeAdmin(BaseAdmin):
         return True
 
 
+class BuffaloDatasetAdmin(BaseExperimentalDataAdmin):
+    # change_list_template = "buffalo/change_list.html"
+    fields = [
+        "name",
+        "session",
+        "dataset_type",
+        "session_task",
+        "collection",
+        "file_size",
+    ]
+    readonly_fields = ["name_", "session", "_online"]
+    list_display = [
+        "name_",
+        "_online",
+        "version",
+        "collection",
+        "dataset_type_",
+        "file_size",
+        "session",
+        "created_by",
+        "created_datetime",
+    ]
+
+    list_filter = [
+        ("created_by", RelatedDropdownFilter),
+        ("created_datetime", DateRangeFilter),
+        ("dataset_type", RelatedDropdownFilter),
+    ]
+    search_fields = (
+        "created_by__username",
+        "name",
+        "session__subject__nickname",
+        "dataset_type__name",
+        "dataset_type__filename_pattern",
+    )
+    ordering = ("-created_datetime",)
+
+    def get_queryset(self, request):
+        qs = super(BuffaloDatasetAdmin, self).get_queryset(request)
+        qs = qs.select_related(
+            "dataset_type", "session", "session_task", "session__subject", "created_by"
+        )
+        return qs
+
+    def dataset_type_(self, obj):
+        return obj.dataset_type.name
+
+    def name_(self, obj):
+        return obj.name or "<unnamed>"
+
+    def subject(self, obj):
+        return obj.session.subject.nickname
+
+    def _online(self, obj):
+        return obj.online
+
+    _online.short_description = "On server"
+    _online.boolean = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
 admin.site.register(BuffaloSubject, BuffaloSubjectAdmin)
 admin.site.register(BuffaloElectrodeSubject, BuffaloElectrodeSubjectAdmin)
 admin.site.register(BuffaloElectrodeLogSubject, BuffaloElectrodeLogSubjectAdmin)
@@ -860,3 +977,4 @@ admin.site.register(Location)
 admin.site.register(Reward)
 admin.site.register(Platform)
 admin.site.register(FoodType, FoodTypeAdmin)
+admin.site.register(BuffaloDataset, BuffaloDatasetAdmin)

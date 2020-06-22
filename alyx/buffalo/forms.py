@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from django import forms
 import django.forms
 from django.forms import ModelForm
@@ -16,6 +16,9 @@ from .models import (
     FoodLog,
     BuffaloSession,
     WeighingLog,
+    STLFile,
+    StartingPointSet,
+    BuffaloDataset,
 )
 
 
@@ -36,7 +39,6 @@ class TaskForm(forms.ModelForm):
             "json",
             "reward",
             "location",
-            "dataset_type",
         ]
         widgets = {
             "version": forms.HiddenInput(),
@@ -90,6 +92,32 @@ class SubjectForm(ModelForm):
             "description",
         ]
         widgets = {
+            #"lab": forms.HiddenInput(),
+        }
+
+class ElectrodeLogSubjectForm(ModelForm):
+    nickname = forms.CharField(label="Name", required=True, max_length=150)
+    code = forms.CharField(label="Code", required=False, max_length=150)
+    prior_order = forms.BooleanField(
+        required=False, 
+        help_text="Save logs based on the order. It takes the first changed \
+            row datetime like base and add one second between records.",
+        label="Prioritize order"
+    )
+
+    class Meta:
+        model = BuffaloSubject
+        fields = [
+            "nickname",
+            "unique_id",
+            "code",
+            "lab",
+            "responsible_user",
+            "birth_date",
+            "sex",
+            "description",
+        ]
+        widgets = {
             "lab": forms.HiddenInput(),
         }
 
@@ -123,14 +151,13 @@ class SessionForm(ModelForm):
             "subject",
             "users",
             "lab",
-            "dataset_type",
             "needs_review",
             "narrative",
             "start_time",
             "end_time",
         ]
         widgets = {
-            "lab": forms.HiddenInput(),
+            #"lab": forms.HiddenInput(),
         }
 
 
@@ -158,9 +185,10 @@ class SessionTaskForm(ModelForm):
             "task",
             "session",
             "date_time",
-            "dataset_type",
+            #"dataset_type",
             "needs_review",
             "general_comments",
+            "json",
             "task_sequence",
         ]
 
@@ -201,7 +229,7 @@ class SubjectFoodLog(forms.ModelForm):
 
 class TaskCategoryForm(forms.ModelForm):
     json = forms.CharField(
-        max_length=1024, help_text='{"env": "env value"}', required=False
+        max_length=1024, help_text='{"env": ["env1", "env2"]}', required=False
     )
 
     class Meta:
@@ -254,3 +282,18 @@ class ElectrodeBulkLoadForm(forms.Form):
         else:
             subject = BuffaloSubject.objects.get(pk=subject_id)
             validate_mat_file(file, subject.nickname)
+
+class PlotFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+
+    stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
+    starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
+    date = forms.DateField(initial=date.today)
+    download_points = forms.BooleanField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop('subject_id')
+        super(PlotFilterForm, self).__init__(*args, **kwargs)
+        self.fields['stl'].queryset = STLFile.objects.filter(subject=subject_id)
+        self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)

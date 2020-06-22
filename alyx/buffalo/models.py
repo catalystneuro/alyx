@@ -1,12 +1,15 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, FileExtensionValidator
+from django.conf import settings
 
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
 from misc.models import Food
 from actions.models import Session, Weighing, BaseAction, ProcedureType
 from subjects.models import Subject
+import trimesh
+from trimesh import proximity
 
 
 FOOD_UNITS = [
@@ -103,7 +106,6 @@ class Task(BaseModel):
     reward = models.ForeignKey(Reward, null=True, blank=True, on_delete=models.SET_NULL)
 
     training = models.BooleanField(default=False)
-    dataset_type = models.ManyToManyField(DatasetType, blank=True)
     original_task = models.CharField(
         blank=True, null=True, max_length=255, help_text="Task version"
     )
@@ -137,6 +139,7 @@ class SessionTask(BaseModel):
         help_text="Indicates the relative position of a task within the session it belongs to",
     )
     needs_review = models.BooleanField(default=False)
+    start_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -196,8 +199,18 @@ class WeighingLog(Weighing):
         return str_weight
 
 
+class BuffaloDataset(Dataset):
+    file_name = models.CharField(
+        blank=True, null=True, max_length=255, help_text="file name"
+    )
+    session_task = models.ForeignKey(
+        SessionTask, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
 class BuffaloSession(Session):
-    dataset_type = models.ManyToManyField(DatasetType, blank=True)
     needs_review = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -230,7 +243,9 @@ class Electrode(BaseAction):
         location = {"x": starting_point.x, "y": starting_point.y, "z": starting_point.z}
         return location
 
-    def create_new_starting_point_from_mat(self, electrode_info, subject):
+    def create_new_starting_point_from_mat(
+        self, electrode_info, subject, starting_point_set
+    ):
         starting_point = StartingPoint()
         starting_point.x = electrode_info["start_point"][0]
         starting_point.y = electrode_info["start_point"][1]
@@ -240,6 +255,7 @@ class Electrode(BaseAction):
         starting_point.z_norm = electrode_info["norms"][2]
         starting_point.electrode = self
         starting_point.subject = subject
+        starting_point.starting_point_set = starting_point_set
         starting_point.save()
 
     def is_in_location(self, stl):
@@ -267,7 +283,6 @@ class ElectrodeLog(BaseAction):
     updated = models.DateTimeField(auto_now=True)
 
     def get_current_location(self):
-        """queries related channel recordings"""
         electrode = self.electrode
         location = {}
         if electrode:
@@ -290,11 +305,33 @@ class ElectrodeLog(BaseAction):
                     "z": location_list[2],
                 }
         return location
+    
+    def is_in_stl(self, stl_file_name):
+        electrode = self.electrode
+        if electrode:
+            if self.turn:
+                curr_location = self.get_current_location()
+                location_list = [curr_location['x'], curr_location['y'], curr_location['z']]
+                mesh = trimesh.load(settings.UPLOADED_PATH + stl_file_name)
+                dist = proximity.signed_distance(mesh, [location_list])
+                if dist[0] > 0:
+                    return True
+        return False
 
     @property
     def current_location(self):
         location = self.get_current_location()
         return str(location)
+
+
+class StartingPointSet(BaseModel):
+    name = models.CharField(max_length=255, default="", blank=True)
+    subject = models.ForeignKey(BuffaloSubject, null=True, on_delete=models.SET_NULL,)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
 
 
 class StartingPoint(BaseAction):
@@ -317,6 +354,13 @@ class StartingPoint(BaseAction):
     procedures = models.ManyToManyField(
         "actions.ProcedureType", blank=True, help_text="The procedure(s) performed"
     )
+    starting_point_set = models.ForeignKey(
+        StartingPointSet,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="starting_point",
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -326,13 +370,14 @@ class StartingPoint(BaseAction):
     def get_norms(self):
         return [self.x_norm, self.y_norm, self.z_norm]
 
+
 def stl_directory_path(instance, filename):
-    return 'stl/subject_{0}/{1}'.format(instance.subject.id, filename)
+    return "stl/subject_{0}/{1}".format(instance.subject.id, filename)
+
 
 class STLFile(Dataset):
     stl_file = models.FileField(
-        upload_to=stl_directory_path,
-        validators=[FileExtensionValidator(['stl'])]
+        upload_to=stl_directory_path, validators=[FileExtensionValidator(["stl"])]
     )
     subject = models.ForeignKey(
         BuffaloSubject,
@@ -344,14 +389,11 @@ class STLFile(Dataset):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        date = self.created_datetime.strftime('%d/%m/%Y at %H:%M')
+        date = self.created_datetime.strftime("%d/%m/%Y at %H:%M")
         name = "deleted"
         if self.subject:
             name = self.subject.nickname
-        return "<Dataset %s - %s created on %s>" % (
-            str(self.pk)[:8], 
-            name,
-            date)
+        return "<Dataset %s - %s created on %s>" % (str(self.pk)[:8], name, date)
 
 
 class ChannelRecording(BaseModel):
