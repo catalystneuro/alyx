@@ -10,6 +10,8 @@ https://docs.djangoproject.com/en/stable/ref/settings/
 
 import os
 from django.conf.locale.en import formats as en_formats
+from decouple import config, Csv
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 try:
@@ -224,3 +226,9 @@ STATIC_URL = '/static/'
 MEDIA_ROOT = os.path.realpath(os.path.join(BASE_DIR, '../uploaded/'))
 MEDIA_URL = '/uploaded/'
 UPLOADED_IMAGE_WIDTH = 800
+
+#Buffalo Lab settings
+SITE_HEADER = config('SITE_HEADER', default='Alyx')
+SITE_TITLE = config('SITE_TITLE', default='Alyx')
+SITE_URL = config('SITE_URL', default=None)
+SITE_INDEX_TITLE = config('SITE_INDEX_TITLE', default="Welcome to Alyx")
