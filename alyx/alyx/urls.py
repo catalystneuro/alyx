@@ -19,17 +19,14 @@ user_list = mv.UserViewSet.as_view({"get": "list"})
 user_detail = mv.UserViewSet.as_view({"get": "retrieve"})
 
 
-# admin.site.site_header = "Alyx"
-admin.site.site_header = "Buffalo"
-
 urlpatterns = [
     path("", include("buffalo.urls")),
     path("", admin.site.urls),
     # path("", mv.api_root),
     # path("", include("experiments.urls")),
-    #path("admin/", admin.site.urls),
+    # path("admin/", admin.site.urls),
     # path("admin-subjects/", include("subjects.urls")),
-    #path("admin-actions/", include("actions.urls")),
+    # path("admin-actions/", include("actions.urls")),
     # path("auth/", include("rest_framework.urls", namespace="rest_framework")),
     # path("auth-token", authv.obtain_auth_token),
     path("data-formats", dv.DataFormatList.as_view(), name="dataformat-list"),
