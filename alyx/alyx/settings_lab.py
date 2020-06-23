@@ -60,7 +60,6 @@ ADMIN_PAGES = (
             "Dataset types",
             "Datasets",
             "Buffalo datasets",
-            "Processed recordings",
             "Lab members",
         ],
     ),
