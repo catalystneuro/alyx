@@ -229,7 +229,7 @@ class SubjectFoodLog(forms.ModelForm):
 
 class TaskCategoryForm(forms.ModelForm):
     json = forms.CharField(
-        max_length=1024, help_text='{"env": "env value"}', required=False
+        max_length=1024, help_text='{"env": ["env1", "env2"]}', required=False
     )
 
     class Meta:
