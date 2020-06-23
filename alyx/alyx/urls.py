@@ -19,10 +19,6 @@ user_list = mv.UserViewSet.as_view({"get": "list"})
 
 user_detail = mv.UserViewSet.as_view({"get": "retrieve"})
 
-
-# admin.site.site_header = "Alyx"
-admin.site.site_header = "Buffalo"
-
 urls = []
 
 custom_urls = []
