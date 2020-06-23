@@ -55,6 +55,7 @@ ADMIN_PAGES = (
             "Weighing logs",
             "Electrode logs",
             "Starting points",
+            "Starting point sets",
             "Channel recordings",
             "Stl files",
             "Dataset types",
