@@ -185,7 +185,6 @@ class SessionTaskForm(ModelForm):
             "task",
             "session",
             "date_time",
-            #"dataset_type",
             "needs_review",
             "general_comments",
             "json",
@@ -229,7 +228,7 @@ class SubjectFoodLog(forms.ModelForm):
 
 class TaskCategoryForm(forms.ModelForm):
     json = forms.CharField(
-        max_length=1024, help_text='{"env": "env value"}', required=False
+        max_length=1024, help_text='{"env": ["env1", "env2"]}', required=False
     )
 
     class Meta:
@@ -315,5 +314,4 @@ class SessionQueriesForm(forms.Form):
         self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)
         session_tasks = SessionTask.objects.filter(session__subject=subject_id).values("task")
         self.fields['task'].queryset = Task.objects.filter(id__in=session_tasks)
-        #self.fields['task'].queryset = Task.objects.all()
-        #import pdb; pdb.set_trace()
+        

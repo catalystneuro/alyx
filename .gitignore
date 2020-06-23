@@ -21,3 +21,4 @@ build
 *venv
 .idea/*
 uploaded
+.env

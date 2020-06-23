@@ -106,7 +106,6 @@ class Task(BaseModel):
     reward = models.ForeignKey(Reward, null=True, blank=True, on_delete=models.SET_NULL)
 
     training = models.BooleanField(default=False)
-    dataset_type = models.ManyToManyField(DatasetType, blank=True)
     original_task = models.CharField(
         blank=True, null=True, max_length=255, help_text="Task version"
     )
@@ -288,11 +287,6 @@ class ElectrodeLog(BaseAction):
         location = {}
         if electrode:
             starting_point = electrode.starting_point.latest("updated")
-            location = {
-                "x": starting_point.x,
-                "y": starting_point.y,
-                "z": starting_point.z,
-            }
             if self.turn:
                 distance = self.turn / self.electrode.turns_per_mm
                 location_list = starting_point.get_norms()
