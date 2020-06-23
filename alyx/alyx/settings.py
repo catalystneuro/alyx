@@ -227,8 +227,9 @@ MEDIA_ROOT = os.path.realpath(os.path.join(BASE_DIR, '../uploaded/'))
 MEDIA_URL = '/uploaded/'
 UPLOADED_IMAGE_WIDTH = 800
 
-#Buffalo Lab settings
 SITE_HEADER = config('SITE_HEADER', default='Alyx')
 SITE_TITLE = config('SITE_TITLE', default='Alyx')
 SITE_URL = config('SITE_URL', default=None)
 SITE_INDEX_TITLE = config('SITE_INDEX_TITLE', default="Welcome to Alyx")
+ENABLE_HOME_URLS = config("ENABLE_HOME_URLS", default=True, cast=bool)
+ADMIN_URL_PATH_IN_ROOT = config("ADMIN_URL_PATH_IN_ROOT", default=False, cast=bool)

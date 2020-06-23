@@ -65,3 +65,7 @@ ADMIN_PAGES = (
         ],
     ),
 )
+
+# Custom urls
+INCLUDE_CUSTOM_URLS = config("INCLUDE_CUSTOM_URLS", default=False, cast=bool)
+CUSTOM_APP_NAME = config("CUSTOM_APP_NAME", default="buffalo")
