@@ -43,6 +43,7 @@ from .forms import (
     TaskVersionForm,
     ElectrodeBulkLoadForm,
     PlotFilterForm,
+    SessionQueriesForm,
 )
 
 
@@ -349,3 +350,62 @@ class PlotsView(View):
             return render(request, self.template_name, {"form": form, "graph": graph})
 
         return render(request, self.template_name, {"form": form})
+
+class SessionQueriesView(View):
+    form_class = SessionQueriesForm
+    template_name = "buffalo/admin_session_queries.html"
+
+    def get(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(subject_id=subject_id)
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST, subject_id=subject_id)
+        if form.is_valid():
+            slt_file_name = form.cleaned_data["stl"].stl_file.name
+            sessions = SessionTask.objects.filter(
+                session__subject=subject_id,
+                task=form.cleaned_data["task"]
+            )
+            channel_recordings = ChannelRecording.objects.filter(
+                session__in=sessions.values("session"),
+                alive="yes",
+                ripples="yes"
+            )
+            queried_sessions = set()
+            electrodes = {}
+            if form.cleaned_data["is_in_stl"]:
+                for record in channel_recordings:
+                    electrode_logs = ElectrodeLog.objects.filter(
+                        electrode=record.electrode,
+                        date_time__year=record.session.start_time.year,
+                        date_time__month=record.session.start_time.month,
+                        date_time__day=record.session.start_time.day
+                    )
+                    for electrode_log in electrode_logs:
+                        if electrode_log.is_in_stl(slt_file_name):
+                            queried_sessions.add(record.session)
+                            if record.session.id not in electrodes:
+                                electrodes[record.session.id] = set()
+                            electrodes[record.session.id].add(electrode_log.electrode)
+            else:
+                for record in channel_recordings :
+                    queried_sessions.add(record.session)
+            final_sessions = []
+            for session in list(queried_sessions):
+                datasets = BuffaloDataset.objects.filter(session=session)
+                session_electrodes = []
+                if session.id in electrodes:
+                    session_electrodes = list(electrodes[session.id])
+                session_dict = {
+                    "session": session,
+                    "datasets": datasets,
+                    "electrodes": session_electrodes,
+                }
+                final_sessions.append(session_dict)
+            
+            #import pdb; pdb.set_trace()
+        return render(request, self.template_name, {"form": form, "sessions": final_sessions})
+        

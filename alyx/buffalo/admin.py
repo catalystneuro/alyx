@@ -111,9 +111,13 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def plots(self, obj):
         url = reverse("plots", kwargs={"subject_id": obj.id})
         return self.link(url, "View plots")
+    
+    def session_queries(self, obj):
+        url = reverse("session-queries", kwargs={"subject_id": obj.id})
+        return self.link(url, "Session queries")
 
     def options(self, obj):
-        select = "{} {} {} {} {} {} {}"
+        select = "{} {} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
@@ -122,6 +126,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
             self.new_electrode_logs(obj),
             self.set_electrodes_file(obj),
             self.plots(obj),
+            self.session_queries(obj),
         )
         return format_html(select)
 
