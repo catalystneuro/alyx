@@ -314,5 +314,4 @@ class SessionQueriesForm(forms.Form):
         self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)
         session_tasks = SessionTask.objects.filter(session__subject=subject_id).values("task")
         self.fields['task'].queryset = Task.objects.filter(id__in=session_tasks)
-        #self.fields['task'].queryset = Task.objects.all()
-        #import pdb; pdb.set_trace()
+        
