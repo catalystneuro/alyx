@@ -10,6 +10,8 @@ https://docs.djangoproject.com/en/stable/ref/settings/
 
 import os
 from django.conf.locale.en import formats as en_formats
+from decouple import config, Csv
+
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 try:
@@ -42,8 +44,8 @@ if 'TRAVIS' in os.environ:
 # Custom User model with UUID primary key
 AUTH_USER_MODEL = 'misc.LabMember'
 
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOADED_PATH = os.path.dirname(BASE_DIR) + "/uploaded/"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
@@ -146,7 +148,13 @@ INSTALLED_APPS = (
     'experiments',
     'subjects',
     'buffalo',
+    'crispy_forms',
+    'nested_admin',
+    'django_cleanup',
 )
+
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
 
 MIDDLEWARE = (
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -218,3 +226,10 @@ STATIC_URL = '/static/'
 MEDIA_ROOT = os.path.realpath(os.path.join(BASE_DIR, '../uploaded/'))
 MEDIA_URL = '/uploaded/'
 UPLOADED_IMAGE_WIDTH = 800
+
+SITE_HEADER = config('SITE_HEADER', default='Alyx')
+SITE_TITLE = config('SITE_TITLE', default='Alyx')
+SITE_URL = config('SITE_URL', default=None)
+SITE_INDEX_TITLE = config('SITE_INDEX_TITLE', default="Welcome to Alyx")
+ENABLE_HOME_URLS = config("ENABLE_HOME_URLS", default=True, cast=bool)
+ADMIN_URL_PATH_IN_ROOT = config("ADMIN_URL_PATH_IN_ROOT", default=False, cast=bool)

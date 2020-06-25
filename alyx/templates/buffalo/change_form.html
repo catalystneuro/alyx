@@ -1,0 +1,217 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block admin_change_form_document_ready %}
+{{ block.super }}
+
+
+<style>
+form#subject_form div.form-row.field-sex label,
+form#subject_form div.form-row.field-birth_date label,
+form#subject_form div.form-row.field-labs label,
+form#subject_form div.form-row.field-projects label,
+form#subject_form div.form-row.field-cage label,
+form#subject_form div.form-row.field-ear_mark label,
+form#subject_form div.form-row.field-strain label
+{
+    color: red;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+
+
+
+<script>
+$(document).keydown(function(e) {
+    switch(e.which) {
+        case 38: // up
+        var cell = $(':focus').closest('td');
+        var cls = cell.attr('class');
+        var row = cell.closest('tr').prev().find('.' + cls).find('input').focus();
+        break;
+
+        case 40: // down
+        var cell = $(':focus').closest('td');
+        var cls = cell.attr('class');
+        var row = cell.closest('tr').next().find('.' + cls).find('input').focus();
+        break;
+
+        default: return;
+    }
+    e.preventDefault();
+});
+
+
+function getShownFieldsets() {
+    return $("fieldset > h2 > a.collapse-toggle:not(:contains(S))").map(
+        function () { return this.id; }).get();
+}
+
+
+function getFieldsetCookieName() {
+    var url = window.location.pathname;
+    url = url.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\//i, "")
+    return "shownFieldsets_" + url;
+};
+
+
+$(window).bind('beforeunload', function(){
+    var fieldsetsIds = getShownFieldsets();
+    Cookies.set(getFieldsetCookieName(), fieldsetsIds);
+});
+
+
+$(window).on("load", function() {
+    $(":input").attr("autocomplete", "off");
+
+    var fieldsetsIds = Cookies.getJSON(getFieldsetCookieName());
+    if (!fieldsetsIds) { return; }
+    for (let id of fieldsetsIds) {
+        $("#" + id).parent().parent().removeClass("collapsed");
+    }
+});
+
+
+
+// Narrative templates
+$(window).on("load", function() {
+    var templates = JSON.parse(atob("{{ narrative_templates }}"));
+    $("select[name='procedures']").on("change", function (e) {
+       // Do nothing if the narrative is already filled.
+       if ($("textarea[name='narrative']").val()) { return; }
+       // Get the selected procedures.
+       var selectedText = $("select[name='procedures'] option:selected").text();
+       for (const [key, value] of Object.entries(templates)) {
+            if (selectedText.includes(key)) {
+                $("textarea[name='narrative']").val(value);
+                break;
+            }
+       }
+    })
+});
+
+$(document).ready(function() {
+    const version = parseInt($("#id_version").val())
+    if (version > 1) {
+        $(".field-version").removeClass('hidden')
+        $("#id_version, #id_name").prop({'type': 'text', 'readonly':'readonly'})
+    }
+
+    $('#id_category').change(function() {
+        const task_category_id = $("#id_category option:selected").val()
+        $.ajax({
+            type: 'GET',
+            url: "{% url 'buffalo-get-task-category-json' %}",
+            data: {"task_category_id": task_category_id  },
+            success: function (response) {
+                $("#id_json").val("")
+                $("#id_json").val(response.category_json)
+            },
+            error: function (response) {
+                console.log(response)
+            }
+        })
+    })
+    
+   const channels = "{{channels}}"
+    if (channels) {
+        $('.module:lt(1)').addClass("hidden");
+        
+    }
+    $("#sessiontask_set-group .add-row a").on("click", function() {
+        task_sequence = $("#sessiontask_set-group .field-task_sequence").length - 1
+        $("#sessiontask_set-group .djn-inline-form:not(.empty-form) .field-task_sequence input").last().val(task_sequence)        
+        $(document).on( "click", $(".dynamic-sessiontask_set:not(.has_original) .field-needs_review input"), function() {
+            initial_general_comments_required()
+        } );
+    })
+
+    $('#foodlog_set-group h2').append('<span class="btn btn-light"style="color:#fff; font-size: 9px;">  (This session is required)</span>')
+    const current_location = window.location.href
+    if (current_location.includes("buffalosession/add/?subject=")) {
+        $('#channelrecording_set-group h2').append(
+            '<a id="load-data" class="btn btn-light" href="#channelrecording_set-group" style="color:#fff;font-size: 10px;">  (CLICK to Load data)</a>'
+        )
+        const initial_data = $("#channelrecording_set-group .form-row select[readonly], #channelrecording_set-group .field-notes input[readonly]" )
+        initial_data.prop('disabled', true)
+        const new_data = $("#channelrecording_set-group  .empty-form select, #channelrecording_set-group .empty-form .field-notes input")
+        new_data.prop('disabled', false)
+        new_data.removeAttr('readonly')
+        
+        $("#load-data").on("click", function() {
+            if ($("#channelrecording_set-group .form-row select[readonly]").attr('disabled')) {
+                initial_data.prop('disabled', false)
+                $("#load-data").text("  (CLICK to Disable data)")
+            } else {
+                initial_data.prop('disabled', true)
+                new_data.prop('disabled', false)
+                $("#load-data").text("  (CLICK to Load data)")
+            }
+            
+        })
+
+        $("#channelrecording_set-group .add-row a").on("click", function() {
+            new_data.prop('disabled', false)
+        })
+    }
+    
+    make_narrative_required()
+    initial_general_comments_required()
+});
+    
+$("#id_needs_review, .field-needs_review input").on("click", function() {
+    if ($(this).parent('td').hasClass("field-needs_review")) {
+        make_general_comments_required($(this))
+    } else {
+        make_narrative_required()    
+    }
+})
+
+make_narrative_required = () => {
+    if ($("#id_needs_review").prop('checked')) {
+        $("#id_narrative").siblings("label").wrapInner("<strong class='wrapper'><strong />")
+        $("#id_narrative").parent('div').append('<div class="help narrative-help vLargeTextField">This field is now required</div>')
+    } else {
+        $("label strong").contents().unwrap()
+        $(".narrative-help").remove()
+    }
+}
+make_general_comments_required = (element) => {
+    $(element).parent('td').siblings(".field-general_comments").find(".general-help").remove()
+    if ($(element).prop('checked') && !$(element).parent('td').siblings(".field-general_comments").find(".general-help").length) {
+       $(element).parent('td').siblings(".field-general_comments").append('<div class="help general-help vLargeTextField">This field is now required</div>')
+    }
+}
+
+initial_general_comments_required = () => {
+    const needs_review = $("#sessiontask_set-group .field-needs_review input")
+    for (let [key, value] of Object.entries(needs_review)) {
+        if (key != "length" && key != "prevObject") {
+            make_general_comments_required(value)
+        }
+    }
+}
+
+
+// HACK: date widget in local timezone.
+(function($){
+    let today = new Date()
+    today = moment(today).toISOString()
+     $('#id_subject').change(function(){
+        let subject = $("#id_subject option:selected").text()
+        $("#buffalosession_form #id_name").val("")
+        $("#buffalosession_form #id_name").val(today + "_" + subject)
+    })
+  $(function(){
+    document.body.setAttribute("data-admin-utc-offset", (new Date()).getTimezoneOffset() * -60);
+  })
+})(jQuery)
+
+</script>
+
+{% endblock %}

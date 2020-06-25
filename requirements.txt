@@ -22,3 +22,12 @@ python-dateutil
 python-magic
 pytz
 webdavclient3
+python-decouple
+django-extensions
+django-crispy-forms
+django-nested-admin
+scipy
+plotly
+trimesh
+django-cleanup
+rtree

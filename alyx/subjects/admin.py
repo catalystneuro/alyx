@@ -1290,7 +1290,7 @@ mysite.register(Project, ProjectAdmin)
 mysite.register(Subject, SubjectAdmin)
 mysite.register(Litter, LitterAdmin)
 mysite.register(Line, LineAdmin)
-mysite.register(BreedingPair, BreedingPairAdmin)
+#mysite.register(BreedingPair, BreedingPairAdmin)
 
 mysite.register(SubjectRequest, SubjectRequestAdmin)
 mysite.register(Species, SpeciesAdmin)
