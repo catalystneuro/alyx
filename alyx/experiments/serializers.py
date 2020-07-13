@@ -28,6 +28,9 @@ class SessionListSerializer(serializers.ModelSerializer):
         queryset = queryset.select_related('subject', 'lab')
         return queryset.order_by('-start_time')
 
+    subject = serializers.SlugRelatedField(read_only=True, slug_field='nickname')
+    lab = serializers.SlugRelatedField(read_only=True, slug_field='name')
+
     class Meta:
         model = Session
         fields = ('subject', 'start_time', 'number', 'lab', 'id', 'task_protocol')
@@ -38,13 +41,13 @@ class TrajectoryEstimateSerializer(serializers.ModelSerializer):
         read_only=False, required=False, slug_field='id', many=False,
         queryset=ProbeInsertion.objects.all(),
     )
-    x = serializers.FloatField(required=True)
-    y = serializers.FloatField(required=True)
-    z = serializers.FloatField(required=False)
-    depth = serializers.FloatField(required=True)
-    theta = serializers.FloatField(required=True)
-    phi = serializers.FloatField(required=True)
-    roll = serializers.FloatField(required=False)
+    x = serializers.FloatField(required=True, allow_null=True)
+    y = serializers.FloatField(required=True, allow_null=True)
+    z = serializers.FloatField(required=False, allow_null=True)
+    depth = serializers.FloatField(required=True, allow_null=True)
+    theta = serializers.FloatField(required=True, allow_null=True)
+    phi = serializers.FloatField(required=True, allow_null=True)
+    roll = serializers.FloatField(required=False, allow_null=True)
     provenance = TrajectoryProvenanceField(required=True)
     session = SessionListSerializer(read_only=True)
     probe_name = serializers.CharField(read_only=True)

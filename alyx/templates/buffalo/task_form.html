@@ -1,0 +1,20 @@
+{% extends "buffalo/change_form.html" %}
+{% load crispy_forms_tags %}
+
+{% block main_container %}
+    <div class="row">
+        <div class="col-lg-4 offset-md-4">
+            <h5>New Version Task</h5>
+        </div>
+        <div class="col-lg-4 offset-md-4 card card-body">
+                <form action="" method="post">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    <input  class="btn btn-primary btn-sm submit-button"  type="submit" value="Submit">
+                    <a  class="btn btn-light btn-sm submit-button" href="{% url 'buffalo-tasks' %}">Cancel</a>
+                </form>
+                
+            </div>
+        </div>
+    </div>
+{% endblock %}

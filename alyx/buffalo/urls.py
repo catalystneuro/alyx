@@ -1,0 +1,70 @@
+from django.urls import path
+from django.contrib.auth.decorators import login_required
+
+from buffalo.views import (
+    TaskCreateView,
+    getTaskCategoryJson,
+    TaskCreateVersionView,
+    SessionDetails,
+    SubjectDetailView,
+    ElectrodeBulkLoadView,
+    PlotsView,
+    SessionQueriesView,
+)
+
+urlpatterns = [
+    path("buffalo-tasks/", TaskCreateView.as_view(), name="buffalo-tasks"),
+    path(
+        "buffalo-get-task-category-json/",
+        login_required(
+            getTaskCategoryJson.as_view(),
+            login_url='/login/',
+        ),
+        name="buffalo-get-task-category-json",
+    ),
+    path(
+        "buffalo-task-version/<uuid:pk>/",
+        login_required(
+            TaskCreateVersionView.as_view(),
+            login_url='/login/',
+        ),
+        name="buffalo-task-version",
+    ),
+    path(
+        "daily-observation/<uuid:subject_id>",
+        login_required(
+            SubjectDetailView.as_view(),
+            login_url='/login/',
+        ),
+        name="daily-observation",
+    ),
+    path(
+        "session-details/<uuid:session_id>",
+        login_required(
+            SessionDetails.as_view(),
+            login_url='/login/',
+        ),
+        name="session-details",
+    ),
+    path(
+        "electrode-bulk-load/<uuid:subject_id>",
+        login_required(
+            ElectrodeBulkLoadView.as_view(),
+            login_url='/login/',
+        ),
+        name="electrode-bulk-load",
+    ),
+    path(
+        "plots/<uuid:subject_id>",
+        login_required(
+            PlotsView.as_view(),
+            login_url='/login/',
+        ),
+        name="plots",
+    ),
+    path(
+        "session-queries/<uuid:subject_id>",
+        SessionQueriesView.as_view(),
+        name="session-queries",
+    ),
+]

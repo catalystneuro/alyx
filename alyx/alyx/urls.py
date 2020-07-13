@@ -1,6 +1,7 @@
 from django.conf.urls import include
 from django.urls import path, re_path
 from django.contrib import admin
+from django.conf import settings
 from rest_framework.authtoken import views as authv
 from rest_framework.documentation import include_docs_urls
 
@@ -10,7 +11,6 @@ from data import views as dv
 from misc import views as mv
 from buffalo import views as bf
 
-
 register_file = dv.RegisterFileViewSet.as_view({"post": "create"})
 sync_file_status = dv.SyncViewSet.as_view({"post": "sync", "get": "sync_status"})
 new_download = dv.DownloadViewSet.as_view({"post": "create"})
@@ -19,17 +19,28 @@ user_list = mv.UserViewSet.as_view({"get": "list"})
 
 user_detail = mv.UserViewSet.as_view({"get": "retrieve"})
 
+urls = []
 
-admin.site.site_header = "Alyx"
+custom_urls = []
+if settings.INCLUDE_CUSTOM_URLS:
+    custom_urls.append(path("", include(settings.CUSTOM_APP_NAME + ".urls")))
 
-urlpatterns = [
+admin_path = "admin/"
+if settings.ADMIN_URL_PATH_IN_ROOT:
+    admin_path = ""
+
+urls.append(path(admin_path, admin.site.urls))
+
+home_urls = [
     path("", mv.api_root),
     path("", include("experiments.urls")),
-    path("admin/", admin.site.urls),
     path("admin-subjects/", include("subjects.urls")),
     path("admin-actions/", include("actions.urls")),
     path("auth/", include("rest_framework.urls", namespace="rest_framework")),
-    path("auth-token", authv.obtain_auth_token),
+    path("auth-token", authv.obtain_auth_token)
+]
+
+alyx_urls = [
     path("data-formats", dv.DataFormatList.as_view(), name="dataformat-list"),
     path(
         "data-formats/<str:name>",
@@ -116,10 +127,13 @@ urlpatterns = [
     path("water-type/<str:name>", av.WaterTypeList.as_view(), name="watertype-detail"),
     path("weighings", av.WeighingAPIListCreate.as_view(), name="weighing-create"),
     path("weighings/<uuid:pk>", av.WeighingAPIDetail.as_view(), name="weighing-detail"),
-    path("behavioraltask", bf.BehavioralTaskList.as_view(), name="behaviortask-list",),
-    path(
-        "behavioraltask/(?P<session>.+)/$",
-        bf.BehavioralTaskList.as_view(),
-        name="behaviortask-list",
-    ),
 ]
+
+if settings.INCLUDE_CUSTOM_URLS:
+    urls += custom_urls
+
+if settings.ENABLE_HOME_URLS:
+    urls += home_urls
+
+urls += alyx_urls
+urlpatterns = urls

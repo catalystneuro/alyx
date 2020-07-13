@@ -1,0 +1,82 @@
+name: Test workflow
+on: [push]
+env:
+  POSTGRES_DB: alyx
+  POSTGRES_USER: alyx
+  POSTGRES_PASSWORD: password
+jobs:
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+          architecture: x64
+
+      - name: Autoformat with black
+        run: |
+          pip install black
+          black --check --exclude=setup.py .
+      - name: Lint with flake8
+        run: |
+          pip install flake8
+          # one pass for show-stopper syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --exclude=setup.py --show-source --statistics
+          # one pass for small stylistic things
+          flake8 . --count --exclude=setup.py --max-line-length=$MAX_LINE_LENGTH --statistics
+
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:11
+        env:
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        ports: 
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python 3.6
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+          architecture: x64
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      
+      - name: Add permissions to log file
+        run: |
+          sudo touch /var/log/alyx.log
+          sudo chmod 777 /var/log/alyx.log
+
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install --upgrade pip black
+          python -m pip install -r requirements.txt
+
+      - name: Test with pytest
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        run: |
+          cd alyx
+          python manage.py test

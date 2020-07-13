@@ -1,0 +1,171 @@
+{% extends "buffalo/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+{% load session_tasks %}
+{% block branding %}
+    <h1 id="site-name">{% trans "Buffalo" %}</h1>
+{% endblock %}
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo;
+        <a href="/buffalo/buffalosubject/">Subjects</a>
+</div>
+{% endblock breadcrumbs %}
+
+
+{% block content %}
+<h1>Subject Daily Observations</h1>
+    <div class="content-main">
+    {% block object-tools %}
+        <ul class="object-tools">
+            {% block object-tools-items %}
+                <li>
+                    <a href="/buffalo/buffalosession/?subject__id__exact={{subject.id}}" class="link">
+                        See Subject Sessions
+                    </a>
+                </li>
+                <li>
+                    <a href="/buffalo/buffalosession/add/?subject={{subject.id}}" class="addlink">
+                        Add Session
+                    </a>
+                </li>
+                <li>
+                    <a href="/buffalo/weighinglog/add/?subject={{subject.id}}" class="addlink">
+                        Add weighing
+                    </a>
+                </li>
+                <li>
+                    <a href="/buffalo/foodlog/add/?subject={{subject.id}}" class="addlink">
+                    Add food
+                    </a>
+                </li>
+                <li>
+                    <a href="/buffalo/buffaloelectrodelogsubject/{{subject.id}}/change/" class="addlink">
+                    Add electrode logs
+                    </a>
+                </li>
+            {% endblock %}
+        </ul>
+    {% endblock %}
+
+    <div class="col-sm-10 offset-md-1 subject-info">
+        <div class="col-sm-3" style="line-height: 20px;">
+            <label><strong>Subject </strong> {{subject.nickname}}</label><br>
+            <label><strong>Unique id </strong> {{subject.unique_id}}</label><br>
+            <label><strong>Code</strong> {{subject.code}}</label><br>
+            <label><strong>Responsible </strong>{{subject.responsible_user}}</label><br>
+            <label><strong>Birth Date </strong>{{subject.birth_date}}</label><br>
+            <label><strong>Sex </strong></label>{{subject.sex}}<br>
+            <label><strong>Death Date </strong>{{subject.death_date|default:""}}</label><br>
+            <label><strong>General Comments </strong> {{subject.general_comments}}</label><br><br>
+        </div>
+    </div>
+    
+    <div class="col-lg-8  offset-md-2" >
+        <div class="col-lg-8  offset-md-2">
+            <h5>Weight</h5>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                    <th scope="col">Date Time</th>
+                    <th scope="col">Weight</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for w in weights %}
+                        <tr class="">
+                            <td>{{w.date_time}}</td>
+                            <td>{{w.weight}}Kg</td>
+                        </tr>
+                    {% endfor %}                    
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <br><br>
+    <div class="row">
+        <div class="col-lg-8  offset-md-2">
+            <h5>Food</h5>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                    <th scope="col">Date Time</th>
+                    <th scope="col">Food</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in food %}
+                        <tr class="">
+                            <td>{{f.date_time}}</td>
+                            <td>{{f.amount}}Ml</td>
+                        </tr>
+                    {% endfor %}                    
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <br><br>
+    <div class="row">
+        <!--<div class="col-lg-10  offset-md-1">
+            <h5>Daily Observations</h5>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Run</th>
+                    <th scope="col">Tasks</th>
+                    <th scope="col">Food</th>
+                    <th scope="col">General Comments</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for observation in observations %}
+                        <tr class="">
+                            <td>{{observation.date_time}}</td>
+                            <td>{{observation.run}}</td>
+                            <td>{{observation.food}}</td>
+                            <td>{{observation.general_comments}}</td>
+                        </tr>
+                    {% endfor %}                    
+                </tbody>
+            </table>
+        </div>-->
+        <br><br>
+        <div class="col-md-10 offset-md-1">
+            <h5>Sessions</h5>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                    <th scope="col">Session</th>
+                    <th scope="col">Session Tasks</th>
+                    <th scope="col">Users</th>
+                    <th scope="col">Narrative</th>
+                    <th scope="col">Session Start Time</th>
+                    <th scope="col">Session End time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in sessions %}
+                        <tr class="">
+                            <td>{{ session.name }}</td>
+                            {% with tasks=session.pk|get_tasks %}
+                            <td>
+                                {% for t in tasks %}  
+                                    {{t.task.name}}
+                                {% endfor %}
+                            </td>
+                        {% endwith %}
+                        {% with users=session.users|get_users %}
+                            <td>{{users}}</td>
+                        {% endwith %}
+                        <td>{{session.narrative}}</td>
+                        <td>{{session.start_time|default:""}}</td>
+                        <td>{{session.end_time|default:""}}</td>
+                        </tr>
+                    {% endfor %} 
+                </tbody>
+            </table>
+        </div>
+    </div>
+     </div>
+{% endblock %}
