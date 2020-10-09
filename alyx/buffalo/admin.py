@@ -113,7 +113,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def plots(self, obj):
         url = reverse("plots", kwargs={"subject_id": obj.id})
         return self.link(url, "View plots")
-    
+
     def session_queries(self, obj):
         url = reverse("session-queries", kwargs={"subject_id": obj.id})
         return self.link(url, "Session queries")
@@ -328,8 +328,10 @@ class SessionTaskListFilter(DefaultListFilter):
     parameter_name = "task"
 
     def lookups(self, request, model_admin):
-        sessionsTasks = set([c.task for c in SessionTask.objects.all()])
-        return [("all", "All")] + [(c.id, c) for c in sessionsTasks]
+        sessions_tasks = set(
+            [c.task for c in SessionTask.objects.filter(task__isnull=False)]
+        )
+        return [("all", "All")] + [(c.id, c) for c in sessions_tasks]
 
     def queryset(self, request, queryset):
         if self.value() == "all":
@@ -694,7 +696,9 @@ class StartingPointInline(nested_admin.NestedTabularInline):
         if db_field.name == "starting_point_set":
             try:
                 subject_id = request.resolver_match.kwargs["object_id"]
-                kwargs["queryset"] = StartingPointSet.objects.prefetch_related('subject').filter(subject=subject_id)
+                kwargs["queryset"] = StartingPointSet.objects.prefetch_related(
+                    "subject"
+                ).filter(subject=subject_id)
             except KeyError:
                 pass
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -748,7 +752,6 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
 
 def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
     class BuffaloElectrodeLog(admin.TabularInline):
-
         def get_queryset(self, request):
             self.request = request
             return ElectrodeLog.objects.none()
@@ -756,7 +759,9 @@ def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
             if db_field.name == "electrode":
                 try:
-                    kwargs["queryset"] = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
+                    kwargs["queryset"] = Electrode.objects.prefetch_related(
+                        "subject"
+                    ).filter(subject=subject_id)
                 except KeyError:
                     pass
             return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -787,7 +792,7 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         "description",
         "responsible_user",
     ]
-    fields = ["nickname", "unique_id", "name","prior_order"]
+    fields = ["nickname", "unique_id", "name", "prior_order"]
     search_fields = [
         "nickname",
     ]
@@ -800,7 +805,9 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
                 if inline_form.has_changed():
                     if delta == 0:
                         datetime_base = inline_form.instance.date_time
-                    inline_form.instance.date_time = datetime_base + timedelta(seconds=delta)
+                    inline_form.instance.date_time = datetime_base + timedelta(
+                        seconds=delta
+                    )
                     delta += 1
                     super().save_formset(request, form, formset, change)
         super().save_formset(request, form, formset, change)
@@ -875,7 +882,7 @@ class BuffaloSTLFile(BaseAdmin):
     fields = ("stl_file", "subject")
 
     def response_add(self, request, obj):
-        messages.success(request, 'File uploaded successful.')
+        messages.success(request, "File uploaded successful.")
         return redirect("/buffalo/buffalosubject")
 
     def __init__(self, *args, **kwargs):
@@ -896,13 +903,11 @@ class BuffaloSTLFile(BaseAdmin):
 class BuffaloStartingPoint(admin.ModelAdmin):
     change_form_template = "buffalo/change_form.html"
 
+
 class BuffaloStartingPointSet(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
 
-    fields = [
-        "name",
-        "subject"
-    ]
+    fields = ["name", "subject"]
 
     def __init__(self, *args, **kwargs):
         super(BuffaloStartingPointSet, self).__init__(*args, **kwargs)
@@ -910,6 +915,7 @@ class BuffaloStartingPointSet(BaseAdmin):
             fields = list(self.fields)
             fields.remove("json")
             self.fields = tuple(fields)
+
 
 class BuffaloCategory(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
