@@ -37,6 +37,7 @@ from .forms import (
     TaskForm,
     TaskVersionForm,
     ElectrodeBulkLoadForm,
+    ElectrodeLogBulkLoadForm,
     PlotFilterForm,
     SessionQueriesForm,
 )
@@ -235,6 +236,29 @@ class ElectrodeBulkLoadView(FormView):
                     new_electrode.create_new_starting_point_from_mat(
                         electrode_info, subject, starting_point_set
                     )
+            messages.success(request, "File loaded successful.")
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        return reverse("admin:buffalo_buffalosubject_changelist")
+
+class ElectrodeLogBulkLoadView(FormView):
+    form_class = ElectrodeLogBulkLoadForm
+    template_name = "buffalo/electrodelog_bulk_load.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        subject_id = self.kwargs.pop("subject_id", None)
+        if subject_id:
+            kwargs["initial"] = {"subject": subject_id}
+        return kwargs
+
+    def post(self, request, *args, **kwargs):
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        if form.is_valid():
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
         else:

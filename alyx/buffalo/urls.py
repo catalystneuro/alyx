@@ -8,6 +8,7 @@ from buffalo.views import (
     SessionDetails,
     SubjectDetailView,
     ElectrodeBulkLoadView,
+    ElectrodeLogBulkLoadView,
     PlotsView,
     SessionQueriesView,
 )
@@ -53,6 +54,14 @@ urlpatterns = [
             login_url='/login/',
         ),
         name="electrode-bulk-load",
+    ),
+    path(
+        "electrodelog-bulk-load/<uuid:subject_id>",
+        login_required(
+            ElectrodeLogBulkLoadView.as_view(),
+            login_url='/login/',
+        ),
+        name="electrodelog-bulk-load",
     ),
     path(
         "plots/<uuid:subject_id>",

@@ -1,8 +1,22 @@
 from scipy.io import loadmat
-import csv
+import xlrd
+import csv, re
+import datetime
+from dateutil.parser import parse
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 
+def is_date(string, fuzzy=False):
+    try: 
+        parse(string, fuzzy=fuzzy)
+        return True
+
+    except ValueError:
+        return False
+
+def is_number(s):
+    """ Returns True is string is a number. """
+    return s.replace('.','',1).isdigit()
 
 def validate_mat_file(file, structure_name):
     if not file:
@@ -89,3 +103,58 @@ def download_csv_points_mesh(subject_name, date, electrodes, electrode_logs, stl
             writer.writerow(row)
 
     return response
+
+def validate_electrodelog_file(file):
+    if not file:
+        return
+
+    regex = "^Trode \(([0-9]|[1-8][0-9]|9[0-9]|1[0-9]{2}|200)\)$"
+
+    try:
+        workbook = xlrd.open_workbook(file_contents=file.read())
+        # Check sheet names
+        sheet_number = 1
+        for sheet in workbook.sheets():
+            if sheet_number == 1:
+                print(sheet.name)
+                if sheet.name != "Summary":
+                    raise ValidationError(
+                        'Error loading the file - Sheet Name 1: {}'.format(file), 
+                        code='invalid', 
+                        params={'file': file}
+                    )
+            else:
+                
+                if re.search(regex, sheet.name) == None:
+                    raise ValidationError(
+                        'Error loading the file - Sheet Name: {}'.format(file), 
+                        code='invalid', 
+                        params={'file': file}
+                    )
+            sheet_number += 1
+
+        # Check columns
+        sheet_number = 1
+        for sheet in workbook.sheets():
+            if sheet_number > 1 and re.search(regex, sheet.name) != None:
+                for row in range(sheet.nrows):
+                    if row > 3 :
+                        date = sheet.cell(row, 0)
+                        turns = sheet.cell(row, 3)
+                        if str(date.value).strip() != "":
+                            print(datetime.datetime(*xlrd.xldate_as_tuple(date.value, workbook.datemode)))
+                            print(turns.value)
+                            if is_date(str(date.value)):
+                                if is_number(turns.value):
+                                    pass
+                                else:
+                                    raise ValidationError(
+                                        'Error loading the file - Column: {}'.format(file), 
+                                        code='invalid', 
+                                        params={'file': file}
+                                    )
+                            else:
+                                pass
+            sheet_number += 1
+    except Exception as error:
+        raise error
