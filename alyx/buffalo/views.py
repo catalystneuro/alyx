@@ -16,7 +16,7 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.shortcuts import render
 from django.conf import settings
-from .utils import get_mat_file_info, download_csv_points_mesh
+from .utils import get_mat_file_info, download_csv_points_mesh, get_electrodelog_info
 
 from actions.models import Session, Weighing
 from .models import (
@@ -259,6 +259,20 @@ class ElectrodeLogBulkLoadView(FormView):
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         if form.is_valid():
+            subject_id = form.cleaned_data["subject"]
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            electrodelogs_info = get_electrodelog_info(form.cleaned_data.get("file"))
+            for electrode_info in electrodelogs_info:
+                electrode = Electrode.objects.get_or_create(
+                    subject=subject, channel_number=electrode_info["electrode"]
+                )[0]
+                for log in electrode_info["logs"]:
+                    new_el = ElectrodeLog()
+                    new_el.subject = subject
+                    new_el.date_time = log["datetime"]
+                    new_el.electrode = electrode
+                    new_el.turn = log["turns"]
+                    new_el.save()
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
         else:
