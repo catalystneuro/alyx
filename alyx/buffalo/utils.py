@@ -6,17 +6,19 @@ from dateutil.parser import parse
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 
-def is_date(string, fuzzy=False):
-    try: 
-        parse(string, fuzzy=fuzzy)
+
+def is_datetime(date, workbook):
+    try:
+        datetime.datetime(*xlrd.xldate_as_tuple(date, workbook.datemode))
         return True
 
     except ValueError:
         return False
 
+
 def is_number(s):
-    """ Returns True is string is a number. """
-    return s.replace('.','',1).isdigit()
+    return s.replace("-", "", 1).replace(".", "", 1).isdigit()
+
 
 def validate_mat_file(file, structure_name):
     if not file:
@@ -104,6 +106,7 @@ def download_csv_points_mesh(subject_name, date, electrodes, electrode_logs, stl
 
     return response
 
+
 def validate_electrodelog_file(file):
     if not file:
         return
@@ -116,20 +119,22 @@ def validate_electrodelog_file(file):
         sheet_number = 1
         for sheet in workbook.sheets():
             if sheet_number == 1:
-                print(sheet.name)
                 if sheet.name != "Summary":
                     raise ValidationError(
-                        'Error loading the file - Sheet Name 1: {}'.format(file), 
-                        code='invalid', 
-                        params={'file': file}
+                        "Error loading the file - Summary Sheet - File: {}".format(
+                            file
+                        ),
+                        code="invalid",
+                        params={"file": file},
                     )
             else:
-                
                 if re.search(regex, sheet.name) == None:
                     raise ValidationError(
-                        'Error loading the file - Sheet Name: {}'.format(file), 
-                        code='invalid', 
-                        params={'file': file}
+                        "Error loading the file - Sheet Name: {} - File: {}".format(
+                            sheet.name, file
+                        ),
+                        code="invalid",
+                        params={"file": file},
                     )
             sheet_number += 1
 
@@ -138,23 +143,55 @@ def validate_electrodelog_file(file):
         for sheet in workbook.sheets():
             if sheet_number > 1 and re.search(regex, sheet.name) != None:
                 for row in range(sheet.nrows):
-                    if row > 3 :
+                    if row >= 3:
                         date = sheet.cell(row, 0)
-                        turns = sheet.cell(row, 3)
+                        turns = sheet.cell(row, 2)
                         if str(date.value).strip() != "":
-                            print(datetime.datetime(*xlrd.xldate_as_tuple(date.value, workbook.datemode)))
-                            print(turns.value)
-                            if is_date(str(date.value)):
-                                if is_number(turns.value):
+                            if is_datetime(date.value, workbook):
+                                if is_number(str(turns.value)):
                                     pass
                                 else:
+                                    print(turns.value)
                                     raise ValidationError(
-                                        'Error loading the file - Column: {}'.format(file), 
-                                        code='invalid', 
-                                        params={'file': file}
+                                        "Error loading the file - Sheet: {} - Row: {} - Column: 2 - File: {}".format(
+                                            sheet.name, row, file
+                                        ),
+                                        code="invalid",
+                                        params={"file": file},
                                     )
-                            else:
-                                pass
+                        else:
+                            pass
             sheet_number += 1
     except Exception as error:
         raise error
+
+
+def get_electrodelog_info(file):
+    if not file:
+        return
+    file.seek(0)
+    workbook = xlrd.open_workbook(file_contents=file.read())
+    electrodes = []
+    sheet_number = 1
+    for sheet in workbook.sheets():
+        if sheet_number > 1:
+            # Electrode number in each sheet
+            electrode_number = int(sheet.cell(0, 2).value)
+            electrode = {"electrode": electrode_number, "logs": []}
+            for row in range(sheet.nrows):
+                # Logs begin from row 3
+                if row >= 3:
+                    date = sheet.cell(row, 0)
+                    turns = sheet.cell(row, 2)
+                    if str(date.value).strip() != "":
+                        if is_datetime(date.value, workbook):
+                            log_datetime = datetime.datetime(
+                                *xlrd.xldate_as_tuple(date.value, workbook.datemode)
+                            )
+                            electrode["logs"].append(
+                                {"turns": float(turns.value), "datetime": log_datetime}
+                            )
+            if len(electrode["logs"]) > 0:
+                electrodes.append(electrode)
+        sheet_number += 1
+    return electrodes
