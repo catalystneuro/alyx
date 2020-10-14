@@ -32,3 +32,4 @@ trimesh==3.7.0
 django-cleanup==5.0.0
 rtree==0.9.4
 gunicorn==20.0.4
+xlrd
