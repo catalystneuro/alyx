@@ -5,6 +5,15 @@ env:
   POSTGRES_USER: alyx
   POSTGRES_PASSWORD: password
   MAX_LINE_LENGTH: 110
+  SITE_HEADER: Buffalo
+  SITE_TITLE: Buffalo
+  SITE_INDEX_TITLE: Welcome to Buffalo
+  CUSTOM_MENU: buffalo
+  LAB_NAME: buffalo
+  INCLUDE_CUSTOM_URLS: True
+  CUSTOM_APP_NAME: buffalo
+  ADMIN_URL_PATH_IN_ROOT: True
+  ENABLE_HOME_URLS: False
 jobs:
 
   lint:
