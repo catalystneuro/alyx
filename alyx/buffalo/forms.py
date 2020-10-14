@@ -9,7 +9,6 @@ from .models import (
     Task,
     SessionTask,
     BuffaloSubject,
-    ChannelRecording,
     Electrode,
     TaskCategory,
     FoodType,
@@ -18,7 +17,6 @@ from .models import (
     WeighingLog,
     STLFile,
     StartingPointSet,
-    BuffaloDataset,
 )
 
 
@@ -92,17 +90,18 @@ class SubjectForm(ModelForm):
             "description",
         ]
         widgets = {
-            #"lab": forms.HiddenInput(),
+            # "lab": forms.HiddenInput(),
         }
+
 
 class ElectrodeLogSubjectForm(ModelForm):
     nickname = forms.CharField(label="Name", required=True, max_length=150)
     code = forms.CharField(label="Code", required=False, max_length=150)
     prior_order = forms.BooleanField(
-        required=False, 
+        required=False,
         help_text="Save logs based on the order. It takes the first changed \
             row datetime like base and add one second between records.",
-        label="Prioritize order"
+        label="Prioritize order",
     )
 
     class Meta:
@@ -157,14 +156,14 @@ class SessionForm(ModelForm):
             "end_time",
         ]
         widgets = {
-            #"lab": forms.HiddenInput(),
+            # "lab": forms.HiddenInput(),
         }
 
 
 class CustomModelChoiceField(django.forms.ModelChoiceField):
     """Subclasses Django's ModelChoiceField and adds one parameter, `obj_label`.
-        This should be a callable with one argument (the current object) which
-        returns a string to use as the label of that object or instance."""
+    This should be a callable with one argument (the current object) which
+    returns a string to use as the label of that object or instance."""
 
     def __init__(self, obj_label=None, *args, **kwargs):
         super(CustomModelChoiceField, self).__init__(*args, **kwargs)
@@ -282,6 +281,7 @@ class ElectrodeBulkLoadForm(forms.Form):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             validate_mat_file(file, subject.nickname)
 
+
 class PlotFilterForm(forms.Form):
     cur_year = datetime.today().year
     year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
@@ -292,10 +292,13 @@ class PlotFilterForm(forms.Form):
     download_points = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
-        subject_id = kwargs.pop('subject_id')
+        subject_id = kwargs.pop("subject_id")
         super(PlotFilterForm, self).__init__(*args, **kwargs)
-        self.fields['stl'].queryset = STLFile.objects.filter(subject=subject_id)
-        self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)
+        self.fields["stl"].queryset = STLFile.objects.filter(subject=subject_id)
+        self.fields["starting_point_set"].queryset = StartingPointSet.objects.filter(
+            subject=subject_id
+        )
+
 
 class SessionQueriesForm(forms.Form):
     cur_year = datetime.today().year
@@ -307,11 +310,14 @@ class SessionQueriesForm(forms.Form):
     is_in_stl = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
-        
-        subject_id = kwargs.pop('subject_id')
+
+        subject_id = kwargs.pop("subject_id")
         super(SessionQueriesForm, self).__init__(*args, **kwargs)
-        self.fields['stl'].queryset = STLFile.objects.filter(subject=subject_id)
-        self.fields['starting_point_set'].queryset = StartingPointSet.objects.filter(subject=subject_id)
-        session_tasks = SessionTask.objects.filter(session__subject=subject_id).values("task")
-        self.fields['task'].queryset = Task.objects.filter(id__in=session_tasks)
-        
+        self.fields["stl"].queryset = STLFile.objects.filter(subject=subject_id)
+        self.fields["starting_point_set"].queryset = StartingPointSet.objects.filter(
+            subject=subject_id
+        )
+        session_tasks = SessionTask.objects.filter(session__subject=subject_id).values(
+            "task"
+        )
+        self.fields["task"].queryset = Task.objects.filter(id__in=session_tasks)

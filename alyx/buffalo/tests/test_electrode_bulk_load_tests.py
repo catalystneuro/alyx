@@ -1,7 +1,6 @@
 import os
 from django.test import TestCase, Client
 from django.urls import reverse
-from django.core.files import File
 from django.contrib.auth import get_user_model
 
 from buffalo.models import BuffaloSubject, Electrode
