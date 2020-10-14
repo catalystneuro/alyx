@@ -153,8 +153,8 @@ class SessionForm(ModelForm):
             "start_time",
             "end_time",
         ]
-       
-       
+
+
 class CustomModelChoiceField(django.forms.ModelChoiceField):
     """Subclasses Django's ModelChoiceField and adds one parameter, `obj_label`.
     This should be a callable with one argument (the current object) which
