@@ -284,7 +284,8 @@ class ElectrodeLogBulkLoadView(FormView):
             return self.form_invalid(form)
 
     def get_success_url(self):
-        return reverse("admin:buffalo_buffalosubject_changelist")
+        kwargs = super().get_form_kwargs()
+        return "/buffalo/electrodelog/?subject__id__exact=" + str(kwargs["data"]["subject"])
 
 
 class PlotsView(View):
