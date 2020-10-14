@@ -22,9 +22,9 @@ jobs:
         run: |
           pip install flake8
           # one pass for show-stopper syntax errors or undefined names
-          flake8 ./alyx/buffalo --count --select=E9,F63,F7,F82 --exclude=setup.py --show-source --statistics
+          flake8 ./alyx/buffalo --count --show-source --statistics
           # one pass for small stylistic things
-          flake8 ./alyx/buffalo --count --exclude=setup.py --max-line-length=$MAX_LINE_LENGTH --statistics
+          flake8 ./alyx/buffalo --count --max-line-length=$MAX_LINE_LENGTH --statistics
 
   test:
     runs-on: ubuntu-latest
