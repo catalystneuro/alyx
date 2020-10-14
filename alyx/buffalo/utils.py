@@ -140,6 +140,7 @@ def validate_electrodelog_file(file):
 
         # Check columns
         sheet_number = 1
+        msg = "Error loading the file - Sheet: {} - Row: {} - Column: 2 - File: {}"
         for sheet in workbook.sheets():
             if sheet_number > 1 and re.search(regex, sheet.name) is not None:
                 for row in range(sheet.nrows):
@@ -151,12 +152,8 @@ def validate_electrodelog_file(file):
                                 if is_number(str(turns.value)):
                                     pass
                                 else:
-                                    print(turns.value)
                                     raise ValidationError(
-                                        "Error loading the file - Sheet: {} - Row: {} - Column: 2 - File: {}"
-                                        .format(
-                                            sheet.name, row, file
-                                        ),
+                                        msg.format(sheet.name, row, file),
                                         code="invalid",
                                         params={"file": file},
                                     )
