@@ -64,7 +64,7 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          apt install libspatialindex-dev
+          sudo apt install -y libspatialindex-dev
 
       - name: Install python dependencies
         if: steps.cache.outputs.cache-hit != 'true'
