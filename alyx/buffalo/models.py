@@ -70,6 +70,15 @@ class Platform(BaseModel):
         return self.name
 
 
+class NeuralPhenomena(BaseModel):
+    description = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
 class BuffaloSubject(Subject):
     unique_id = models.CharField(
         max_length=255, blank=True, default="", help_text="Monkey Identifier"
@@ -300,13 +309,17 @@ class ElectrodeLog(BaseAction):
                     "z": location_list[2],
                 }
         return location
-    
+
     def is_in_stl(self, stl_file_name):
         electrode = self.electrode
         if electrode:
             if self.turn:
                 curr_location = self.get_current_location()
-                location_list = [curr_location['x'], curr_location['y'], curr_location['z']]
+                location_list = [
+                    curr_location["x"],
+                    curr_location["y"],
+                    curr_location["z"],
+                ]
                 mesh = trimesh.load(settings.UPLOADED_PATH + stl_file_name)
                 dist = proximity.signed_distance(mesh, [location_list])
                 if dist[0] > 0:
@@ -404,6 +417,7 @@ class ChannelRecording(BaseModel):
     session = models.ForeignKey(
         Session, null=True, blank=True, on_delete=models.SET_NULL
     )
+    neural_phenomena = models.ManyToManyField(NeuralPhenomena, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
