@@ -276,6 +276,7 @@ class ElectrodeBulkLoadForm(forms.Form):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             validate_mat_file(file, subject.nickname)
 
+
 class ElectrodeLogBulkLoadForm(forms.Form):
     file = forms.FileField(validators=[FileExtensionValidator(["xlsm"])])
     subject = forms.CharField(widget=forms.HiddenInput())
@@ -283,9 +284,8 @@ class ElectrodeLogBulkLoadForm(forms.Form):
     def clean(self):
         cleaned_data = super().clean()
         file = cleaned_data.get("file")
-        subject_id = cleaned_data.get("subject")
-        subject = BuffaloSubject.objects.get(pk=subject_id)
         validate_electrodelog_file(file)
+
 
 class PlotFilterForm(forms.Form):
     cur_year = datetime.today().year

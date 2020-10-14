@@ -1,8 +1,8 @@
 from scipy.io import loadmat
 import xlrd
-import csv, re
+import csv
+import re
 import datetime
-from dateutil.parser import parse
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 
@@ -111,7 +111,7 @@ def validate_electrodelog_file(file):
     if not file:
         return
 
-    regex = "^Trode \(([0-9]|[1-8][0-9]|9[0-9]|1[0-9]{2}|200)\)$"
+    regex = "^Trode \\(([0-9]|[1-8][0-9]|9[0-9]|1[0-9]{2}|200)\\)$"
 
     try:
         workbook = xlrd.open_workbook(file_contents=file.read())
@@ -128,7 +128,7 @@ def validate_electrodelog_file(file):
                         params={"file": file},
                     )
             else:
-                if re.search(regex, sheet.name) == None:
+                if re.search(regex, sheet.name) is None:
                     raise ValidationError(
                         "Error loading the file - Sheet Name: {} - File: {}".format(
                             sheet.name, file
@@ -141,7 +141,7 @@ def validate_electrodelog_file(file):
         # Check columns
         sheet_number = 1
         for sheet in workbook.sheets():
-            if sheet_number > 1 and re.search(regex, sheet.name) != None:
+            if sheet_number > 1 and re.search(regex, sheet.name) is not None:
                 for row in range(sheet.nrows):
                     if row >= 3:
                         date = sheet.cell(row, 0)
@@ -153,7 +153,8 @@ def validate_electrodelog_file(file):
                                 else:
                                     print(turns.value)
                                     raise ValidationError(
-                                        "Error loading the file - Sheet: {} - Row: {} - Column: 2 - File: {}".format(
+                                        "Error loading the file - Sheet: {} - Row: {} - Column: 2 - File: {}"
+                                        .format(
                                             sheet.name, row, file
                                         ),
                                         code="invalid",

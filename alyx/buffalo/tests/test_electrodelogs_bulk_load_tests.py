@@ -1,7 +1,6 @@
 import os
 from django.test import TestCase, Client
 from django.urls import reverse
-from django.core.files import File
 from django.contrib.auth import get_user_model
 
 from buffalo.models import BuffaloSubject, Electrode, ElectrodeLog
@@ -45,7 +44,9 @@ class ElectrodeLogsBulkLoadTests(TestCase):
             follow=True,
             format="multipart",
         )
-        self.assertContains(resp, "Error loading the file - Sheet: Trode (66) - Row: 6 - Column: 2")
+        self.assertContains(
+            resp, "Error loading the file - Sheet: Trode (66) - Row: 6 - Column: 2"
+        )
 
     def test_upload_bad_file_extension(self):
         sam = BuffaloSubject.objects.get(nickname="Sam")
@@ -58,7 +59,9 @@ class ElectrodeLogsBulkLoadTests(TestCase):
             },
             format="multipart",
         )
-        self.assertContains(resp, "File extension “mat” is not allowed. Allowed extensions are: xlsm.")
+        self.assertContains(
+            resp, "File extension “mat” is not allowed. Allowed extensions are: xlsm."
+        )
 
     def test_upload_well(self):
         sam = BuffaloSubject.objects.get(nickname="Sam")

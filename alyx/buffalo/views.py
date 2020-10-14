@@ -244,6 +244,7 @@ class ElectrodeBulkLoadView(FormView):
     def get_success_url(self):
         return reverse("admin:buffalo_buffalosubject_changelist")
 
+
 class ElectrodeLogBulkLoadView(FormView):
     form_class = ElectrodeLogBulkLoadForm
     template_name = "buffalo/electrodelog_bulk_load.html"
