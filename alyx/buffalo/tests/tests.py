@@ -1,10 +1,9 @@
-from datetime import datetime, date
+from datetime import datetime
 
 from django.test.testcases import TestCase
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
-from django.conf import settings
 from buffalo.models import BuffaloSubject, BuffaloSession, Task
 from misc.models import Lab, LabMember
 
@@ -42,7 +41,6 @@ class SubjectSessionTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_create_session(self):
-        session_name = f"{datetime.today()}_{self.subject.nickname}"
         self.session = BuffaloSession.objects.create(
             name=datetime.today().isoformat(), subject=self.subject
         )

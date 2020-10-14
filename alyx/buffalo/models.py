@@ -5,8 +5,7 @@ from django.conf import settings
 
 from alyx.base import BaseModel
 from data.models import DatasetType, Dataset
-from misc.models import Food
-from actions.models import Session, Weighing, BaseAction, ProcedureType
+from actions.models import Session, Weighing, BaseAction
 from subjects.models import Subject
 import trimesh
 from trimesh import proximity
@@ -279,7 +278,10 @@ class Electrode(BaseAction):
 
 class ElectrodeLog(BaseAction):
     electrode = models.ForeignKey(
-        Electrode, on_delete=models.SET_NULL, null=True, blank=True,
+        Electrode,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     turn = models.FloatField(null=True, blank=True)
     impedance = models.FloatField(null=True, blank=True)
@@ -334,7 +336,11 @@ class ElectrodeLog(BaseAction):
 
 class StartingPointSet(BaseModel):
     name = models.CharField(max_length=255, default="", blank=True)
-    subject = models.ForeignKey(BuffaloSubject, null=True, on_delete=models.SET_NULL,)
+    subject = models.ForeignKey(
+        BuffaloSubject,
+        null=True,
+        on_delete=models.SET_NULL,
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

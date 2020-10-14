@@ -9,7 +9,6 @@ from .models import (
     Task,
     SessionTask,
     BuffaloSubject,
-    ChannelRecording,
     Electrode,
     TaskCategory,
     FoodType,
@@ -18,7 +17,6 @@ from .models import (
     WeighingLog,
     STLFile,
     StartingPointSet,
-    BuffaloDataset,
     NeuralPhenomena,
 )
 
@@ -159,8 +157,8 @@ class SessionForm(ModelForm):
        
 class CustomModelChoiceField(django.forms.ModelChoiceField):
     """Subclasses Django's ModelChoiceField and adds one parameter, `obj_label`.
-        This should be a callable with one argument (the current object) which
-        returns a string to use as the label of that object or instance."""
+    This should be a callable with one argument (the current object) which
+    returns a string to use as the label of that object or instance."""
 
     def __init__(self, obj_label=None, *args, **kwargs):
         super(CustomModelChoiceField, self).__init__(*args, **kwargs)
