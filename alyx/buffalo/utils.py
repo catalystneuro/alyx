@@ -12,7 +12,7 @@ def is_datetime(date, workbook):
         datetime.datetime(*xlrd.xldate_as_tuple(date, workbook.datemode))
         return True
 
-    except ValueError:
+    except:
         return False
 
 
@@ -140,25 +140,35 @@ def validate_electrodelog_file(file):
 
         # Check columns
         sheet_number = 1
-        msg = "Error loading the file - Sheet: {} - Row: {} - Column: 2 - File: {}"
+        msg = "Error loading the file - Sheet: {} - Row: {} - Column: {} - File: {}"
         for sheet in workbook.sheets():
             if sheet_number > 1 and re.search(regex, sheet.name) is not None:
                 for row in range(sheet.nrows):
                     if row >= 3:
                         date = sheet.cell(row, 0)
                         turns = sheet.cell(row, 2)
+                        impedance = sheet.cell(row, 4)
                         if str(date.value).strip() != "":
                             if is_datetime(date.value, workbook):
-                                if is_number(str(turns.value)):
-                                    pass
-                                else:
+                                if not is_number(str(turns.value)):
                                     raise ValidationError(
-                                        msg.format(sheet.name, row, file),
+                                        msg.format(sheet.name, row + 1, 3, file),
                                         code="invalid",
                                         params={"file": file},
                                     )
-                        else:
-                            pass
+                                if str(impedance.value).strip() != "":
+                                    if not is_number(str(impedance.value)):
+                                        raise ValidationError(
+                                            msg.format(sheet.name, row + 1, 5, file),
+                                            code="invalid",
+                                            params={"file": file},
+                                        )
+                            else:
+                                raise ValidationError(
+                                    msg.format(sheet.name, row + 1, 1, file),
+                                    code="invalid",
+                                    params={"file": file},
+                                )
             sheet_number += 1
     except Exception as error:
         raise error
@@ -181,14 +191,26 @@ def get_electrodelog_info(file):
                 if row >= 3:
                     date = sheet.cell(row, 0)
                     turns = sheet.cell(row, 2)
+                    impedance = sheet.cell(row, 4)
+                    notes = sheet.cell(row, 8)
                     if str(date.value).strip() != "":
                         if is_datetime(date.value, workbook):
+                            log = {}
                             log_datetime = datetime.datetime(
                                 *xlrd.xldate_as_tuple(date.value, workbook.datemode)
                             )
-                            electrode["logs"].append(
-                                {"turns": float(turns.value), "datetime": log_datetime}
-                            )
+                            log["turns"] = float(turns.value)
+                            log["datetime"] = log_datetime
+                            if str(impedance.value).strip() != "":
+                                log["impedance"] = float(impedance.value)
+                            else:
+                                log["impedance"] = None
+                            if str(notes.value).strip() != "":
+                                log["notes"] = str(notes.value).strip()
+                            else:
+                                log["notes"] = None
+
+                            electrode["logs"].append(log)
             if len(electrode["logs"]) > 0:
                 electrodes.append(electrode)
         sheet_number += 1

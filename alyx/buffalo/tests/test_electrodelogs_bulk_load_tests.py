@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 
 from buffalo.models import BuffaloSubject, Electrode, ElectrodeLog
+from django.db.models import Q
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -45,7 +46,7 @@ class ElectrodeLogsBulkLoadTests(TestCase):
             format="multipart",
         )
         self.assertContains(
-            resp, "Error loading the file - Sheet: Trode (66) - Row: 6 - Column: 2"
+            resp, "Error loading the file - Sheet: Trode (66) - Row: 7 - Column: 3"
         )
 
     def test_upload_bad_file_extension(self):
@@ -79,6 +80,31 @@ class ElectrodeLogsBulkLoadTests(TestCase):
         electrode_47 = Electrode.objects.get(subject=sam, channel_number=47)
         electrodelogs_47 = ElectrodeLog.objects.filter(electrode=electrode_47)
         self.assertEquals(20, len(electrodelogs_47))
+
         electrode_74 = Electrode.objects.get(subject=sam, channel_number=74)
         electrodelogs_74 = ElectrodeLog.objects.filter(electrode=electrode_74)
         self.assertEquals(17, len(electrodelogs_74))
+
+        electrode_67 = Electrode.objects.get(subject=sam, channel_number=67)
+        electrodelogs_67 = ElectrodeLog.objects.filter(electrode=electrode_67).filter(
+            ~Q(notes="")
+        )
+        self.assertEquals(3, len(electrodelogs_67))
+
+        electrode_73 = Electrode.objects.get(subject=sam, channel_number=73)
+        electrodelogs_73 = ElectrodeLog.objects.filter(electrode=electrode_73).filter(
+            ~Q(notes="")
+        )
+        self.assertEquals(2, len(electrodelogs_73))
+
+        electrode_82 = Electrode.objects.get(subject=sam, channel_number=82)
+        electrodelogs_82 = ElectrodeLog.objects.filter(electrode=electrode_82).filter(
+            ~Q(impedance=None)
+        )
+        self.assertEquals(1, len(electrodelogs_82))
+
+        electrode_40 = Electrode.objects.get(subject=sam, channel_number=40)
+        electrodelogs_40 = ElectrodeLog.objects.filter(electrode=electrode_40).filter(
+            ~Q(impedance=None)
+        )
+        self.assertEquals(0, len(electrodelogs_40))
