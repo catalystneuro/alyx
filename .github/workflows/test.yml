@@ -4,6 +4,7 @@ env:
   POSTGRES_DB: alyx
   POSTGRES_USER: alyx
   POSTGRES_PASSWORD: password
+  MAX_LINE_LENGTH: 110
 jobs:
 
   lint:
