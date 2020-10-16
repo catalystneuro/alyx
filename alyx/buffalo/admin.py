@@ -673,6 +673,11 @@ class StartingPointFormset(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
         super(StartingPointFormset, self).__init__(*args, **kwargs)
 
+    def clean(self):
+        super().clean()
+        for form in self.forms:
+            form.instance.subject = form.cleaned_data['electrode'].subject
+
 
 class StartingPointInline(nested_admin.NestedTabularInline):
     model = StartingPoint

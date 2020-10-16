@@ -1,4 +1,3 @@
-import json
 import datetime
 
 from plotly.subplots import make_subplots
@@ -14,15 +13,12 @@ from django.views.generic import (
 )
 from django.urls import reverse
 from django.http import JsonResponse
-from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib import messages
-from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.conf import settings
 from .utils import get_mat_file_info, download_csv_points_mesh
 
 from actions.models import Session, Weighing
-from subjects.models import Subject
 from .models import (
     Task,
     SessionTask,
@@ -33,7 +29,6 @@ from .models import (
     BuffaloSubject,
     Electrode,
     ElectrodeLog,
-    StartingPoint,
     WeighingLog,
     StartingPointSet,
     BuffaloDataset,
@@ -175,7 +170,9 @@ class SessionDetails(TemplateView):
                 session_task_dataset_type.update(
                     {session_task_id: [session_task_datasets]}
                 )
-        channels_recording = ChannelRecording.objects.filter(session=session_id,)
+        channels_recording = ChannelRecording.objects.filter(
+            session=session_id,
+        )
         session = BuffaloSession.objects.get(pk=session_id)
         context = {
             "session": session,
@@ -261,16 +258,19 @@ class PlotsView(View):
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
             subject = BuffaloSubject.objects.get(pk=subject_id)
-            electrodes = Electrode.objects.prefetch_related('subject').filter(subject=subject_id)
-            electrode_logs = ElectrodeLog.objects \
-                                .prefetch_related('electrode') \
-                                .filter(subject=subject_id) \
-                                .exclude(turn=None) \
-                                .filter(
-                                    date_time__year=form.cleaned_data["date"].year,
-                                    date_time__month=form.cleaned_data["date"].month,
-                                    date_time__day=form.cleaned_data["date"].day
-                                )
+            electrodes = Electrode.objects.prefetch_related("subject").filter(
+                subject=subject_id
+            )
+            electrode_logs = (
+                ElectrodeLog.objects.prefetch_related("electrode")
+                .filter(subject=subject_id)
+                .exclude(turn=None)
+                .filter(
+                    date_time__year=form.cleaned_data["date"].year,
+                    date_time__month=form.cleaned_data["date"].month,
+                    date_time__day=form.cleaned_data["date"].day,
+                )
+            )
             slt_file_name = form.cleaned_data["stl"].stl_file.name
 
             if form.cleaned_data["download_points"]:
@@ -279,9 +279,9 @@ class PlotsView(View):
                     form.cleaned_data["date"],
                     electrodes,
                     electrode_logs,
-                    slt_file_name
+                    slt_file_name,
                 )
-            
+
             mesh = trimesh.load(settings.UPLOADED_PATH + slt_file_name)
 
             x_stl, y_stl, z_stl = mesh.vertices.T
@@ -351,6 +351,7 @@ class PlotsView(View):
 
         return render(request, self.template_name, {"form": form})
 
+
 class SessionQueriesView(View):
     form_class = SessionQueriesForm
     template_name = "buffalo/admin_session_queries.html"
@@ -366,13 +367,10 @@ class SessionQueriesView(View):
         if form.is_valid():
             slt_file_name = form.cleaned_data["stl"].stl_file.name
             sessions = SessionTask.objects.filter(
-                session__subject=subject_id,
-                task=form.cleaned_data["task"]
+                session__subject=subject_id, task=form.cleaned_data["task"]
             )
             channel_recordings = ChannelRecording.objects.filter(
-                session__in=sessions.values("session"),
-                alive="yes",
-                ripples="yes"
+                session__in=sessions.values("session"), alive="yes", ripples="yes"
             )
             queried_sessions = set()
             electrodes = {}
@@ -382,7 +380,7 @@ class SessionQueriesView(View):
                         electrode=record.electrode,
                         date_time__year=record.session.start_time.year,
                         date_time__month=record.session.start_time.month,
-                        date_time__day=record.session.start_time.day
+                        date_time__day=record.session.start_time.day,
                     )
                     for electrode_log in electrode_logs:
                         if electrode_log.is_in_stl(slt_file_name):
@@ -391,7 +389,7 @@ class SessionQueriesView(View):
                                 electrodes[record.session.id] = set()
                             electrodes[record.session.id].add(electrode_log.electrode)
             else:
-                for record in channel_recordings :
+                for record in channel_recordings:
                     queried_sessions.add(record.session)
             final_sessions = []
             for session in list(queried_sessions):
@@ -405,7 +403,8 @@ class SessionQueriesView(View):
                     "electrodes": session_electrodes,
                 }
                 final_sessions.append(session_dict)
-            
-            #import pdb; pdb.set_trace()
-        return render(request, self.template_name, {"form": form, "sessions": final_sessions})
-        
+
+            # import pdb; pdb.set_trace()
+        return render(
+            request, self.template_name, {"form": form, "sessions": final_sessions}
+        )

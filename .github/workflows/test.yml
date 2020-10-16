@@ -4,6 +4,16 @@ env:
   POSTGRES_DB: alyx
   POSTGRES_USER: alyx
   POSTGRES_PASSWORD: password
+  MAX_LINE_LENGTH: 110
+  SITE_HEADER: Buffalo
+  SITE_TITLE: Buffalo
+  SITE_INDEX_TITLE: Welcome to Buffalo
+  CUSTOM_MENU: buffalo
+  LAB_NAME: buffalo
+  INCLUDE_CUSTOM_URLS: True
+  CUSTOM_APP_NAME: buffalo
+  ADMIN_URL_PATH_IN_ROOT: True
+  ENABLE_HOME_URLS: False
 jobs:
 
   lint:
@@ -17,17 +27,13 @@ jobs:
           python-version: 3.6
           architecture: x64
 
-      - name: Autoformat with black
-        run: |
-          pip install black
-          black --check --exclude=setup.py .
       - name: Lint with flake8
         run: |
           pip install flake8
           # one pass for show-stopper syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --exclude=setup.py --show-source --statistics
+          flake8 ./alyx/buffalo --count --show-source --statistics
           # one pass for small stylistic things
-          flake8 . --count --exclude=setup.py --max-line-length=$MAX_LINE_LENGTH --statistics
+          flake8 ./alyx/buffalo --count --max-line-length=$MAX_LINE_LENGTH --statistics
 
   test:
     runs-on: ubuntu-latest
@@ -65,13 +71,16 @@ jobs:
           sudo touch /var/log/alyx.log
           sudo chmod 777 /var/log/alyx.log
 
-      - name: Install dependencies
+      - name: Install system dependencies
+        run: |
+          sudo apt install -y libspatialindex-dev
+
+      - name: Install python dependencies
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          python -m pip install --upgrade pip black
           python -m pip install -r requirements.txt
 
-      - name: Test with pytest
+      - name: Test
         env:
           POSTGRES_HOST: localhost
           POSTGRES_DB: ${{ env.POSTGRES_DB }}
@@ -79,4 +88,4 @@ jobs:
           POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
         run: |
           cd alyx
-          python manage.py test
+          python manage.py test buffalo
