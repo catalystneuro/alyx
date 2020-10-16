@@ -38,6 +38,7 @@ from .forms import (
     TaskVersionForm,
     ElectrodeBulkLoadForm,
     ElectrodeLogBulkLoadForm,
+    ChannelRecordingBulkLoadForm,
     PlotFilterForm,
     SessionQueriesForm,
 )
@@ -286,6 +287,31 @@ class ElectrodeLogBulkLoadView(FormView):
     def get_success_url(self):
         kwargs = super().get_form_kwargs()
         return "/buffalo/electrodelog/?subject__id__exact=" + str(kwargs["data"]["subject"])
+
+
+class ChannelRecordingBulkLoadView(FormView):
+    form_class = ChannelRecordingBulkLoadForm
+    template_name = "buffalo/channelrecording_bulk_load.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        subject_id = self.kwargs.pop("subject_id", None)
+        if subject_id:
+            kwargs["initial"] = {"subject": subject_id}
+        return kwargs
+
+    def post(self, request, *args, **kwargs):
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        if form.is_valid():
+            messages.success(request, "File loaded successful.")
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+
+    #def get_success_url(self):
+    #    kwargs = super().get_form_kwargs()
+    #    return "/buffalo/electrodelog/?subject__id__exact=" + str(kwargs["data"]["subject"])
 
 
 class PlotsView(View):

@@ -7,6 +7,22 @@ from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 
 
+def is_date_session(value):
+    regex_dates = "^[[\\d]{6}|[\\d]{5}[A]*$"
+    try:
+        return re.search(regex_dates, str(int(value)).strip()) is not None
+    except:
+        return re.search(regex_dates, str(value).strip()) is not None
+
+
+def get_value(value):
+    if isinstance(value, int):
+        return str(int(value)).strip()
+    elif isinstance(value, float):
+        return str(int(value)).strip()
+    return str(value).strip()
+
+
 def is_datetime(date, workbook):
     try:
         datetime.datetime(*xlrd.xldate_as_tuple(date, workbook.datemode))
@@ -215,3 +231,59 @@ def get_electrodelog_info(file):
                 electrodes.append(electrode)
         sheet_number += 1
     return electrodes
+
+
+def validate_channel_recording_file(file):
+    if not file:
+        return
+
+    regex = "^[\\d]+[a]*$"
+    
+    valid_values = ["0", "1", "2", "3", "4", "dead", "dead?", "", "?", "DEAD", "sparse"]
+
+    try:
+        workbook = xlrd.open_workbook(file_contents=file.read())
+
+        # Check columns
+        sheet_number = 1
+        msg = "Error loading the file - Sheet: {} - Row: {} - Column: {} - File: {}"
+        msg_cr = "Channel number name error - Sheet: {} - Row: {} - Column: {} - File: {}"
+        msg_num = "Invalid value error - Sheet: {} - Row: {} - Column: {} - File: {}"
+        for sheet in workbook.sheets():
+            if sheet_number == 1:
+                for row in range(sheet.nrows):
+                    for col in range(sheet.ncols):
+                        if row == 1:
+                            if col > 0:
+                                # Check dates row in sheet 1
+                                cell = sheet.cell(row, col)
+                                if not is_date_session(cell.value):
+                                    raise ValidationError(
+                                        msg.format(sheet.name, row + 1, col + 1, file),
+                                        code="invalid",
+                                        params={"file": file},
+                                    )
+                        elif row > 1:
+                            if col == 0:
+                                # Check channel number
+                                cell = sheet.cell(row, col)
+                                print(get_value(cell.value))
+                                if re.search(regex, get_value(cell.value)) is None:
+                                    raise ValidationError(
+                                        msg_cr.format(sheet.name, row + 1, col + 1, file),
+                                        code="invalid",
+                                        params={"file": file},
+                                    )
+                            elif col > 1:
+                                # Check values
+                                cell = sheet.cell(row, col)
+                                
+                                if get_value(cell.value) not in valid_values:
+                                    raise ValidationError(
+                                        msg_num.format(sheet.name, row + 1, col + 1, file),
+                                        code="invalid",
+                                        params={"file": file},
+                                    )
+            sheet_number += 1
+    except Exception as error:
+        raise error

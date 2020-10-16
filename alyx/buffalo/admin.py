@@ -115,6 +115,10 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def set_electrodelogs_file(self, obj):
         url = reverse("electrodelog-bulk-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Set electrode logs form")
+    
+    def set_channelrecordings_file(self, obj):
+        url = reverse("channelrecord-bulk-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Set channel recordings form")
 
     def plots(self, obj):
         url = reverse("plots", kwargs={"subject_id": obj.id})
@@ -134,6 +138,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
             self.new_electrode_logs(obj),
             self.set_electrodes_file(obj),
             self.set_electrodelogs_file(obj),
+            self.set_channelrecordings_file(obj),
             self.plots(obj),
             self.session_queries(obj),
         )

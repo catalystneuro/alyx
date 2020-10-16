@@ -3,7 +3,11 @@ from django import forms
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
-from .utils import validate_mat_file, validate_electrodelog_file
+from .utils import (
+    validate_mat_file,
+    validate_electrodelog_file,
+    validate_channel_recording_file,
+)
 
 from .models import (
     Task,
@@ -285,6 +289,16 @@ class ElectrodeLogBulkLoadForm(forms.Form):
         cleaned_data = super().clean()
         file = cleaned_data.get("file")
         validate_electrodelog_file(file)
+
+
+class ChannelRecordingBulkLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["xlsx"])])
+    subject = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        validate_channel_recording_file(file)
 
 
 class PlotFilterForm(forms.Form):
