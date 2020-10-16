@@ -104,14 +104,14 @@ if 'TRAVIS' in os.environ or 'READTHEDOCS' in os.environ:
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
 
 # SECURITY WARNING: don't run with debug turned on in production!!
-DEBUG = config('DEBUG', default=True)
+DEBUG = config('DEBUG', default=True, cast=bool)
 
 # Production settings:
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     X_FRAME_OPTIONS = 'DENY'
     SESSION_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True)
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_SECONDS = 30
