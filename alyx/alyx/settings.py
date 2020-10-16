@@ -103,7 +103,7 @@ if 'TRAVIS' in os.environ or 'READTHEDOCS' in os.environ:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
 
-# SECURITY WARNING: don't run with debug turned on in production!
+# SECURITY WARNING: don't run with debug turned on in production!!
 DEBUG = config('DEBUG', default=True)
 
 # Production settings:
