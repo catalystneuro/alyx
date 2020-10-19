@@ -309,9 +309,9 @@ class ChannelRecordingBulkLoadView(FormView):
         else:
             return self.form_invalid(form)
 
-    #def get_success_url(self):
-    #    kwargs = super().get_form_kwargs()
-    #    return "/buffalo/electrodelog/?subject__id__exact=" + str(kwargs["data"]["subject"])
+    def get_success_url(self):
+        kwargs = super().get_form_kwargs()
+        return "/buffalo/buffalosubject/"
 
 
 class PlotsView(View):

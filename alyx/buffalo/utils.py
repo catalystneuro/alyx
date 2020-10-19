@@ -15,6 +15,24 @@ def is_date_session(value):
         return re.search(regex_dates, str(value).strip()) is not None
 
 
+def get_date_session(value):
+    regex_dates = "^[[\\d]{6}|[\\d]{5}[A]*$"
+    try:
+        if re.search(regex_dates, str(int(value)).strip()):
+            date_str = str(int(value)).strip()
+    except:
+        date_str = value[0:6]
+    year = date_str[0:2]
+    month = date_str[2:4]
+    day = date_str[4:6]
+    date = datetime(
+        year=int(year),
+        month=int(month),
+        day=int(day)
+    )
+    return date
+
+
 def get_value(value):
     if isinstance(value, int):
         return str(int(value)).strip()
@@ -238,8 +256,8 @@ def validate_channel_recording_file(file):
         return
 
     regex = "^[\\d]+[a]*$"
-    
-    valid_values = ["0", "1", "2", "3", "4", "dead", "dead?", "", "?", "DEAD", "sparse"]
+
+    valid_values = ["0", "1", "2", "3", "4", "dead", "dead?", "", "?", "DEAD", "sparse", "NOISE", "noise", "not in", "5", "X", "11", "10"]
 
     try:
         workbook = xlrd.open_workbook(file_contents=file.read())
@@ -248,10 +266,12 @@ def validate_channel_recording_file(file):
         sheet_number = 1
         msg = "Error loading the file - Sheet: {} - Row: {} - Column: {} - File: {}"
         msg_cr = "Channel number name error - Sheet: {} - Row: {} - Column: {} - File: {}"
-        msg_num = "Invalid value error - Sheet: {} - Row: {} - Column: {} - File: {}"
+        msg_num = "Invalid value error - Sheet: {} - Row: {} - Column: {} - File: {} - Value: {}"
+        msg_date = "Invalid date error - Sheet: {} - Row: {} - Column: {} - File: {} - Value: {}"
         for sheet in workbook.sheets():
             if sheet_number == 1:
                 for row in range(sheet.nrows):
+                    row_valid = True
                     for col in range(sheet.ncols):
                         if row == 1:
                             if col > 0:
@@ -267,23 +287,228 @@ def validate_channel_recording_file(file):
                             if col == 0:
                                 # Check channel number
                                 cell = sheet.cell(row, col)
-                                print(get_value(cell.value))
-                                if re.search(regex, get_value(cell.value)) is None:
+                                if str(cell.value).strip() == "":
+                                    row_valid = False
+                                else:
+                                    if re.search(regex, get_value(cell.value)) is None:
+                                        raise ValidationError(
+                                            msg_cr.format(sheet.name, row + 1, col + 1, file),
+                                            code="invalid",
+                                            params={"file": file},
+                                        )
+                            elif col > 1:
+                                if row_valid:
+                                    # Check values
+                                    cell = sheet.cell(row, col)
+
+                                    if get_value(cell.value) not in valid_values:
+                                        raise ValidationError(
+                                            msg_num.format(
+                                                sheet.name,
+                                                row + 1,
+                                                col + 1,
+                                                file, get_value(cell.value)
+                                            ),
+                                            code="invalid",
+                                            params={"file": file},
+                                        )
+            elif sheet_number == 2:  # Check
+                for row in range(sheet.nrows):
+                    if row > 0:
+                        for col in range(sheet.ncols):
+                            # Check session date
+                            if col == 0:
+                                cell = sheet.cell(row, 0)
+                                try:
+                                    datetime.datetime(
+                                        *xlrd.xldate_as_tuple(
+                                            cell.value,
+                                            workbook.datemode
+                                        )
+                                    )
+                                except:
                                     raise ValidationError(
-                                        msg_cr.format(sheet.name, row + 1, col + 1, file),
+                                        msg_date.format(
+                                            sheet.name,
+                                            row + 1,
+                                            col + 1,
+                                            file, get_value(cell.value)
+                                        ),
                                         code="invalid",
                                         params={"file": file},
                                     )
-                            elif col > 1:
-                                # Check values
+                            elif col == 1 or col == 3 or col == 5 or col == 7:
                                 cell = sheet.cell(row, col)
-                                
-                                if get_value(cell.value) not in valid_values:
+                                if str(cell.value).strip() not in ["Y", "N", ""]:
                                     raise ValidationError(
-                                        msg_num.format(sheet.name, row + 1, col + 1, file),
+                                        msg_num.format(
+                                            sheet.name,
+                                            row + 1,
+                                            col + 1,
+                                            file, get_value(cell.value)
+                                        ),
+                                        code="invalid",
+                                        params={"file": file},
+                                    )
+                            elif col == 2 or col == 4 or col == 6:
+                                cell = sheet.cell(row, col)
+                                try:
+                                    if cell.value.strip() != "":
+                                        values = cell.value.strip().strip(",").split(",")
+                                        for value in values:
+                                            int(value.strip())
+                                except:
+                                    raise ValidationError(
+                                        msg_num.format(
+                                            sheet.name,
+                                            row + 1,
+                                            col + 1,
+                                            file, get_value(values)
+                                        ),
                                         code="invalid",
                                         params={"file": file},
                                     )
             sheet_number += 1
     except Exception as error:
         raise error
+
+
+def get_channelrecording_info(file):
+    if not file:
+        return
+    file.seek(0)
+    workbook = xlrd.open_workbook(file_contents=file.read())
+    sessions = {}
+    sheet_number = 1
+    for sheet in workbook.sheets():
+        if sheet_number == 1:
+            for col in range(sheet.ncols):
+                if col > 0:
+                    date = get_date_session(sheet.cell(row, 0).value)
+                    session = {"date": date, "records": []}
+                    for row in range(sheet.nrows):
+                        if row >= 3:
+                            # Check electrode is valid
+                            electrode_cell = sheet.cell(row, 0)
+                            if str(electrode_cell.value).strip() != "":
+                                electrode_number = get_value(electrode_cell.value)
+                                value = get_value(sheet.cell(row, col))
+                                record = {"electrode": electrode_number, "value": value}
+                                if len(record["value"]) > 0:
+                                    session["records"] = {
+                                        "electrode": record
+                                    }
+                    sessions[str(date)] = session
+        elif sheet_number == 2:
+            for row in range(sheet.nrows):
+                if row > 0:
+                    for col in range(sheet.ncols):
+                        # Ripples
+                        if col == 1:
+                            cell = sheet(row, col)
+                            if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
+                                electrodes_cell = sheet(row, 2)
+                                electrodes = electrodes_cell.value.strip().strip(",").split(",")
+                                date = datetime.datetime(
+                                    *xlrd.xldate_as_tuple(
+                                        cell.value,
+                                        workbook.datemode
+                                    )
+                                )
+                                for electrode in electrodes:
+                                    channel_number = str(electrode)
+                                    if str(date) in sessions:
+                                        session = sessions[date]
+                                        if str(electrode) in session["records"]:
+                                            session["records"][channel_number]["ripples"] = True
+                                        else:
+                                            session["records"][channel_number] = {
+                                                "ripples": True
+                                            }
+                                    else:  # Session doesn't exist
+                                        sessions[date] = {
+                                            "records": {
+                                                channel_number: {
+                                                    "ripples": True
+                                                }
+                                            }
+                                        }
+                        # Sharp waves
+                        elif col == 3:
+                            cell = sheet(row, col)
+                            if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
+                                electrodes_cell = sheet(row, 4)
+                                electrodes = electrodes_cell.cell.value.strip().strip(",").split(",")
+                                date = datetime.datetime(
+                                    *xlrd.xldate_as_tuple(
+                                        cell.value,
+                                        workbook.datemode
+                                    )
+                                )
+                                for electrode in electrodes:
+                                    channel_number = str(electrode)
+                                    if str(date) in sessions:
+                                        session = sessions[date]
+                                        if str(electrode) in session["records"]:
+                                            session["records"][channel_number]["sharp_waves"] = True
+                                        else:
+                                            session["records"][channel_number] = {
+                                                "sharp_waves" : True
+                                            }
+                                    else:  # Session doesn't exist
+                                        sessions[date] = {
+                                            "records": {
+                                                channel_number: {
+                                                    "sharp_waves": True
+                                                }
+                                            }
+                                        }
+                        # Spikes
+                        elif col == 5:
+                            cell = sheet(row, col)
+                            if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
+                                electrodes_cell = sheet(row, 6)
+                                electrodes = electrodes_cell.cell.value.strip().strip(",").split(",")
+                                date = datetime.datetime(
+                                    *xlrd.xldate_as_tuple(
+                                        cell.value,
+                                        workbook.datemode
+                                    )
+                                )
+                                for electrode in electrodes:
+                                    channel_number = str(electrode)
+                                    if str(date) in sessions:
+                                        session = sessions[date]
+                                        if str(electrode) in session["records"]:
+                                            session["records"][channel_number]["spikes"] = True
+                                        else:
+                                            session["records"][channel_number] = {
+                                                "spikes": True
+                                            }
+                                    else:  # Session doesn't exist
+                                        sessions[date] = {
+                                            "records": {
+                                                channel_number: {
+                                                    "spikes": True
+                                                }
+                                            }
+                                        }
+                        elif col == 7:
+                            cell = sheet(row, col)
+                            if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
+                                date = datetime.datetime(
+                                    *xlrd.xldate_as_tuple(
+                                        cell.value,
+                                        workbook.datemode
+                                    )
+                                )
+                                if str(date) in sessions:
+                                    if str(cell.value) != "":
+                                        session = sessions[date]
+                                        session["good behavior"] = str(cell.value).strip()
+                                else:
+                                    sessions[date] = {
+                                        "good behavior": str(cell.value).strip()
+                                    }
+        sheet_number += 1
+    return sessions
