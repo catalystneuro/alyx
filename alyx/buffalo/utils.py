@@ -8,7 +8,7 @@ from django.http import HttpResponse
 
 
 def is_date_session(value):
-    regex_dates = "^[[\\d]{6}|[\\d]{5}[A]*$"
+    regex_dates = "^[[\\d]{6}[A]*$"
     try:
         return re.search(regex_dates, str(int(value)).strip()) is not None
     except:
@@ -16,7 +16,8 @@ def is_date_session(value):
 
 
 def get_date_session(value):
-    regex_dates = "^[[\\d]{6}|[\\d]{5}[A]*$"
+    regex_dates = "^[\\d]{6}[A]*$"
+    date_str = ""
     try:
         if re.search(regex_dates, str(int(value)).strip()):
             date_str = str(int(value)).strip()
@@ -25,8 +26,8 @@ def get_date_session(value):
     year = date_str[0:2]
     month = date_str[2:4]
     day = date_str[4:6]
-    date = datetime(
-        year=int(year),
+    date = datetime.datetime(
+        year=(int(year) + 2000),
         month=int(month),
         day=int(day)
     )
@@ -384,49 +385,49 @@ def get_channelrecording_info(file):
         if sheet_number == 1:
             for col in range(sheet.ncols):
                 if col > 0:
-                    date = get_date_session(sheet.cell(row, 0).value)
-                    session = {"date": date, "records": []}
+                    date = get_date_session(sheet.cell(1, col).value)
+                    session = {"date": date, "records": {}}
                     for row in range(sheet.nrows):
                         if row >= 3:
                             # Check electrode is valid
                             electrode_cell = sheet.cell(row, 0)
                             if str(electrode_cell.value).strip() != "":
-                                electrode_number = get_value(electrode_cell.value)
+                                channel_number = get_value(electrode_cell.value).strip()
                                 value = get_value(sheet.cell(row, col))
-                                record = {"electrode": electrode_number, "value": value}
+                                record = {"value": value}
                                 if len(record["value"]) > 0:
-                                    session["records"] = {
-                                        "electrode": record
-                                    }
+                                    session["records"][channel_number] = record
                     sessions[str(date)] = session
-        elif sheet_number == 2:
+        elif sheet_number == 4:
             for row in range(sheet.nrows):
                 if row > 0:
                     for col in range(sheet.ncols):
                         # Ripples
                         if col == 1:
-                            cell = sheet(row, col)
+                            cell = sheet.cell(row, col)
                             if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
-                                electrodes_cell = sheet(row, 2)
+                                electrodes_cell = sheet.cell(row, 2)
+                                date_cell = sheet.cell(row, 0)
                                 electrodes = electrodes_cell.value.strip().strip(",").split(",")
                                 date = datetime.datetime(
                                     *xlrd.xldate_as_tuple(
-                                        cell.value,
+                                        date_cell.value,
                                         workbook.datemode
                                     )
                                 )
+                                date_str = str(date)
                                 for electrode in electrodes:
-                                    channel_number = str(electrode)
-                                    if str(date) in sessions:
-                                        session = sessions[date]
-                                        if str(electrode) in session["records"]:
+                                    channel_number = str(electrode).strip()
+                                    if date_str in sessions:
+                                        session = sessions[date_str]
+                                        if channel_number in session["records"]:
                                             session["records"][channel_number]["ripples"] = True
                                         else:
                                             session["records"][channel_number] = {
                                                 "ripples": True
                                             }
                                     else:  # Session doesn't exist
-                                        sessions[date] = {
+                                        sessions[date_str] = {
                                             "records": {
                                                 channel_number: {
                                                     "ripples": True
@@ -435,28 +436,30 @@ def get_channelrecording_info(file):
                                         }
                         # Sharp waves
                         elif col == 3:
-                            cell = sheet(row, col)
+                            cell = sheet.cell(row, col)
                             if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
-                                electrodes_cell = sheet(row, 4)
-                                electrodes = electrodes_cell.cell.value.strip().strip(",").split(",")
+                                electrodes_cell = sheet.cell(row, 4)
+                                date_cell = sheet.cell(row, 0)
+                                electrodes = electrodes_cell.value.strip().strip(",").split(",")
                                 date = datetime.datetime(
                                     *xlrd.xldate_as_tuple(
-                                        cell.value,
+                                        date_cell.value,
                                         workbook.datemode
                                     )
                                 )
+                                date_str = str(date)
                                 for electrode in electrodes:
-                                    channel_number = str(electrode)
-                                    if str(date) in sessions:
-                                        session = sessions[date]
-                                        if str(electrode) in session["records"]:
+                                    channel_number = str(electrode).strip()
+                                    if date_str in sessions:
+                                        session = sessions[date_str]
+                                        if channel_number in session["records"]:
                                             session["records"][channel_number]["sharp_waves"] = True
                                         else:
                                             session["records"][channel_number] = {
-                                                "sharp_waves" : True
+                                                "sharp_waves": True
                                             }
                                     else:  # Session doesn't exist
-                                        sessions[date] = {
+                                        sessions[date_str] = {
                                             "records": {
                                                 channel_number: {
                                                     "sharp_waves": True
@@ -465,28 +468,30 @@ def get_channelrecording_info(file):
                                         }
                         # Spikes
                         elif col == 5:
-                            cell = sheet(row, col)
+                            cell = sheet.cell(row, col)
                             if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
-                                electrodes_cell = sheet(row, 6)
-                                electrodes = electrodes_cell.cell.value.strip().strip(",").split(",")
+                                electrodes_cell = sheet.cell(row, 6)
+                                date_cell = sheet.cell(row, 0)
+                                electrodes = electrodes_cell.value.strip().strip(",").split(",")
                                 date = datetime.datetime(
                                     *xlrd.xldate_as_tuple(
-                                        cell.value,
+                                        date_cell.value,
                                         workbook.datemode
                                     )
                                 )
+                                date_str = str(date)
                                 for electrode in electrodes:
-                                    channel_number = str(electrode)
-                                    if str(date) in sessions:
-                                        session = sessions[date]
-                                        if str(electrode) in session["records"]:
+                                    channel_number = str(electrode).strip()
+                                    if date_str in sessions:
+                                        session = sessions[date_str]
+                                        if channel_number in session["records"]:
                                             session["records"][channel_number]["spikes"] = True
                                         else:
                                             session["records"][channel_number] = {
                                                 "spikes": True
                                             }
                                     else:  # Session doesn't exist
-                                        sessions[date] = {
+                                        sessions[date_str] = {
                                             "records": {
                                                 channel_number: {
                                                     "spikes": True
@@ -494,20 +499,22 @@ def get_channelrecording_info(file):
                                             }
                                         }
                         elif col == 7:
-                            cell = sheet(row, col)
+                            cell = sheet.cell(row, col)
                             if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
+                                date_cell = sheet.cell(row, 0)
                                 date = datetime.datetime(
                                     *xlrd.xldate_as_tuple(
-                                        cell.value,
+                                        date_cell.value,
                                         workbook.datemode
                                     )
                                 )
-                                if str(date) in sessions:
+                                date_str = str(date)
+                                if date_str in sessions:
                                     if str(cell.value) != "":
-                                        session = sessions[date]
+                                        session = sessions[date_str]
                                         session["good behavior"] = str(cell.value).strip()
                                 else:
-                                    sessions[date] = {
+                                    sessions[date_str] = {
                                         "good behavior": str(cell.value).strip()
                                     }
         sheet_number += 1

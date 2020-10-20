@@ -16,7 +16,12 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.shortcuts import render
 from django.conf import settings
-from .utils import get_mat_file_info, download_csv_points_mesh, get_electrodelog_info
+from .utils import (
+    get_mat_file_info, 
+    download_csv_points_mesh, 
+    get_electrodelog_info,
+    get_channelrecording_info,
+)
 
 from actions.models import Session, Weighing
 from .models import (
@@ -296,6 +301,7 @@ class ChannelRecordingBulkLoadView(FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         subject_id = self.kwargs.pop("subject_id", None)
+        
         if subject_id:
             kwargs["initial"] = {"subject": subject_id}
         return kwargs
@@ -304,6 +310,10 @@ class ChannelRecordingBulkLoadView(FormView):
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         if form.is_valid():
+            subject_id = form.cleaned_data["subject"]
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            channel_recording = get_channelrecording_info(form.cleaned_data.get("file"))
+            import pdb; pdb.set_trace()
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
         else:
