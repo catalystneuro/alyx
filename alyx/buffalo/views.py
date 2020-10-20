@@ -17,8 +17,8 @@ from django.contrib import messages
 from django.shortcuts import render
 from django.conf import settings
 from .utils import (
-    get_mat_file_info, 
-    download_csv_points_mesh, 
+    get_mat_file_info,
+    download_csv_points_mesh,
     get_electrodelog_info,
     get_channelrecording_info,
 )
@@ -301,7 +301,6 @@ class ChannelRecordingBulkLoadView(FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         subject_id = self.kwargs.pop("subject_id", None)
-        
         if subject_id:
             kwargs["initial"] = {"subject": subject_id}
         return kwargs
@@ -312,8 +311,32 @@ class ChannelRecordingBulkLoadView(FormView):
         if form.is_valid():
             subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
-            channel_recording = get_channelrecording_info(form.cleaned_data.get("file"))
-            import pdb; pdb.set_trace()
+            channel_recording_info = get_channelrecording_info(form.cleaned_data.get("file"))
+            for key, session_data in channel_recording_info.items():
+                datetime_str = str(session_data["date"])
+                session_name = f"{datetime_str}_{subject.nicknamesafe()}"
+                session = BuffaloSession.objects.get_or_create(
+                    subject=subject, name=session_name
+                )[0]
+                electrodes_loaded = {}
+                for key, record_data in session_data["records"].items():
+                    print("{} - {}".format(datetime_str, key))
+                    if key in electrodes_loaded.keys():
+                        electrode = electrodes_loaded[key]
+                    else:
+                        electrode = Electrode.objects.get_or_create(
+                            subject=subject, channel_number=key
+                        )[0]
+                        electrodes_loaded[key] = electrode
+                    new_cr = ChannelRecording()
+                    new_cr.electrode = electrode
+                    new_cr.session = session
+                    if "value" in record_data.keys():
+                        new_cr.number_of_cells = record_data["value"]
+                    if "ripples" in record_data.keys():
+                        new_cr.ripples = 'yes' if record_data["ripples"] == 'Y' else ''
+                    new_cr.save()
+
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
         else:

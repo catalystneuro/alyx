@@ -393,12 +393,12 @@ def get_channelrecording_info(file):
                             electrode_cell = sheet.cell(row, 0)
                             if str(electrode_cell.value).strip() != "":
                                 channel_number = get_value(electrode_cell.value).strip()
-                                value = get_value(sheet.cell(row, col))
+                                value = get_value(sheet.cell(row, col).value).strip()
                                 record = {"value": value}
-                                if len(record["value"]) > 0:
+                                if len(value) > 0:
                                     session["records"][channel_number] = record
                     sessions[str(date)] = session
-        elif sheet_number == 4:
+        elif sheet_number == 2:
             for row in range(sheet.nrows):
                 if row > 0:
                     for col in range(sheet.ncols):
@@ -428,6 +428,7 @@ def get_channelrecording_info(file):
                                             }
                                     else:  # Session doesn't exist
                                         sessions[date_str] = {
+                                            "date": date,
                                             "records": {
                                                 channel_number: {
                                                     "ripples": True
@@ -460,6 +461,7 @@ def get_channelrecording_info(file):
                                             }
                                     else:  # Session doesn't exist
                                         sessions[date_str] = {
+                                            "date": date,
                                             "records": {
                                                 channel_number: {
                                                     "sharp_waves": True
@@ -492,6 +494,7 @@ def get_channelrecording_info(file):
                                             }
                                     else:  # Session doesn't exist
                                         sessions[date_str] = {
+                                            "date": date,
                                             "records": {
                                                 channel_number: {
                                                     "spikes": True
@@ -515,6 +518,7 @@ def get_channelrecording_info(file):
                                         session["good behavior"] = str(cell.value).strip()
                                 else:
                                     sessions[date_str] = {
+                                        "date": date,
                                         "good behavior": str(cell.value).strip()
                                     }
         sheet_number += 1
