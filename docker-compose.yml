@@ -1,0 +1,64 @@
+# docker-compose run django ./manage.py migrate
+# docker-compose run django ./manage.py createsuperuser
+# docker-compose up
+
+
+version: '2.4'
+
+services:
+  postgres:
+    image: postgres:12-alpine
+    env_file:
+      - .env
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    expose:
+      - 5432
+    networks:
+      - superset
+      - default
+    cpus: 2
+    mem_limit: 1536m
+    restart: on-failure
+
+  django:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: alyx:django_base
+    working_dir: /opt/monadical.alyx/
+    command: ./alyx/manage.py runserver 0.0.0.0:8000
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+    expose:
+      - 8000
+    volumes:
+      - ./alyx:/opt/monadical.alyx
+      - ./data/www-data-home:/home/www-data
+      - ./data/uploaded:/opt/monadical.alyx/uploaded
+      - ./data/logs/django:/var/log
+    cpus: 2
+    mem_limit: 1536m
+    restart: on-failure
+
+  argo:
+    image: cloudflare/cloudflared
+    network_mode: 'service:django'
+    command: tunnel --no-autoupdate --retries 15 --hostname alyx.zervice.io http://django:8000
+    depends_on:
+      - django
+    volumes:
+      # get this cert from https://www.cloudflare.com/a/warp
+      - ./data/certs/zervice.io.pem:/etc/cloudflared/cert.pem:ro
+    cpus: 2
+    mem_limit: 4096m
+    restart: on-failure
+
+networks:
+  superset:
+    external:
+      name: superset

@@ -43,6 +43,7 @@ from .models import (
     WeighingLog,
     BuffaloDataset,
     StartingPointSet,
+    NeuralPhenomena,
 )
 from .forms import (
     SubjectWeighingForm,
@@ -55,6 +56,7 @@ from .forms import (
     ElectrodeForm,
     FoodTypeForm,
     ElectrodeLogSubjectForm,
+    NeuralPhenomenaForm,
 )
 
 
@@ -137,11 +139,28 @@ class ChannelRecordingFormset(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
         super(ChannelRecordingFormset, self).__init__(*args, **kwargs)
 
+    def clean(self):
+        super().clean()
+        for form in self.forms:
+            if form.cleaned_data.get("neural_phenomena") and not form.cleaned_data.get(
+                "electrode"
+            ):
+                raise forms.ValidationError(
+                    "You must select an Electrode for the Neural Phenomena"
+                )
+
 
 class ChannelRecordingInline(nested_admin.NestedTabularInline):
     model = ChannelRecording
     formset = ChannelRecordingFormset
-    fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
+    fields = (
+        "electrode",
+        "ripples",
+        "alive",
+        "number_of_cells",
+        "neural_phenomena",
+        "notes",
+    )
     extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -232,9 +251,26 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
                     AddChannelRecordingInline.AddChannelRecordingFormset, self
                 ).__init__(*args, **kwargs)
 
+            def clean(self):
+                super().clean()
+                for form in self.forms:
+                    if form.cleaned_data.get(
+                        "neural_phenomena"
+                    ) and not form.cleaned_data.get("electrode"):
+                        raise forms.ValidationError(
+                            "You must select an Electrode for the Neural Phenomena"
+                        )
+
         model = ChannelRecording
         extra = num_forms
-        fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
+        fields = (
+            "electrode",
+            "ripples",
+            "alive",
+            "number_of_cells",
+            "neural_phenomena",
+            "notes",
+        )
         formset = AddChannelRecordingFormset
 
     return AddChannelRecordingInline
@@ -864,6 +900,7 @@ class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
 class BuffaloChannelRecording(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     list_display = [
+        "name",
         "subject_recorded",
         "session_",
         "alive",
@@ -999,6 +1036,25 @@ class BuffaloDatasetAdmin(BaseExperimentalDataAdmin):
         return False
 
 
+class NeuralPhenomenaAdmin(admin.ModelAdmin):
+    form = NeuralPhenomenaForm
+
+    list_display = [
+        "name",
+        "description",
+    ]
+
+    def has_delete_permission(self, request, obj=None):
+        if "buffalo/buffalosession" in request.path:
+            return False
+        return True
+
+    def has_change_permission(self, request, obj=None):
+        if "buffalo/buffalosession" in request.path:
+            return False
+        return True
+
+
 admin.site.register(BuffaloSubject, BuffaloSubjectAdmin)
 admin.site.register(BuffaloElectrodeSubject, BuffaloElectrodeSubjectAdmin)
 admin.site.register(BuffaloElectrodeLogSubject, BuffaloElectrodeLogSubjectAdmin)
@@ -1019,3 +1075,4 @@ admin.site.register(Reward)
 admin.site.register(Platform)
 admin.site.register(FoodType, FoodTypeAdmin)
 admin.site.register(BuffaloDataset, BuffaloDatasetAdmin)
+admin.site.register(NeuralPhenomena, NeuralPhenomenaAdmin)

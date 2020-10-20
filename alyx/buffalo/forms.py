@@ -17,6 +17,7 @@ from .models import (
     WeighingLog,
     STLFile,
     StartingPointSet,
+    NeuralPhenomena,
 )
 
 
@@ -89,9 +90,6 @@ class SubjectForm(ModelForm):
             "sex",
             "description",
         ]
-        widgets = {
-            # "lab": forms.HiddenInput(),
-        }
 
 
 class ElectrodeLogSubjectForm(ModelForm):
@@ -155,9 +153,6 @@ class SessionForm(ModelForm):
             "start_time",
             "end_time",
         ]
-        widgets = {
-            # "lab": forms.HiddenInput(),
-        }
 
 
 class CustomModelChoiceField(django.forms.ModelChoiceField):
@@ -321,3 +316,12 @@ class SessionQueriesForm(forms.Form):
             "task"
         )
         self.fields["task"].queryset = Task.objects.filter(id__in=session_tasks)
+
+
+class NeuralPhenomenaForm(forms.ModelForm):
+    class Meta:
+        model = NeuralPhenomena
+        fields = [
+            "name",
+            "description",
+        ]
