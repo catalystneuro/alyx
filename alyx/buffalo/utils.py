@@ -16,8 +16,8 @@ def is_datetime(date, workbook):
         return False
 
 
-def is_number(s):
-    return s.replace("-", "", 1).replace(".", "", 1).isdigit()
+def is_number(cell_value):
+    return cell_value.replace("-", "", 1).replace(".", "", 1).isdigit()
 
 
 def validate_mat_file(file, structure_name):
