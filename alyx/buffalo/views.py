@@ -291,7 +291,9 @@ class ElectrodeLogBulkLoadView(FormView):
 
     def get_success_url(self):
         kwargs = super().get_form_kwargs()
-        return "/buffalo/electrodelog/?subject__id__exact=" + str(kwargs["data"]["subject"])
+        return "/buffalo/electrodelog/?subject__id__exact=" + str(
+            kwargs["data"]["subject"]
+        )
 
 
 class ChannelRecordingBulkLoadView(FormView):
@@ -311,7 +313,9 @@ class ChannelRecordingBulkLoadView(FormView):
         if form.is_valid():
             subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
-            channel_recording_info = get_channelrecording_info(form.cleaned_data.get("file"))
+            channel_recording_info = get_channelrecording_info(
+                form.cleaned_data.get("file")
+            )
             for key, session_data in channel_recording_info.items():
                 datetime_str = str(session_data["date"])
                 session_name = f"{datetime_str}_{subject.nicknamesafe()}"
@@ -334,7 +338,7 @@ class ChannelRecordingBulkLoadView(FormView):
                     if "value" in record_data.keys():
                         new_cr.number_of_cells = record_data["value"]
                     if "ripples" in record_data.keys():
-                        new_cr.ripples = 'yes' if record_data["ripples"] == 'Y' else ''
+                        new_cr.ripples = "yes" if record_data["ripples"] == "Y" else ""
                     new_cr.save()
 
             messages.success(request, "File loaded successful.")
@@ -343,7 +347,7 @@ class ChannelRecordingBulkLoadView(FormView):
             return self.form_invalid(form)
 
     def get_success_url(self):
-        kwargs = super().get_form_kwargs()
+        # kwargs = super().get_form_kwargs()
         return "/buffalo/buffalosubject/"
 
 
