@@ -115,7 +115,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def set_electrodelogs_file(self, obj):
         url = reverse("electrodelog-bulk-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Set electrode logs form")
-    
+
     def set_channelrecordings_file(self, obj):
         url = reverse("channelrecord-bulk-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Set channel recordings form")
@@ -179,13 +179,17 @@ class ChannelRecordingInline(nested_admin.NestedTabularInline):
                 session = Session.objects.get(
                     pk=request.resolver_match.kwargs["object_id"]
                 )
-                kwargs["queryset"] = Electrode.objects.filter(subject=session.subject)
+                kwargs["queryset"] = Electrode.objects.prefetch_related(
+                    "subject"
+                ).filter(subject=session.subject)
             except KeyError:
                 pass
             try:
                 subject = request.GET.get("subject", None)
                 if subject is not None:
-                    kwargs["queryset"] = Electrode.objects.filter(subject=subject)
+                    kwargs["queryset"] = Electrode.objects.prefetch_related(
+                        "subject"
+                    ).filter(subject=subject)
             except:
                 pass
 
@@ -772,7 +776,7 @@ class StartingPointFormset(BaseInlineFormSet):
     def clean(self):
         super().clean()
         for form in self.forms:
-            form.instance.subject = form.cleaned_data['electrode'].subject
+            form.instance.subject = form.cleaned_data["electrode"].subject
 
 
 class StartingPointInline(nested_admin.NestedTabularInline):

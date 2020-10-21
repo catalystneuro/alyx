@@ -258,7 +258,12 @@ def validate_channel_recording_file(file):
 
     regex = "^[\\d]+[a]*$"
 
-    valid_values = ["0", "1", "2", "3", "4", "dead", "dead?", "", "?", "DEAD", "sparse", "NOISE", "noise", "not in", "5", "X", "11", "10"]
+    valid_values = [
+        "0", "1", "2", "3", "4", "dead",
+        "dead?", "", "?", "DEAD", "sparse",
+        "NOISE", "noise", "not in", "5",
+        "X", "11", "10"
+    ]
 
     try:
         workbook = xlrd.open_workbook(file_contents=file.read())
