@@ -6,6 +6,21 @@ import datetime
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 
+NUMBER_OF_CELLS_VALUES = ["1", "2", "3", "4"]
+
+DEAD_VALUES = ["dead", "dead?", "DEAD"]
+
+ALIVE_VALUES = ["sparse"]
+
+MAYBE_VALUES = ["0", "", "?", "NOISE", "noise"]
+
+NOT_SAVE_VALUES = ["not in"]
+
+OTHER_VALUES = ["5", "X", "11", "10"]
+
+VALID_VALUES = NUMBER_OF_CELLS_VALUES + DEAD_VALUES + ALIVE_VALUES + \
+    MAYBE_VALUES + NOT_SAVE_VALUES + OTHER_VALUES
+
 
 def is_date_session(value):
     regex_dates = "^[[\\d]{6}[A]*$"
@@ -258,13 +273,6 @@ def validate_channel_recording_file(file):
 
     regex = "^[\\d]+[a]*$"
 
-    valid_values = [
-        "0", "1", "2", "3", "4", "dead",
-        "dead?", "", "?", "DEAD", "sparse",
-        "NOISE", "noise", "not in", "5",
-        "X", "11", "10"
-    ]
-
     try:
         workbook = xlrd.open_workbook(file_contents=file.read())
 
@@ -307,7 +315,7 @@ def validate_channel_recording_file(file):
                                     # Check values
                                     cell = sheet.cell(row, col)
 
-                                    if get_value(cell.value) not in valid_values:
+                                    if get_value(cell.value) not in VALID_VALUES:
                                         raise ValidationError(
                                             msg_num.format(
                                                 sheet.name,
