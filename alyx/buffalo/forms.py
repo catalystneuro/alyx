@@ -292,7 +292,12 @@ class ElectrodeLogBulkLoadForm(forms.Form):
 
 
 class ChannelRecordingBulkLoadForm(forms.Form):
+    DEVICES = [('1', 'Posterior'), ('2', 'Anterior')]
     file = forms.FileField(validators=[FileExtensionValidator(["xlsx"])])
+    device = forms.ChoiceField(choices=DEVICES)
+    sufix = forms.CharField(
+        label="Sufix (Ex. a)", required=False, max_length=250
+    )
     subject = forms.CharField(widget=forms.HiddenInput())
 
     def clean(self):

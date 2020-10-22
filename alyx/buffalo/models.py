@@ -99,6 +99,11 @@ class BuffaloElectrodeLogSubject(BuffaloSubject):
         proxy = True
 
 
+class BuffaloDeviceSubject(BuffaloSubject):
+    class Meta:
+        proxy = True
+
+
 class Task(BaseModel):
     name = models.CharField(max_length=255, blank=True, help_text="Task name")
     description = models.TextField(blank=True)
@@ -227,12 +232,43 @@ class BuffaloSession(Session):
         verbose_name = "Session"
 
 
+class Device(BaseModel):
+    subject = models.ForeignKey(
+        BuffaloSubject,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="The subject on which the device is",
+    )
+    explantation_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    deplantation_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    description = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        name = "deleted"
+        if self.subject:
+            name = self.subject.nickname
+        return f"{name} - {self.name}"
+
+
+class BuffaloElectrodeDevice(Device):
+    class Meta:
+        proxy = True
+
 class Electrode(BaseAction):
     subject = models.ForeignKey(
         BuffaloSubject,
         null=True,
         on_delete=models.SET_NULL,
         help_text="The subject on which the electrode is",
+    )
+    device = models.ForeignKey(
+        Device,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="device",
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     millimeters = models.FloatField(null=True, blank=True)
