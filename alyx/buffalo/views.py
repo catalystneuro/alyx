@@ -48,6 +48,12 @@ from .forms import (
     SessionQueriesForm,
 )
 
+from .utils import (
+    DEAD_VALUES, NUMBER_OF_CELLS_VALUES,
+    ALIVE_VALUES, MAYBE_VALUES, OTHER_VALUES,
+    MAYBE_VALUES, NOT_SAVE_VALUES
+)
+
 
 class TaskCreateView(CreateView):
     template_name = "buffalo/task.html"
@@ -325,6 +331,7 @@ class ChannelRecordingBulkLoadView(FormView):
                 electrodes_loaded = {}
                 for key, record_data in session_data["records"].items():
                     print("{} - {}".format(datetime_str, key))
+                    save = True
                     if key in electrodes_loaded.keys():
                         electrode = electrodes_loaded[key]
                     else:
@@ -336,10 +343,22 @@ class ChannelRecordingBulkLoadView(FormView):
                     new_cr.electrode = electrode
                     new_cr.session = session
                     if "value" in record_data.keys():
-                        new_cr.number_of_cells = record_data["value"]
+                        if record_data["value"] in NUMBER_OF_CELLS_VALUES:
+                            new_cr.number_of_cells = record_data["value"]
+                            new_cr.alive = "yes"
+                        elif record_data["value"] in ALIVE_VALUES:
+                            new_cr.number_of_cells = 0
+                            new_cr.alive = "yes"
+                        elif record_data["value"] in MAYBE_VALUES:
+                            new_cr.alive = "maybe"
+                        elif record_data["value"] in DEAD_VALUES:
+                            new_cr.alive = "no"
+                        elif record_data["value"] in NOT_SAVE_VALUES:
+                            save = Faqlse
                     if "ripples" in record_data.keys():
                         new_cr.ripples = "yes" if record_data["ripples"] == "Y" else ""
-                    new_cr.save()
+                    if save:
+                        new_cr.save()
 
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
