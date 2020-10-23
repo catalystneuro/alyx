@@ -120,9 +120,9 @@ class BuffaloSubjectAdmin(BaseAdmin):
     #    url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.id})
     #    return self.link(url, "Set electrodes form")
 
-    #def set_electrodelogs_file(self, obj):
-    #    url = reverse("electrodelog-bulk-load", kwargs={"subject_id": obj.id})
-    #    return self.link(url, "Set electrode logs form")
+    def set_electrodelogs_file(self, obj):
+        url = reverse("electrodelog-bulk-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Set electrode logs form")
 
     def set_channelrecordings_file(self, obj):
         url = reverse("channelrecord-bulk-load", kwargs={"subject_id": obj.id})
@@ -137,7 +137,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
         return self.link(url, "Session queries")
 
     def options(self, obj):
-        select = "{} {} {} {} {} {} {} {} {} "
+        select = "{} {} {} {} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
@@ -145,7 +145,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
             self.set_electrodes(obj),
             self.new_electrode_logs(obj),
             #self.set_electrodes_file(obj),
-            #self.set_electrodelogs_file(obj),
+            self.set_electrodelogs_file(obj),
             self.set_channelrecordings_file(obj),
             self.plots(obj),
             self.session_queries(obj),
@@ -893,7 +893,7 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
 
 class BuffaloDevice(admin.TabularInline):
     model = Device
-    fields = ("name", "manage_electrodes", "explantation_date", "deplantation_date", "description")
+    fields = ("name", "manage_electrodes", "implantation_date", "explantation_date", "description")
     readonly_fields = ('manage_electrodes',)
     extra = 0
 
@@ -904,7 +904,7 @@ class BuffaloDevice(admin.TabularInline):
     def set_electrodes_file(self, obj):
         url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.subject.id})
         return self.link(url, "Set electrodes form")
-    
+
     def set_electrodes(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodedevice_change", args=[obj.id])
         return self.link(url, "Set electrodes")
@@ -972,7 +972,7 @@ class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
         "description"
     ]
 
-    fields = ["name", "description", "explantation_date", "subject", "deplantation_date"]
+    fields = ["name", "description", "implantation_date", "subject", "explantation_date"]
 
     search_fields = [
         "nickname",
@@ -994,7 +994,7 @@ class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
-            return self.readonly_fields + ("name", "subject", "description", "explantation_date", "deplantation_date")
+            return self.readonly_fields + ("name", "subject", "description", "implantation_date", "explantation_date")
         return self.readonly_fields
 
 

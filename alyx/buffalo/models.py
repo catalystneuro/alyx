@@ -239,8 +239,8 @@ class Device(BaseModel):
         on_delete=models.SET_NULL,
         help_text="The subject on which the device is",
     )
+    implantation_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
     explantation_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
-    deplantation_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
     description = models.TextField(blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
