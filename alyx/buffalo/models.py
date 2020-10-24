@@ -69,6 +69,15 @@ class Platform(BaseModel):
         return self.name
 
 
+class NeuralPhenomena(BaseModel):
+    description = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
 class BuffaloSubject(Subject):
     unique_id = models.CharField(
         max_length=255, blank=True, default="", help_text="Monkey Identifier"
@@ -414,6 +423,7 @@ class ChannelRecording(BaseModel):
     session = models.ForeignKey(
         Session, null=True, blank=True, on_delete=models.SET_NULL
     )
+    neural_phenomena = models.ManyToManyField(NeuralPhenomena, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 

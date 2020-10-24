@@ -57,6 +57,7 @@ ADMIN_PAGES = (
             "Starting points",
             "Starting point sets",
             "Channel recordings",
+            "Neural phenomenas",
             "Stl files",
             "Dataset types",
             "Datasets",

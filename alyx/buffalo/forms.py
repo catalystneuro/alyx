@@ -3,7 +3,7 @@ from django import forms
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
-from .utils import validate_mat_file, validate_sessions_file
+from .utils import validate_mat_file, validate_electrodelog_file, validate_sessions_file
 
 from .models import (
     Task,
@@ -17,6 +17,7 @@ from .models import (
     WeighingLog,
     STLFile,
     StartingPointSet,
+    NeuralPhenomena,
 )
 
 
@@ -89,9 +90,6 @@ class SubjectForm(ModelForm):
             "sex",
             "description",
         ]
-        widgets = {
-            # "lab": forms.HiddenInput(),
-        }
 
 
 class ElectrodeLogSubjectForm(ModelForm):
@@ -155,9 +153,6 @@ class SessionForm(ModelForm):
             "start_time",
             "end_time",
         ]
-        widgets = {
-            # "lab": forms.HiddenInput(),
-        }
 
 
 class CustomModelChoiceField(django.forms.ModelChoiceField):
@@ -282,6 +277,16 @@ class ElectrodeBulkLoadForm(forms.Form):
             validate_mat_file(file, subject.nickname)
 
 
+class ElectrodeLogBulkLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["xlsm"])])
+    subject = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        validate_electrodelog_file(file)
+
+
 class PlotFilterForm(forms.Form):
     cur_year = datetime.today().year
     year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
@@ -338,3 +343,10 @@ class SessionsLoadForm(forms.Form):
             )
 
         validate_sessions_file(file)
+class NeuralPhenomenaForm(forms.ModelForm):
+    class Meta:
+        model = NeuralPhenomena
+        fields = [
+            "name",
+            "description",
+        ]

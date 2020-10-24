@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from django.contrib import admin
 from django import forms
 from django.forms import BaseInlineFormSet, ModelForm
+from django.utils.encoding import force_text
 from django_admin_listfilter_dropdown.filters import (
     RelatedDropdownFilter,
     DropdownFilter,
@@ -43,6 +44,7 @@ from .models import (
     WeighingLog,
     BuffaloDataset,
     StartingPointSet,
+    NeuralPhenomena,
 )
 from .forms import (
     SubjectWeighingForm,
@@ -52,9 +54,9 @@ from .forms import (
     SubjectForm,
     SessionForm,
     TaskCategoryForm,
-    ElectrodeForm,
     FoodTypeForm,
     ElectrodeLogSubjectForm,
+    NeuralPhenomenaForm,
 )
 
 
@@ -110,6 +112,10 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Set electrodes form")
 
+    def set_electrodelogs_file(self, obj):
+        url = reverse("electrodelog-bulk-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Set electrode logs form")
+
     def plots(self, obj):
         url = reverse("plots", kwargs={"subject_id": obj.id})
         return self.link(url, "View plots")
@@ -131,6 +137,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
             self.set_electrodes(obj),
             self.new_electrode_logs(obj),
             self.set_electrodes_file(obj),
+            self.set_electrodelogs_file(obj),
             self.plots(obj),
             self.session_queries(obj),
             self.load_sessions(obj),
@@ -142,11 +149,28 @@ class ChannelRecordingFormset(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
         super(ChannelRecordingFormset, self).__init__(*args, **kwargs)
 
+    def clean(self):
+        super().clean()
+        for form in self.forms:
+            if form.cleaned_data.get("neural_phenomena") and not form.cleaned_data.get(
+                "electrode"
+            ):
+                raise forms.ValidationError(
+                    "You must select an Electrode for the Neural Phenomena"
+                )
+
 
 class ChannelRecordingInline(nested_admin.NestedTabularInline):
     model = ChannelRecording
     formset = ChannelRecordingFormset
-    fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
+    fields = (
+        "electrode",
+        "ripples",
+        "alive",
+        "number_of_cells",
+        "neural_phenomena",
+        "notes",
+    )
     extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
@@ -208,7 +232,7 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
 def TemplateInitialDataAddChannelRecording(data, num_forms):
     class AlwaysChangedModelForm(ModelForm):
         def has_changed(self):
-            """ Should returns True if data differs from initial.
+            """Should returns True if data differs from initial.
             By always returning true even unchanged inlines will get validated and saved."""
             return True
 
@@ -237,9 +261,26 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
                     AddChannelRecordingInline.AddChannelRecordingFormset, self
                 ).__init__(*args, **kwargs)
 
+            def clean(self):
+                super().clean()
+                for form in self.forms:
+                    if form.cleaned_data.get(
+                        "neural_phenomena"
+                    ) and not form.cleaned_data.get("electrode"):
+                        raise forms.ValidationError(
+                            "You must select an Electrode for the Neural Phenomena"
+                        )
+
         model = ChannelRecording
         extra = num_forms
-        fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
+        fields = (
+            "electrode",
+            "ripples",
+            "alive",
+            "number_of_cells",
+            "neural_phenomena",
+            "notes",
+        )
         formset = AddChannelRecordingFormset
 
     return AddChannelRecordingInline
@@ -371,6 +412,53 @@ class SessionTaskTrainingFilter(DefaultListFilter):
             return queryset.filter(id__in=sessions)
 
 
+class ElectrodeListFilter(DefaultListFilter):
+    title = "Electrode"
+    parameter_name = "electrode"
+    related_filter_parameter = "subject__id__exact"
+    template = "django_admin_listfilter_dropdown/dropdown_filter.html"
+
+    def choices(self, cl):
+        for lookup, title in self.lookup_choices:
+            yield {
+                "selected": self.value() == force_text(lookup),
+                "query_string": cl.get_query_string(
+                    {
+                        self.parameter_name: lookup,
+                    },
+                    [],
+                ),
+                "display": title,
+            }
+
+    def lookups(self, request, model_admin):
+        electrodes = Electrode.objects.all()
+        if self.related_filter_parameter in request.GET:
+            electrodes = electrodes.filter(
+                subject_id=request.GET[self.related_filter_parameter]
+            )
+
+        return [("all", "All")] + [(e.id, e) for e in electrodes]
+
+    def queryset(self, request, queryset):
+        all_flag = False
+        if (
+            self.value() != "all" and
+            self.related_filter_parameter in request.GET and
+            self.value() is not None
+        ):
+            electrodes = queryset.filter(
+                subject_id=request.GET[self.related_filter_parameter],
+                electrode=self.value(),
+            )
+            all_flag = len(electrodes) == 0
+        if self.value() == "all" or all_flag:
+            return queryset.all()
+        elif self.value() is not None:
+            return queryset.filter(electrode=self.value())
+        return queryset.all()
+
+
 class SessionDatasetForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(SessionDatasetForm, self).__init__(*args, **kwargs)
@@ -500,7 +588,10 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         except KeyError:
             pass
         return super().change_view(
-            request, object_id, form_url, extra_context=extra_context,
+            request,
+            object_id,
+            form_url,
+            extra_context=extra_context,
         )
 
     def save_formset(self, request, form, formset, change):
@@ -858,14 +949,17 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 
 
 class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
-    change_form_template = "buffalo/change_form.html"
-    form = ElectrodeForm
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+        ElectrodeListFilter,
+    ]
     list_display = [
         "subject",
         "electrode",
         "turn",
         "impedance",
         "current_location",
+        "notes",
         "date_time",
     ]
     fields = ("subject", "electrode", "turn", "impedance", "date_time", "notes")
@@ -878,6 +972,7 @@ class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
 class BuffaloChannelRecording(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     list_display = [
+        "name",
         "subject_recorded",
         "session_",
         "alive",
@@ -1013,6 +1108,25 @@ class BuffaloDatasetAdmin(BaseExperimentalDataAdmin):
         return False
 
 
+class NeuralPhenomenaAdmin(admin.ModelAdmin):
+    form = NeuralPhenomenaForm
+
+    list_display = [
+        "name",
+        "description",
+    ]
+
+    def has_delete_permission(self, request, obj=None):
+        if "buffalo/buffalosession" in request.path:
+            return False
+        return True
+
+    def has_change_permission(self, request, obj=None):
+        if "buffalo/buffalosession" in request.path:
+            return False
+        return True
+
+
 admin.site.register(BuffaloSubject, BuffaloSubjectAdmin)
 admin.site.register(BuffaloElectrodeSubject, BuffaloElectrodeSubjectAdmin)
 admin.site.register(BuffaloElectrodeLogSubject, BuffaloElectrodeLogSubjectAdmin)
@@ -1033,3 +1147,4 @@ admin.site.register(Reward)
 admin.site.register(Platform)
 admin.site.register(FoodType, FoodTypeAdmin)
 admin.site.register(BuffaloDataset, BuffaloDatasetAdmin)
+admin.site.register(NeuralPhenomena, NeuralPhenomenaAdmin)

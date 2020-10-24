@@ -155,7 +155,7 @@
     {% endif %}
     {% if channels_recording %}
         <br><br>
-        <h1>channels Recording</h1>
+        <h1>Channels Recording</h1>
         <div class="col-lg-10  offset-md-1">
             <div class="table-responsive">
                 <table class="table table-striped">
@@ -165,6 +165,7 @@
                             <th class="session-task-fields col-1" scope="col">Ripples</th>
                             <th class="session-task-fields col-1" scope="col">Alive</th>
                             <th class="session-task-fields col-3" scope="col">Number of cells</th>
+                            <th class="session-task-fields col-3" scope="col">Neural phenomena</th>
                             <th class="session-task-fields col-3" scope="col">Notes</th>
                             </tr>
                     </thead>
@@ -176,6 +177,10 @@
                                     <td class="col-sm-1">{{channel_recording.ripples}}</td>
                                     <td class="col-sm-1">{{channel_recording.alive}}</td>
                                     <td class="col-sm-3">{{channel_recording.number_of_cells}}</td>
+                                    <td class="col-sm-3">
+                                        {% for neural_phenomena in channel_recording.neural_phenomena.all %}
+                                            {{ neural_phenomena.name }}<br>
+                                        {% endfor %}
                                     <td class="col-sm-3">{{channel_recording.notes}}</td>
                                 </tr>
                                 
