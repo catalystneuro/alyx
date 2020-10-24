@@ -118,8 +118,12 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = reverse("session-queries", kwargs={"subject_id": obj.id})
         return self.link(url, "Session queries")
 
+    def load_sessions(self, obj):
+        url = reverse("sessions-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Load Sessions")
+
     def options(self, obj):
-        select = "{} {} {} {} {} {} {} {}"
+        select = "{} {} {} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
@@ -129,6 +133,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
             self.set_electrodes_file(obj),
             self.plots(obj),
             self.session_queries(obj),
+            self.load_sessions(obj),
         )
         return format_html(select)
 
@@ -525,9 +530,18 @@ class BuffaloWeight(BaseAdmin):
         "subject",
         "weight_in_Kg",
         "user",
+        "_session",
         "date_time",
     ]
     ordering = ("-updated",)
+
+    def _session(self, obj):
+        try:
+            url = reverse("session-details", kwargs={"session_id": obj.session.id})
+        except AttributeError:
+            url = ""
+
+        return format_html('<a href="{url}">{name}</a>', url=url, name=obj.session.name)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloWeight, self).get_form(request, obj, **kwargs)
@@ -676,7 +690,7 @@ class StartingPointFormset(BaseInlineFormSet):
     def clean(self):
         super().clean()
         for form in self.forms:
-            form.instance.subject = form.cleaned_data['electrode'].subject
+            form.instance.subject = form.cleaned_data["electrode"].subject
 
 
 class StartingPointInline(nested_admin.NestedTabularInline):

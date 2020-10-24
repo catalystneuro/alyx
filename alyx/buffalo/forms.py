@@ -3,7 +3,7 @@ from django import forms
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
-from .utils import validate_mat_file
+from .utils import validate_mat_file, validate_sessions_file
 
 from .models import (
     Task,
@@ -321,3 +321,20 @@ class SessionQueriesForm(forms.Form):
             "task"
         )
         self.fields["task"].queryset = Task.objects.filter(id__in=session_tasks)
+
+
+class SessionsLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["xlsx"])])
+    subject = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        file_name = file.name.split(".")[0]
+        subject = BuffaloSubject.objects.get(pk=cleaned_data.get("subject"))
+        if file_name.lower() != subject.nickname.lower():
+            raise forms.ValidationError(
+                "The file name is different than the subject's nickname"
+            )
+
+        validate_sessions_file(file)

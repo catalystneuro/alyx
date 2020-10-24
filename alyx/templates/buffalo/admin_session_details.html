@@ -36,7 +36,7 @@
     <div class="col-sm-10 offset-md-1 subject-info">
         <div class="col-sm-3" style="line-height: 20px;">
             <label><strong>Session </strong>{{session.name}}</label><br>
-            <label><strong>Session start date </strong>{{session.start_time}}</label><br>
+            <label><strong>Session start date </strong>{{session.start_time.date}}</label><br>
             <label><strong>Subject </strong>{{session.subject}}</label><br>
             <label>
                 <strong>Users </strong>
@@ -130,7 +130,7 @@
                                 <td class="col-sm-1">{{session_task.task_sequence}}</td>
                                 <td class="col-sm-3">{{session_task.needs_review|yesno|title}}</td>
                                 <td class="col-sm-3">{{session_task.general_comments}}</td>
-                                <td class="col-sm-2">{{session_task.date_time|default:""}}</td>
+                                <td class="col-sm-2">{{session_task.start_time|default:""}}</td>
                                 {% for s in session_task_dataset_type.items %}
                                     {% ifequal session_task.task__id s.0 %}
                                         <td class="col-sm-3">
