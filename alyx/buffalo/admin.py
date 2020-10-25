@@ -129,7 +129,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
         return self.link(url, "Load Sessions")
 
     def options(self, obj):
-        select = "{} {} {} {} {} {} {} {} {}"
+        select = "{} {} {} {} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
@@ -423,10 +423,7 @@ class ElectrodeListFilter(DefaultListFilter):
             yield {
                 "selected": self.value() == force_text(lookup),
                 "query_string": cl.get_query_string(
-                    {
-                        self.parameter_name: lookup,
-                    },
-                    [],
+                    {self.parameter_name: lookup,}, [],
                 ),
                 "display": title,
             }
@@ -443,9 +440,9 @@ class ElectrodeListFilter(DefaultListFilter):
     def queryset(self, request, queryset):
         all_flag = False
         if (
-            self.value() != "all" and
-            self.related_filter_parameter in request.GET and
-            self.value() is not None
+            self.value() != "all"
+            and self.related_filter_parameter in request.GET
+            and self.value() is not None
         ):
             electrodes = queryset.filter(
                 subject_id=request.GET[self.related_filter_parameter],
@@ -588,10 +585,7 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         except KeyError:
             pass
         return super().change_view(
-            request,
-            object_id,
-            form_url,
-            extra_context=extra_context,
+            request, object_id, form_url, extra_context=extra_context,
         )
 
     def save_formset(self, request, form, formset, change):
