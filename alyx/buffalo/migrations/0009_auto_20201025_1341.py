@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='buffalosession',
             name='chamber_cleaning',
-            field=models.CharField(blank=True, choices=[(True, 'Yes'), (False, 'No'), ('n/a', 'N/A')], max_length=10, null=True),
+            field=models.CharField(blank=True, choices=[('yes', 'Yes'), ('no', 'No'), ('n/a', 'N/A')], max_length=10, null=True),
         ),
         migrations.AddField(
             model_name='buffalosession',

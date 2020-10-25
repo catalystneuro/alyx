@@ -142,7 +142,6 @@ def validate_sessions_file(file):
 
     for row in range(sessions_sheet.nrows)[1:]:
         date = is_datetime(sessions_sheet.cell(row, 0).value, workbook)
-
         if not date:
             for i, _ in enumerate(SESSIONS_FILE_COLUMNS):
                 if sessions_sheet.cell_value(row, i):
@@ -163,7 +162,7 @@ def validate_sessions_file(file):
         # validate Yes No N/A values
         for boolean_cell in BOOLEAN_CELLS:
             value = sessions_sheet.cell_value(row, int(boolean_cell))
-            if value and value.lower() not in BOOLEAN_VALUES:
+            if value and value.strip().lower() not in BOOLEAN_VALUES:
                 raise ValidationError(
                     f"The value {value} is not valid",
                     code="invalid",

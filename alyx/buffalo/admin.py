@@ -45,6 +45,7 @@ from .models import (
     BuffaloDataset,
     StartingPointSet,
     NeuralPhenomena,
+    MenstruationLog,
 )
 from .forms import (
     SubjectWeighingForm,
@@ -369,6 +370,21 @@ class SessionWeighingInline(nested_admin.NestedTabularInline):
     can_delete = False
 
 
+class SessionMenstruationForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(SessionMenstruationForm, self).__init__(*args, **kwargs)
+        self.fields["menstruation"].required = False
+
+
+class SessionMenstruationInline(nested_admin.NestedTabularInline):
+    model = MenstruationLog
+    form = SessionMenstruationForm
+    fields = ("session", "menstruation")
+    min_num = 1
+    max_num = 1
+    can_delete = False
+
+
 class SessionTaskListFilter(DefaultListFilter):
     title = "Task"
     parameter_name = "task"
@@ -487,6 +503,7 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         SessionDatasetInline,
         SessionWeighingInline,
         SessionFoodInline,
+        SessionMenstruationInline,
         SessionTaskInline,
         ChannelRecordingInline,
     ]
@@ -537,6 +554,7 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
                     SessionDatasetInline,
                     SessionWeighingInline,
                     SessionFoodInline,
+                    SessionMenstruationInline,
                     SessionTaskInline,
                     TemplateInitialDataAddChannelRecording(initial, len(initial)),
                 ]
@@ -589,11 +607,9 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         )
 
     def save_formset(self, request, form, formset, change):
-
         instances = formset.save(commit=False)
         for obj in formset.deleted_objects:
             obj.delete()
-
         for instance in instances:
             if isinstance(instance, WeighingLog):
                 instance.subject = form.instance.subject

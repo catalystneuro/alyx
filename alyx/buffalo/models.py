@@ -37,8 +37,8 @@ ALIVE = [
 ]
 
 CHAMBER_CLEANING = [
-    (True, "Yes"),
-    (False, "No"),
+    ('yes', "Yes"),
+    ('no', "No"),
     ("n/a", "N/A"),
 ]
 

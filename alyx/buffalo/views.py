@@ -41,6 +41,7 @@ from .models import (
     StartingPointSet,
     BuffaloDataset,
     FoodType,
+    MenstruationLog,
 )
 from .forms import (
     TaskForm,
@@ -188,6 +189,9 @@ class SessionDetails(TemplateView):
             "session_users": session.users.all(),
             "session_weightlog": WeighingLog.objects.filter(session=session_id).first(),
             "session_foodlog": FoodLog.objects.filter(session=session_id).first(),
+            "session_menstruationlog": MenstruationLog.objects.filter(
+                session=session_id
+            ).first(),
             "session_tasks": session_tasks,
             "channels_recording": list(channels_recording),
             "session_task_dataset_type": session_task_dataset_type,
@@ -292,7 +296,9 @@ class ElectrodeLogBulkLoadView(FormView):
 
     def get_success_url(self):
         kwargs = super().get_form_kwargs()
-        return "/buffalo/electrodelog/?subject__id__exact=" + str(kwargs["data"]["subject"])
+        return "/buffalo/electrodelog/?subject__id__exact=" + str(
+            kwargs["data"]["subject"]
+        )
 
 
 class PlotsView(View):
@@ -485,15 +491,23 @@ class SessionsLoadView(FormView):
                             0 if not session[food_index] else session[food_index]
                         )
                         food, _ = FoodType.objects.get_or_create(name="chow", unit="ml")
-                        general_comments_index = f"6_General Comments"
                         newsession_name = f"{session['0_Date (mm/dd/yyyy)']}_{subject}"
-
+                        newsession_chamber_cleaning = session[
+                            "51_Chamber Cleaning"
+                        ].strip()
                         newsession = BuffaloSession.objects.create(
                             subject=subject,
                             name=newsession_name,
-                            narrative=session[general_comments_index],
+                            narrative=session["6_General Comments"],
+                            pump_setting=None
+                            if not session["4_Pump Setting"]
+                            else session["4_Pump Setting"],
+                            chamber_cleaning=None
+                            if not newsession_chamber_cleaning
+                            else newsession_chamber_cleaning.lower(),
                             start_time=session["0_Date (mm/dd/yyyy)"],
                         )
+
                         if session["1_Handler Initials"].strip():
                             session_user = get_user_from_initial(
                                 session["1_Handler Initials"]
@@ -516,6 +530,11 @@ class SessionsLoadView(FormView):
                             amount=session_food,
                             session=newsession,
                         )
+                        # Creates the Menstruation log
+                        if session["5_Menstration"].strip() is "yes":
+                            MenstruationLog.objects.create(
+                                subject=subject, menstruation=True, session=newsession,
+                            )
                         session_tasks = []
                         task_secuence = 1
                         for task_cell in TASK_CELLS:
@@ -572,4 +591,7 @@ class SessionsLoadView(FormView):
             return self.form_invalid(form)
 
     def get_success_url(self):
-        return self.success_url
+        kwargs = super().get_form_kwargs()
+        subject_id = kwargs["data"]["subject"]
+        sessions_subject_url = f"{self.success_url}/?subject__id__exact={subject_id}"
+        return sessions_subject_url

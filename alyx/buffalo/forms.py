@@ -150,6 +150,8 @@ class SessionForm(ModelForm):
             "lab",
             "needs_review",
             "narrative",
+            "pump_setting",
+            "chamber_cleaning",
             "start_time",
             "end_time",
         ]
@@ -343,6 +345,8 @@ class SessionsLoadForm(forms.Form):
             )
 
         validate_sessions_file(file)
+
+
 class NeuralPhenomenaForm(forms.ModelForm):
     class Meta:
         model = NeuralPhenomena
