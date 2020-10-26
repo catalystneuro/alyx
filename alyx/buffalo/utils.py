@@ -7,7 +7,6 @@ from scipy.io import loadmat
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
-from django.conf import settings
 
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
@@ -129,13 +128,12 @@ def is_valid_time(time):
 
 
 def validate_sessions_file(file):
-    sheet_number = 1
-    msg = "Error loading the file - Sheet: {} - Row: {} - Column: {} - File: {}"
     workbook = xlrd.open_workbook(file_contents=file.read())
     sessions_sheet = workbook.sheet_by_index(0)
     for i, column_name in enumerate(SESSIONS_FILE_COLUMNS):
         if SESSIONS_FILE_COLUMNS[i] != sessions_sheet.cell_value(0, i):
-            error_message = f"The column {i} should be {SESSIONS_FILE_COLUMNS[i]} and is {sessions_sheet.cell_value(0, i)} instead."
+            error_message = f"""The column {i} should be {SESSIONS_FILE_COLUMNS[i]} and 
+            is {sessions_sheet.cell_value(0, i)} instead."""
             raise ValidationError(
                 error_message, code="invalid", params={"file": file},
             )
@@ -182,7 +180,8 @@ def validate_sessions_file(file):
                 except:
                     value = sessions_sheet.cell(row, int(start_time_cell)).value
                     raise ValidationError(
-                        f"The value in the row {row+1} column {start_time_cell} '{value}' is not a valid Start Time (h:m)",
+                        f"""The value in the row {row+1} column {start_time_cell} '{value}' 
+                        is not a valid Start Time (h:m)""",
                         code="invalid",
                         params={"file": file},
                     )
