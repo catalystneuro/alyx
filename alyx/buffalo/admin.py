@@ -454,9 +454,9 @@ class ElectrodeListFilter(DefaultListFilter):
     def queryset(self, request, queryset):
         all_flag = False
         if (
-            self.value() != "all"
-            and self.related_filter_parameter in request.GET
-            and self.value() is not None
+            self.value() != "all" and
+            self.related_filter_parameter in request.GET and
+            self.value() is not None
         ):
             electrodes = queryset.filter(
                 subject_id=request.GET[self.related_filter_parameter],
