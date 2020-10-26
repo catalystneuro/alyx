@@ -438,9 +438,7 @@ class ElectrodeListFilter(DefaultListFilter):
         for lookup, title in self.lookup_choices:
             yield {
                 "selected": self.value() == force_text(lookup),
-                "query_string": cl.get_query_string(
-                    {self.parameter_name: lookup,}, [],
-                ),
+                "query_string": cl.get_query_string({self.parameter_name: lookup}, [],),
                 "display": title,
             }
 

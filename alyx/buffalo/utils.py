@@ -132,7 +132,7 @@ def validate_sessions_file(file):
     sessions_sheet = workbook.sheet_by_index(0)
     for i, column_name in enumerate(SESSIONS_FILE_COLUMNS):
         if SESSIONS_FILE_COLUMNS[i] != sessions_sheet.cell_value(0, i):
-            error_message = f"""The column {i} should be {SESSIONS_FILE_COLUMNS[i]} and 
+            error_message = f"""The column {i} should be {SESSIONS_FILE_COLUMNS[i]} and
             is {sessions_sheet.cell_value(0, i)} instead."""
             raise ValidationError(
                 error_message, code="invalid", params={"file": file},
@@ -180,7 +180,7 @@ def validate_sessions_file(file):
                 except:
                     value = sessions_sheet.cell(row, int(start_time_cell)).value
                     raise ValidationError(
-                        f"""The value in the row {row+1} column {start_time_cell} '{value}' 
+                        f"""The value in the row {row+1} column {start_time_cell} '{value}'
                         is not a valid Start Time (h:m)""",
                         code="invalid",
                         params={"file": file},

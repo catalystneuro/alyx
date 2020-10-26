@@ -486,7 +486,7 @@ class SessionsLoadView(FormView):
             try:
                 with transaction.atomic():
                     for session in sessions:
-                        food_index = f"3_Food (mL)"
+                        food_index = "3_Food (mL)"
                         session_food = (
                             0 if not session[food_index] else session[food_index]
                         )
@@ -515,7 +515,7 @@ class SessionsLoadView(FormView):
                             if session_user:
                                 newsession.users.set(session_user)
                         # If the session has weight creates the weight log
-                        weight_index = f"2_Weight (kg)"
+                        weight_index = "2_Weight (kg)"
                         if session[weight_index]:
                             WeighingLog.objects.create(
                                 session=newsession,
