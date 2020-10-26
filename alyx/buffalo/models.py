@@ -36,6 +36,12 @@ ALIVE = [
     ("maybe", "Maybe"),
 ]
 
+CHAMBER_CLEANING = [
+    ('yes', "Yes"),
+    ('no', "No"),
+    ("n/a", "N/A"),
+]
+
 
 class Location(BaseModel):
     created = models.DateTimeField(auto_now_add=True)
@@ -207,6 +213,21 @@ class WeighingLog(Weighing):
         return str_weight
 
 
+class MenstruationLog(BaseModel):
+    subject = models.ForeignKey(
+        BuffaloSubject,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="The subject on which this action was performed",
+    )
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    menstruation = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
 class BuffaloDataset(Dataset):
     file_name = models.CharField(
         blank=True, null=True, max_length=255, help_text="file name"
@@ -220,6 +241,10 @@ class BuffaloDataset(Dataset):
 
 class BuffaloSession(Session):
     needs_review = models.BooleanField(default=False)
+    pump_setting = models.FloatField(null=True, blank=True)
+    chamber_cleaning = models.CharField(
+        max_length=10, choices=CHAMBER_CLEANING, null=True, blank=True
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -278,10 +303,7 @@ class Electrode(BaseAction):
 
 class ElectrodeLog(BaseAction):
     electrode = models.ForeignKey(
-        Electrode,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        Electrode, on_delete=models.SET_NULL, null=True, blank=True,
     )
     turn = models.FloatField(null=True, blank=True)
     impedance = models.FloatField(null=True, blank=True)
@@ -336,11 +358,7 @@ class ElectrodeLog(BaseAction):
 
 class StartingPointSet(BaseModel):
     name = models.CharField(max_length=255, default="", blank=True)
-    subject = models.ForeignKey(
-        BuffaloSubject,
-        null=True,
-        on_delete=models.SET_NULL,
-    )
+    subject = models.ForeignKey(BuffaloSubject, null=True, on_delete=models.SET_NULL,)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
