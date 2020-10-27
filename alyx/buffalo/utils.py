@@ -321,7 +321,8 @@ def get_electrodelog_info(file):
                     turns = sheet.cell(row, 2)
                     impedance = sheet.cell(row, 4)
                     notes = sheet.cell(row, 8)
-                    if str(date.value).strip() != "":
+                    user = []
+                    if str(date.value).strip():
                         if is_datetime(date.value, workbook):
                             log = {}
                             log_datetime = datetime.datetime(
@@ -329,11 +330,16 @@ def get_electrodelog_info(file):
                             )
                             log["turns"] = float(turns.value)
                             log["datetime"] = log_datetime
-                            if str(impedance.value).strip() != "":
+                            if sheet.cell(row, 1).value.strip():
+                                user = get_user_from_initial(
+                                    sheet.cell(row, 1).value.strip()
+                                )
+                            log["user"] = user
+                            if str(impedance.value).strip():
                                 log["impedance"] = float(impedance.value)
                             else:
                                 log["impedance"] = None
-                            if str(notes.value).strip() != "":
+                            if str(notes.value).strip():
                                 log["notes"] = str(notes.value).strip()
                             else:
                                 log["notes"] = None

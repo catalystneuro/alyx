@@ -288,6 +288,8 @@ class ElectrodeLogBulkLoadView(FormView):
                         new_el.impedance = log["impedance"]
                     if log["notes"] is not None:
                         new_el.notes = log["notes"]
+                    if log["user"]:
+                        new_el.users.set(log["user"])
                     new_el.save()
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
