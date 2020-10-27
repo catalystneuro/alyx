@@ -147,6 +147,7 @@ class SessionForm(ModelForm):
             "name",
             "subject",
             "users",
+            "unknown_user",
             "lab",
             "needs_review",
             "narrative",
