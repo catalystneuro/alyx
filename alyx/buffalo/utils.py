@@ -559,9 +559,9 @@ def get_channelrecording_info(file):
                                 date_str = str(date)
                                 for electrode in electrodes:
                                     channel_number = str(electrode).strip()
-                                    if date_str in sessions:
+                                    if date_str in sessions.keys():
                                         session = sessions[date_str]
-                                        if channel_number in session["records"]:
+                                        if channel_number in session["records"].keys():
                                             session["records"][channel_number]["ripples"] = True
                                         else:
                                             session["records"][channel_number] = {
@@ -592,9 +592,9 @@ def get_channelrecording_info(file):
                                 date_str = str(date)
                                 for electrode in electrodes:
                                     channel_number = str(electrode).strip()
-                                    if date_str in sessions:
+                                    if date_str in sessions.keys():
                                         session = sessions[date_str]
-                                        if channel_number in session["records"]:
+                                        if channel_number in session["records"].keys():
                                             session["records"][channel_number]["sharp_waves"] = True
                                         else:
                                             session["records"][channel_number] = {
@@ -625,9 +625,9 @@ def get_channelrecording_info(file):
                                 date_str = str(date)
                                 for electrode in electrodes:
                                     channel_number = str(electrode).strip()
-                                    if date_str in sessions:
+                                    if date_str in sessions.keys():
                                         session = sessions[date_str]
-                                        if channel_number in session["records"]:
+                                        if channel_number in session["records"].keys():
                                             session["records"][channel_number]["spikes"] = True
                                         else:
                                             session["records"][channel_number] = {
@@ -653,7 +653,7 @@ def get_channelrecording_info(file):
                                     )
                                 )
                                 date_str = str(date)
-                                if date_str in sessions:
+                                if date_str in sessions.keys():
                                     if str(cell.value) != "":
                                         session = sessions[date_str]
                                         session["good behavior"] = str(cell.value).strip()

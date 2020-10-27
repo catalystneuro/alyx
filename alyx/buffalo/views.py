@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 import plotly.offline as opy
 import plotly.graph_objs as go
 import trimesh
+import json
 
 from django.views.generic import (
     View,
@@ -334,7 +335,10 @@ class ChannelRecordingBulkLoadView(FormView):
                 session = BuffaloSession.objects.get_or_create(
                     subject=subject, name=session_name
                 )[0]
+                session.start_time = session_data["date"]
                 electrodes_loaded = {}
+                sharp_waves = []
+                spikes = []
                 for key, record_data in session_data["records"].items():
                     print("{} - {}".format(datetime_str, key))
                     save = True
@@ -362,9 +366,31 @@ class ChannelRecordingBulkLoadView(FormView):
                         elif record_data["value"] in NOT_SAVE_VALUES:
                             save = Faqlse
                     if "ripples" in record_data.keys():
-                        new_cr.ripples = "yes" if record_data["ripples"] == "Y" else ""
-                    if save:
-                        new_cr.save()
+                        new_cr.ripples = "yes" if record_data["ripples"] is True else ""
+                    if "sharp_waves" in record_data.keys() and record_data["sharp_waves"] is True:
+                            sharp_waves.append(key)
+                    if "spikes" in record_data.keys() and record_data["spikes"] is True:
+                            spikes.append(key)
+                    new_cr.save()
+                result_json = {
+                    "sharp_waves": sharp_waves,
+                    "spikes": spikes,
+                }
+                if session.json is not None:
+                    try:
+                        session_json = json.loads(session.json)
+                        session_json["sharp_waves"] = result_json["sharp_waves"]
+                        session_json["spikes"] = result_json["spikes"]
+                        result_json = session_json
+                    except:
+                        print("Error reading existing session json")
+                session.json = json.dumps(result_json, indent=4)
+
+                if "good behavior" in session_data.keys():
+                    session.needs_review = False
+                else:
+                    session.needs_review = True
+                session.save()
 
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
