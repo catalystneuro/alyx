@@ -38,7 +38,7 @@ urlpatterns = [
         name="session-details",
     ),
     path(
-        "electrode-bulk-load/<uuid:subject_id>",
+        "electrode-bulk-load/<uuid:device_id>",
         login_required(ElectrodeBulkLoadView.as_view(), login_url="/login/",),
         name="electrode-bulk-load",
     ),

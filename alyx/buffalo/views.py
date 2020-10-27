@@ -25,6 +25,7 @@ from .utils import (
     get_sessions_from_file,
     get_user_from_initial,
     get_electrodelog_info,
+    get_channelrecording_info,
 )
 from .constants import TASK_CELLS, SESSIONS_FILE_COLUMNS
 from actions.models import Session, Weighing
@@ -43,6 +44,7 @@ from .models import (
     BuffaloDataset,
     FoodType,
     MenstruationLog,
+    Device,
 )
 from .forms import (
     TaskForm,
@@ -57,8 +59,8 @@ from .forms import (
 
 from .utils import (
     DEAD_VALUES, NUMBER_OF_CELLS_VALUES,
-    ALIVE_VALUES, MAYBE_VALUES, OTHER_VALUES,
-    MAYBE_VALUES, NOT_SAVE_VALUES
+    ALIVE_VALUES, MAYBE_VALUES,
+    NOT_SAVE_VALUES
 )
 
 
@@ -216,9 +218,9 @@ class ElectrodeBulkLoadView(FormView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        subject_id = self.kwargs.pop("subject_id", None)
-        if subject_id:
-            kwargs["initial"] = {"subject": subject_id}
+        device_id = self.kwargs.pop("device_id", None)
+        if device_id:
+            kwargs["initial"] = {"device": device_id}
         return kwargs
 
     def post(self, request, *args, **kwargs):
@@ -226,12 +228,13 @@ class ElectrodeBulkLoadView(FormView):
         form = self.get_form(form_class)
         if form.is_valid():
             structure_name = form.cleaned_data["structure_name"]
-            subject_id = form.cleaned_data["subject"]
-            subject = BuffaloSubject.objects.get(pk=subject_id)
+            device_id = form.cleaned_data["device"]
+            device = Device.objects.get(pk=device_id)
+            subject = device.subject
             # Create a new Starting point set
             starting_point_set = StartingPointSet()
             starting_point_set.name = "Bulk load - %s" % (datetime.datetime.now())
-            starting_point_set.subject = subject
+            starting_point_set.subject = device.subject
             starting_point_set.save()
 
             if not structure_name:
@@ -241,7 +244,7 @@ class ElectrodeBulkLoadView(FormView):
             )
             for electrode_info in electrodes_info:
                 electrode = Electrode.objects.filter(
-                    subject=subject_id, channel_number=str(electrode_info["channel"])
+                    device=device_id, channel_number=str(electrode_info["channel"])
                 ).first()
                 if electrode:
                     electrode.create_new_starting_point_from_mat(
@@ -250,6 +253,7 @@ class ElectrodeBulkLoadView(FormView):
                 else:
                     new_electrode = Electrode()
                     new_electrode.subject = subject
+                    new_electrode.device = device
                     new_electrode.channel_number = str(electrode_info["channel"])
                     new_electrode.save()
                     new_electrode.create_new_starting_point_from_mat(
@@ -261,7 +265,9 @@ class ElectrodeBulkLoadView(FormView):
             return self.form_invalid(form)
 
     def get_success_url(self):
-        return reverse("admin:buffalo_buffalosubject_changelist")
+        kwargs = super().get_form_kwargs()
+        device = Device.objects.get(pk=kwargs["data"]["device"])
+        return reverse("admin:buffalo_buffalodevicesubject_change", args=[device.subject.id])
 
 
 class ElectrodeLogBulkLoadView(FormView):
@@ -364,7 +370,7 @@ class ChannelRecordingBulkLoadView(FormView):
                         elif record_data["value"] in DEAD_VALUES:
                             new_cr.alive = "no"
                         elif record_data["value"] in NOT_SAVE_VALUES:
-                            save = Faqlse
+                            save = False
                     if "ripples" in record_data.keys():
                         new_cr.ripples = "yes" if record_data["ripples"] is True else ""
                     if "sharp_waves" in record_data.keys() and record_data["sharp_waves"] is True:

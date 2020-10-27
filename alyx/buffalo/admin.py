@@ -11,7 +11,6 @@ from django_admin_listfilter_dropdown.filters import (
 from rangefilter.filter import DateRangeFilter
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.safestring import mark_safe
 from django.shortcuts import redirect
 from django.contrib import messages
 from reversion.admin import VersionAdmin
@@ -105,10 +104,6 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = "/buffalo/stlfile/add/?subject=" + str(obj.id)
         return self.link(url, "Add STL file")
 
-    def set_electrodes(self, obj):
-        url = reverse("admin:buffalo_buffaloelectrodesubject_change", args=[obj.id])
-        return self.link(url, "Set electrodes")
-
     def new_electrode_logs(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.id])
         return self.link(url, "New electrode logs")
@@ -116,10 +111,6 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def manage_devices(self, obj):
         url = reverse("admin:buffalo_buffalodevicesubject_change", args=[obj.id])
         return self.link(url, "Manage devices")
-
-    #def set_electrodes_file(self, obj):
-    #    url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.id})
-    #    return self.link(url, "Set electrodes form")
 
     def set_electrodelogs_file(self, obj):
         url = reverse("electrodelog-bulk-load", kwargs={"subject_id": obj.id})
@@ -142,14 +133,12 @@ class BuffaloSubjectAdmin(BaseAdmin):
         return self.link(url, "Load Sessions")
 
     def options(self, obj):
-        select = "{} {} {} {} {} {} {} {} {} {}"
+        select = "{} {} {} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
             self.add_stl(obj),
-            self.set_electrodes(obj),
             self.new_electrode_logs(obj),
-            #self.set_electrodes_file(obj),
             self.set_electrodelogs_file(obj),
             self.set_channelrecordings_file(obj),
             self.plots(obj),
@@ -456,7 +445,10 @@ class ElectrodeListFilter(DefaultListFilter):
         for lookup, title in self.lookup_choices:
             yield {
                 "selected": self.value() == force_text(lookup),
-                "query_string": cl.get_query_string({self.parameter_name: lookup}, [],),
+                "query_string": cl.get_query_string(
+                    {self.parameter_name: lookup},
+                    [],
+                ),
                 "display": title,
             }
 
@@ -619,7 +611,10 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         except KeyError:
             pass
         return super().change_view(
-            request, object_id, form_url, extra_context=extra_context,
+            request,
+            object_id,
+            form_url,
+            extra_context=extra_context,
         )
 
     def save_formset(self, request, form, formset, change):
@@ -857,19 +852,25 @@ class BuffaloElectrodeFormset(BaseInlineFormSet):
 class BuffaloElectrode(nested_admin.NestedTabularInline):
     model = Electrode
     formset = BuffaloElectrodeFormset
-    fields = ("channel_number", "turns_per_mm", "millimeters", "device", "date_time", "notes")
+    fields = (
+        "channel_number",
+        "turns_per_mm",
+        "millimeters",
+        "device",
+        "date_time",
+        "notes",
+    )
     extra = 0
     inlines = [StartingPointInline]
     ordering = ("created",)
-
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "device":
             try:
                 subject_id = request.resolver_match.kwargs["object_id"]
-                kwargs["queryset"] = Device.objects.prefetch_related(
-                    "subject"
-                ).filter(subject=subject_id)
+                kwargs["queryset"] = Device.objects.prefetch_related("subject").filter(
+                    subject=subject_id
+                )
             except KeyError:
                 pass
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -915,8 +916,14 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
 
 class BuffaloDevice(admin.TabularInline):
     model = Device
-    fields = ("name", "manage_electrodes", "implantation_date", "explantation_date", "description")
-    readonly_fields = ('manage_electrodes',)
+    fields = (
+        "name",
+        "manage_electrodes",
+        "implantation_date",
+        "explantation_date",
+        "description",
+    )
+    readonly_fields = ("manage_electrodes",)
     extra = 0
 
     def link(self, url, name):
@@ -924,7 +931,7 @@ class BuffaloDevice(admin.TabularInline):
         return format_html(link_code, url=url, name=name)
 
     def set_electrodes_file(self, obj):
-        url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.subject.id})
+        url = reverse("electrode-bulk-load", kwargs={"device_id": obj.id})
         return self.link(url, "Set electrodes form")
 
     def set_electrodes(self, obj):
@@ -934,9 +941,8 @@ class BuffaloDevice(admin.TabularInline):
     def manage_electrodes(self, obj):
 
         select = "{} <br><br>{}".format(
-            self.set_electrodes_file(obj),
-            self.set_electrodes(obj)
-        )           
+            self.set_electrodes_file(obj), self.set_electrodes(obj)
+        )
         return format_html(select)
 
 
@@ -987,14 +993,17 @@ class BuffaloDeviceSubjectAdmin(BaseAdmin):
 
 class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
     change_form_template = "buffalo/change_form.html"
-    #form = SubjectForm
+    # form = SubjectForm
 
-    list_display = [
+    list_display = ["name", "description"]
+
+    fields = [
         "name",
-        "description"
+        "description",
+        "implantation_date",
+        "subject",
+        "explantation_date",
     ]
-
-    fields = ["name", "description", "implantation_date", "subject", "explantation_date"]
 
     search_fields = [
         "nickname",
@@ -1003,7 +1012,9 @@ class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
     inlines = [BuffaloElectrode]
 
     def response_change(self, request, obj):
-        return redirect(reverse("admin:buffalo_buffalodevicesubject_change", args=[obj.subject.id]))
+        return redirect(
+            reverse("admin:buffalo_buffalodevicesubject_change", args=[obj.subject.id])
+        )
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -1016,7 +1027,13 @@ class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
-            return self.readonly_fields + ("name", "subject", "description", "implantation_date", "explantation_date")
+            return self.readonly_fields + (
+                "name",
+                "subject",
+                "description",
+                "implantation_date",
+                "explantation_date",
+            )
         return self.readonly_fields
 
 

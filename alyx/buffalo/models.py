@@ -281,6 +281,7 @@ class BuffaloElectrodeDevice(Device):
     class Meta:
         proxy = True
 
+
 class Electrode(BaseAction):
     subject = models.ForeignKey(
         BuffaloSubject,

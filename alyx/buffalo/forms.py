@@ -273,18 +273,18 @@ class ElectrodeBulkLoadForm(forms.Form):
     structure_name = forms.CharField(
         label="Structure name", required=False, max_length=250
     )
-    subject = forms.CharField(widget=forms.HiddenInput())
+    device = forms.CharField(widget=forms.HiddenInput())
 
     def clean(self):
         cleaned_data = super().clean()
         file = cleaned_data.get("file")
-        subject_id = cleaned_data.get("subject")
+        device_id = cleaned_data.get("device")
         structure = cleaned_data.get("structure_name")
         if structure:
             validate_mat_file(file, structure)
         else:
-            subject = BuffaloSubject.objects.get(pk=subject_id)
-            validate_mat_file(file, subject.nickname)
+            device = Device.objects.get(pk=device_id)
+            validate_mat_file(file, device.subject.nickname)
 
 
 class ElectrodeLogBulkLoadForm(forms.Form):
