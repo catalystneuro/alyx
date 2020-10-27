@@ -49,6 +49,7 @@ from .models import (
     NeuralPhenomena,
     Device,
     BuffaloElectrodeDevice,
+    MenstruationLog,
 )
 from .forms import (
     SubjectWeighingForm,
@@ -136,6 +137,10 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = reverse("session-queries", kwargs={"subject_id": obj.id})
         return self.link(url, "Session queries")
 
+    def load_sessions(self, obj):
+        url = reverse("sessions-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Load Sessions")
+
     def options(self, obj):
         select = "{} {} {} {} {} {} {} {} {} {}"
         select = select.format(
@@ -150,6 +155,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
             self.plots(obj),
             self.session_queries(obj),
             self.manage_devices(obj),
+            self.load_sessions(obj),
         )
         return format_html(select)
 
@@ -382,6 +388,21 @@ class SessionWeighingInline(nested_admin.NestedTabularInline):
     can_delete = False
 
 
+class SessionMenstruationForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(SessionMenstruationForm, self).__init__(*args, **kwargs)
+        self.fields["menstruation"].required = False
+
+
+class SessionMenstruationInline(nested_admin.NestedTabularInline):
+    model = MenstruationLog
+    form = SessionMenstruationForm
+    fields = ("session", "menstruation")
+    min_num = 1
+    max_num = 1
+    can_delete = False
+
+
 class SessionTaskListFilter(DefaultListFilter):
     title = "Task"
     parameter_name = "task"
@@ -435,12 +456,7 @@ class ElectrodeListFilter(DefaultListFilter):
         for lookup, title in self.lookup_choices:
             yield {
                 "selected": self.value() == force_text(lookup),
-                "query_string": cl.get_query_string(
-                    {
-                        self.parameter_name: lookup,
-                    },
-                    [],
-                ),
+                "query_string": cl.get_query_string({self.parameter_name: lookup}, [],),
                 "display": title,
             }
 
@@ -503,6 +519,7 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         SessionDatasetInline,
         SessionWeighingInline,
         SessionFoodInline,
+        SessionMenstruationInline,
         SessionTaskInline,
         ChannelRecordingInline,
     ]
@@ -553,6 +570,7 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
                     SessionDatasetInline,
                     SessionWeighingInline,
                     SessionFoodInline,
+                    SessionMenstruationInline,
                     SessionTaskInline,
                     TemplateInitialDataAddChannelRecording(initial, len(initial)),
                 ]
@@ -601,18 +619,13 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         except KeyError:
             pass
         return super().change_view(
-            request,
-            object_id,
-            form_url,
-            extra_context=extra_context,
+            request, object_id, form_url, extra_context=extra_context,
         )
 
     def save_formset(self, request, form, formset, change):
-
         instances = formset.save(commit=False)
         for obj in formset.deleted_objects:
             obj.delete()
-
         for instance in instances:
             if isinstance(instance, WeighingLog):
                 instance.subject = form.instance.subject
@@ -634,9 +647,18 @@ class BuffaloWeight(BaseAdmin):
         "subject",
         "weight_in_Kg",
         "user",
+        "_session",
         "date_time",
     ]
     ordering = ("-updated",)
+
+    def _session(self, obj):
+        try:
+            url = reverse("session-details", kwargs={"session_id": obj.session.id})
+        except AttributeError:
+            url = ""
+
+        return format_html('<a href="{url}">{name}</a>', url=url, name=obj.session.name)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloWeight, self).get_form(request, obj, **kwargs)

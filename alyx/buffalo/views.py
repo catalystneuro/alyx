@@ -16,13 +16,16 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.shortcuts import render
 from django.conf import settings
+from django.db import transaction, DatabaseError
+
 from .utils import (
     get_mat_file_info,
     download_csv_points_mesh,
+    get_sessions_from_file,
+    get_user_from_initial,
     get_electrodelog_info,
-    get_channelrecording_info,
 )
-
+from .constants import TASK_CELLS, SESSIONS_FILE_COLUMNS
 from actions.models import Session, Weighing
 from .models import (
     Task,
@@ -37,6 +40,8 @@ from .models import (
     WeighingLog,
     StartingPointSet,
     BuffaloDataset,
+    FoodType,
+    MenstruationLog,
 )
 from .forms import (
     TaskForm,
@@ -46,6 +51,7 @@ from .forms import (
     ChannelRecordingBulkLoadForm,
     PlotFilterForm,
     SessionQueriesForm,
+    SessionsLoadForm,
 )
 
 from .utils import (
@@ -159,7 +165,7 @@ class SessionDetails(TemplateView):
                 "task__version",
                 "session__name",
                 "session__start_time",
-                "date_time",
+                "start_time",
                 "needs_review",
                 "general_comments",
                 "task_sequence",
@@ -183,15 +189,16 @@ class SessionDetails(TemplateView):
                 session_task_dataset_type.update(
                     {session_task_id: [session_task_datasets]}
                 )
-        channels_recording = ChannelRecording.objects.filter(
-            session=session_id,
-        )
+        channels_recording = ChannelRecording.objects.filter(session=session_id,)
         session = BuffaloSession.objects.get(pk=session_id)
         context = {
             "session": session,
             "session_users": session.users.all(),
             "session_weightlog": WeighingLog.objects.filter(session=session_id).first(),
             "session_foodlog": FoodLog.objects.filter(session=session_id).first(),
+            "session_menstruationlog": MenstruationLog.objects.filter(
+                session=session_id
+            ).first(),
             "session_tasks": session_tasks,
             "channels_recording": list(channels_recording),
             "session_task_dataset_type": session_task_dataset_type,
@@ -199,7 +206,6 @@ class SessionDetails(TemplateView):
                 session=session_id, session_task=None
             ),
         }
-
         return self.render_to_response(context)
 
 
@@ -529,8 +535,138 @@ class SessionQueriesView(View):
                     "electrodes": session_electrodes,
                 }
                 final_sessions.append(session_dict)
-
-            # import pdb; pdb.set_trace()
         return render(
             request, self.template_name, {"form": form, "sessions": final_sessions}
         )
+
+
+class SessionsLoadView(FormView):
+    form_class = SessionsLoadForm
+    template_name = "buffalo/sessions_load.html"
+    success_url = "/buffalo/buffalosession"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        subject_id = self.kwargs.pop("subject_id", None)
+        if subject_id:
+            kwargs["initial"] = {"subject": subject_id}
+        return kwargs
+
+    def post(self, request, *args, **kwargs):
+        form = self.get_form()
+        if form.is_valid():
+            subject_id = form.cleaned_data["subject"]
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            sessions = get_sessions_from_file(form.cleaned_data.get("file"))
+            try:
+                with transaction.atomic():
+                    for session in sessions:
+                        food_index = "3_Food (mL)"
+                        session_food = (
+                            0 if not session[food_index] else session[food_index]
+                        )
+                        food, _ = FoodType.objects.get_or_create(name="chow", unit="ml")
+                        newsession_name = f"{session['0_Date (mm/dd/yyyy)']}_{subject}"
+                        newsession_chamber_cleaning = session[
+                            "51_Chamber Cleaning"
+                        ].strip()
+                        newsession = BuffaloSession.objects.create(
+                            subject=subject,
+                            name=newsession_name,
+                            narrative=session["6_General Comments"],
+                            pump_setting=None
+                            if not session["4_Pump Setting"]
+                            else session["4_Pump Setting"],
+                            chamber_cleaning=None
+                            if not newsession_chamber_cleaning
+                            else newsession_chamber_cleaning.lower(),
+                            start_time=session["0_Date (mm/dd/yyyy)"],
+                        )
+
+                        if session["1_Handler Initials"].strip():
+                            session_user = get_user_from_initial(
+                                session["1_Handler Initials"]
+                            )
+                            if session_user:
+                                newsession.users.set(session_user)
+                        # If the session has weight creates the weight log
+                        weight_index = "2_Weight (kg)"
+                        if session[weight_index]:
+                            WeighingLog.objects.create(
+                                session=newsession,
+                                subject=subject,
+                                weight=session[weight_index],
+                                date_time=session["0_Date (mm/dd/yyyy)"],
+                            )
+                        # Creates the food log
+                        FoodLog.objects.create(
+                            subject=subject,
+                            food=food,
+                            amount=session_food,
+                            session=newsession,
+                        )
+                        # Creates the Menstruation log
+                        if session["5_Menstration"].strip() == "yes":
+                            MenstruationLog.objects.create(
+                                subject=subject, menstruation=True, session=newsession,
+                            )
+                        session_tasks = []
+                        task_secuence = 1
+                        for task_cell in TASK_CELLS:
+                            cell = int(task_cell)
+                            task_name_index = f"{cell}_{SESSIONS_FILE_COLUMNS[cell]}"
+                            comments_index = f"{cell+2}_{SESSIONS_FILE_COLUMNS[cell+2]}"
+                            start_time_index = (
+                                f"{cell+1}_{SESSIONS_FILE_COLUMNS[cell+1]}"
+                            )
+                            if session[task_name_index]:
+                                task_info = {}
+                                task, _ = Task.objects.get_or_create(
+                                    name=session[task_name_index]
+                                )
+                                task_info = {
+                                    "task": task,
+                                    "general_comments": session[comments_index],
+                                    "session": newsession,
+                                    "task_sequence": task_secuence,
+                                    "start_time": None
+                                    if not session[start_time_index]
+                                    else session[start_time_index],
+                                }
+                                task_filename = (
+                                    f"{cell+3}_{SESSIONS_FILE_COLUMNS[cell+3]}"
+                                )
+                                task_info["filename"] = (
+                                    session[task_filename] if task_filename else ""
+                                )
+                                task_secuence += 1
+                                session_tasks.append(task_info)
+                        if session_tasks:
+                            for task in session_tasks:
+                                session_task = SessionTask.objects.create(
+                                    task=task["task"],
+                                    general_comments=task["general_comments"],
+                                    session=task["session"],
+                                    task_sequence=task["task_sequence"],
+                                    start_time=task["start_time"],
+                                )
+                                if task["filename"]:
+                                    BuffaloDataset.objects.create(
+                                        file_name=task["filename"],
+                                        session_task=session_task,
+                                    )
+            except DatabaseError:
+                messages.error(
+                    request,
+                    "There has been an error in the database saving the Sessions",
+                )
+            messages.success(request, "File loaded successful.")
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        kwargs = super().get_form_kwargs()
+        subject_id = kwargs["data"]["subject"]
+        sessions_subject_url = f"{self.success_url}/?subject__id__exact={subject_id}"
+        return sessions_subject_url
