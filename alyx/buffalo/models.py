@@ -333,9 +333,12 @@ class Electrode(BaseAction):
 
     def __str__(self):
         name = "deleted"
-        if self.subject:
-            name = self.subject.nickname
-        return f"{name} - {self.channel_number}"
+        device = "device-deleted"
+        if self.device:
+            device = self.device.name
+            if self.device.subject:
+                name = self.subject.nickname
+        return f"{name} - {device} - {self.channel_number}"
 
 
 class ElectrodeLog(BaseAction):
