@@ -399,7 +399,7 @@ def validate_channel_recording_file(file):
     if not file:
         return
 
-    regex = "^[\\d]+[a]*$"
+    regex = "^[\\d]+[a-zA-Z]*$"
 
     try:
         workbook = xlrd.open_workbook(file_contents=file.read())
@@ -515,7 +515,7 @@ def validate_channel_recording_file(file):
         raise error
 
 
-def get_channelrecording_info(file):
+def get_channelrecording_info(file, sufix):
     if not file:
         return
     file.seek(0)
@@ -529,17 +529,30 @@ def get_channelrecording_info(file):
                     date = get_date_session(sheet.cell(1, col).value)
                     session = {"date": date, "records": {}}
                     for row in range(sheet.nrows):
-                        if row >= 3:
+                        if row >= 2:
                             # Check electrode is valid
+                            save = True
                             electrode_cell = sheet.cell(row, 0)
                             if str(electrode_cell.value).strip() != "":
                                 channel_number = get_value(electrode_cell.value).strip()
+                                if sufix is None:
+                                    try:
+                                        int(channel_number)
+                                    except:
+                                        save = False
+                                else:
+                                    exist_sufix = channel_number.find(sufix)
+                                    if exist_sufix > 0:
+                                        channel_number = channel_number[0:exist_sufix]
+                                    else:
+                                        save = False
                                 value = get_value(sheet.cell(row, col).value).strip()
                                 record = {"value": value}
-                                if len(value) > 0:
+                                if len(value) > 0 and save:
                                     session["records"][channel_number] = record
-                    sessions[str(date)] = session
-        elif sheet_number == 2:
+                    if bool(session["records"]):  # Check empty records
+                        sessions[str(date)] = session
+        elif sheet_number == 2 and sufix is None:
             for row in range(sheet.nrows):
                 if row > 0:
                     for col in range(sheet.ncols):

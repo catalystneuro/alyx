@@ -287,10 +287,11 @@ class ElectrodeLogBulkLoadView(FormView):
         if form.is_valid():
             subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
+            device = form.cleaned_data["device"]
             electrodelogs_info = get_electrodelog_info(form.cleaned_data.get("file"))
             for electrode_info in electrodelogs_info:
                 electrode = Electrode.objects.get_or_create(
-                    subject=subject, channel_number=electrode_info["electrode"]
+                    device=device, subject=subject, channel_number=electrode_info["electrode"]
                 )[0]
                 for log in electrode_info["logs"]:
                     new_el = ElectrodeLog()
@@ -332,8 +333,13 @@ class ChannelRecordingBulkLoadView(FormView):
         if form.is_valid():
             subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
+            device = form.cleaned_data["device"]
+            sufix = form.cleaned_data["sufix"]
+            if sufix.strip() == "":
+                sufix = None
             channel_recording_info = get_channelrecording_info(
-                form.cleaned_data.get("file")
+                form.cleaned_data.get("file"),
+                sufix
             )
             for key, session_data in channel_recording_info.items():
                 datetime_str = str(session_data["date"])
@@ -352,7 +358,7 @@ class ChannelRecordingBulkLoadView(FormView):
                         electrode = electrodes_loaded[key]
                     else:
                         electrode = Electrode.objects.get_or_create(
-                            subject=subject, channel_number=key
+                            subject=subject, device=device, channel_number=key
                         )[0]
                         electrodes_loaded[key] = electrode
                     new_cr = ChannelRecording()
