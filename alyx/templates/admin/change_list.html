@@ -3,6 +3,7 @@
 
 
 {% block extrastyle %}
+
 {{ block.super }}
 <style>
 .related-widget-wrapper > a {
@@ -14,7 +15,70 @@
     position: relative;
     top: -5px;
 }
+h1 {    margin: 0 0 20px;
+    font-weight: 300;
+    font-size: 20px;
+    color: #666;
+}
+.dropdown-toggle::after {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: .255em;
+    vertical-align: .255em;
+    content: "";
+    border-top: .3em solid;
+    border-right: .3em solid transparent;
+    border-bottom: 0;
+    border-left: .3em solid transparent;
+}
+.btn-secondary:not(:disabled):not(.disabled):active {
+    color: #fff;
+    background-color: #609ab6;
+    border-color: #609ab6;
+    border: none;
+}
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    float: left;
+    min-width: 12rem;
+    padding: .5rem 0;
+    margin: .125rem 0 0;
+    font-size: 1rem;
+    color: #212529;
+    text-align: left;
+    list-style: none;
+    background-color: #fff;
+    background-clip: padding-box;
+    border: none;
+    border-radius: .25rem;
+    height: 1.4rem;
+}
+    .dropdown, .dropup {
+    position: relative;
+}
+.dropdown-menu .button, .field-options .button {
+    margin-left: 2px;
+}
+.btn-secondary:not(:disabled):not(.disabled):active, .btn-secondary {
+    color: #fff;
+    background-color: #609ab6;
+    border-color: #609ab6;
+    border: none;
+    border-radius: 4px;
+    padding-top: 4px;
+    padding-bottom: 5px;
+    margin-left: 1.5px;
+}
+.options {
+    display: inline-block;
+}
 </style>
+
 {% endblock %}
 
 
@@ -24,6 +88,15 @@
 (function($) {
     'use strict';
     $(document).ready(function() {
+        $('.dropdown').on('click', function(e) {
+            $('.dropdown-menu', ).not($(this).find('.dropdown-menu')).removeClass('options')
+            let button_name = $(this).find('.dropdown-toggle').text()
+            let min_weight = '17rem'
+            if (button_name == 'Session') {
+                min_weight = '12rem'
+            }
+            $(this).find('.dropdown-menu').toggleClass('options').css('min-width', min_weight)
+        })    
         $("#mininav").on('change', function (e) {
             var optionSelected = $("option:selected", this);
             var valueSelected = this.value;

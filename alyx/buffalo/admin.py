@@ -130,20 +130,32 @@ class BuffaloSubjectAdmin(BaseAdmin):
         return self.link(url, "Load Sessions")
 
     def options(self, obj):
-        select = "{} {} {} {} {} {} {} {} {} {}"
-        select = select.format(
-            self.daily_observations(obj),
-            self.add_session(obj),
-            self.add_stl(obj),
-            self.set_electrodes(obj),
-            self.new_electrode_logs(obj),
-            self.set_electrodes_file(obj),
-            self.set_electrodelogs_file(obj),
-            self.plots(obj),
-            self.session_queries(obj),
-            self.load_sessions(obj),
+        dropdown = (
+            """<div class="dropdown" style="display: inline-block;">
+            <button class="btn btn-secondary dropdown-toggle" type="button" 
+            id="dropdownMenuButton"""
+            + obj.nickname
+            + """" data-toggle="dropdown" 
+            aria-haspopup="true" aria-expanded="false">{}</button>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton"""
+            + str(obj.id)
+            + """">{}{}</div></div>"""
         )
-        return format_html(select)
+
+        session_options = dropdown.format(
+            "Session", self.add_session(obj), self.session_queries(obj)
+        )
+        electrodes_options = dropdown.format(
+            "Electrodes", self.new_electrode_logs(obj), self.set_electrodelogs_file(obj)
+        )
+        options_group = (
+            self.daily_observations(obj)
+            + session_options
+            + electrodes_options
+            + self.add_stl(obj)
+            + self.plots(obj)
+        )
+        return format_html(options_group)
 
 
 class ChannelRecordingFormset(BaseInlineFormSet):
