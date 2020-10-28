@@ -133,7 +133,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
         return self.link(url, "Load Sessions")
 
     def options(self, obj):
-        select = "{} {} {} {} {} {} {} {} {}"
+        select = "{} {} {} {} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
