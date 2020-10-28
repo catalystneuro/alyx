@@ -352,7 +352,6 @@ class ChannelRecordingBulkLoadView(FormView):
                 sharp_waves = []
                 spikes = []
                 for key, record_data in session_data["records"].items():
-                    print("{} - {}".format(datetime_str, key))
                     save = True
                     if key in electrodes_loaded.keys():
                         electrode = electrodes_loaded[key]
