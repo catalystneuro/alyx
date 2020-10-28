@@ -91,9 +91,9 @@ h1 {    margin: 0 0 20px;
         $('.dropdown').on('click', function(e) {
             $('.dropdown-menu', ).not($(this).find('.dropdown-menu')).removeClass('options')
             let button_name = $(this).find('.dropdown-toggle').text()
-            let min_weight = '17rem'
+            let min_weight = '28rem'
             if (button_name == 'Session') {
-                min_weight = '12rem'
+                min_weight = '18rem'
             }
             $(this).find('.dropdown-menu').toggleClass('options').css('min-width', min_weight)
         })    
