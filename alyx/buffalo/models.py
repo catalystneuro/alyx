@@ -332,13 +332,15 @@ class Electrode(BaseAction):
         return self.current_location in stl
 
     def __str__(self):
-        name = "deleted"
-        device = "device-deleted"
+        device_name = "device-deleted"
+        subject_name = "subject-deleted"
         if self.device:
-            device = self.device.name
-            if self.device.subject:
-                name = self.subject.nickname
-        return f"{name} - {device} - {self.channel_number}"
+            device = self.device
+            device_name = device.name
+            if device.subject:
+                subject = device.subject
+                subject_name = subject.nickname
+        return f"{subject_name} - {device_name} - {self.channel_number}"
 
 
 class ElectrodeLog(BaseAction):

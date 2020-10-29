@@ -104,10 +104,6 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = "/buffalo/stlfile/add/?subject=" + str(obj.id)
         return self.link(url, "Add STL file")
 
-    def new_electrode_logs(self, obj):
-        url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.id])
-        return self.link(url, "New electrode logs")
-
     def manage_devices(self, obj):
         url = reverse("admin:buffalo_buffalodevicesubject_change", args=[obj.id])
         return self.link(url, "Manage devices")
@@ -133,12 +129,11 @@ class BuffaloSubjectAdmin(BaseAdmin):
         return self.link(url, "Load Sessions")
 
     def options(self, obj):
-        select = "{} {} {} {} {} {} {} {} {} {}"
+        select = "{} {} {} {} {} {} {} {} {}"
         select = select.format(
             self.daily_observations(obj),
             self.add_session(obj),
             self.add_stl(obj),
-            self.new_electrode_logs(obj),
             self.set_electrodelogs_file(obj),
             self.set_channelrecordings_file(obj),
             self.plots(obj),
@@ -180,11 +175,11 @@ class ChannelRecordingInline(nested_admin.NestedTabularInline):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "electrode":
             try:
-                session = Session.objects.get(
+                session = Session.objects.prefetch_related('subject').get(
                     pk=request.resolver_match.kwargs["object_id"]
                 )
                 kwargs["queryset"] = Electrode.objects.prefetch_related(
-                    "subject"
+                    "device__subject"
                 ).filter(subject=session.subject)
             except KeyError:
                 pass
@@ -192,7 +187,7 @@ class ChannelRecordingInline(nested_admin.NestedTabularInline):
                 subject = request.GET.get("subject", None)
                 if subject is not None:
                     kwargs["queryset"] = Electrode.objects.prefetch_related(
-                        "subject"
+                        "device__subject"
                     ).filter(subject=subject)
             except:
                 pass
@@ -255,7 +250,9 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
             subject = request.GET.get("subject", None)
             if db_field.name == "electrode" and subject is not None:
                 try:
-                    kwargs["queryset"] = Electrode.objects.filter(subject=subject)
+                    kwargs["queryset"] = Electrode.objects.prefetch_related(
+                        "device__subject"
+                    ).filter(subject=subject)
                 except KeyError:
                     pass
             return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -827,9 +824,18 @@ class StartingPointInline(nested_admin.NestedTabularInline):
     extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        cache = getattr(request, 'subject_id_cache', {})
         if db_field.name == "starting_point_set":
             try:
-                subject_id = request.resolver_match.kwargs["object_id"]
+                subject_id = None
+                if cache.get("subject_id"):
+                    subject_id = cache["subject_id"]
+                else:
+                    device_id = request.resolver_match.kwargs["object_id"]
+                    device = Device.objects.prefetch_related("subject").get(pk=device_id)
+                    subject_id = device.subject.id
+                    request.subject_id_cache = cache
+                    request.subject_id_cache["subject_id"] = subject_id
                 kwargs["queryset"] = StartingPointSet.objects.prefetch_related(
                     "subject"
                 ).filter(subject=subject_id)
@@ -864,16 +870,10 @@ class BuffaloElectrode(nested_admin.NestedTabularInline):
     inlines = [StartingPointInline]
     ordering = ("created",)
 
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "device":
-            try:
-                subject_id = request.resolver_match.kwargs["object_id"]
-                kwargs["queryset"] = Device.objects.prefetch_related("subject").filter(
-                    subject=subject_id
-                )
-            except KeyError:
-                pass
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    def get_queryset(self, request):
+        return super(BuffaloElectrode, self).get_queryset(request).select_related(
+            'device__subject'
+        )
 
 
 class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
@@ -938,10 +938,16 @@ class BuffaloDevice(admin.TabularInline):
         url = reverse("admin:buffalo_buffaloelectrodedevice_change", args=[obj.id])
         return self.link(url, "Set electrodes")
 
+    def new_electrode_logs(self, obj):
+        url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.subject.id]) + \
+            "?device_id={}".format(obj.id)
+        return self.link(url, "New electrode logs")
+
     def manage_electrodes(self, obj):
 
-        select = "{} <br><br>{}".format(
-            self.set_electrodes_file(obj), self.set_electrodes(obj)
+        select = "{}<br><br>{}<br><br>{}".format(
+            self.set_electrodes_file(obj), self.set_electrodes(obj),
+            self.new_electrode_logs(obj)
         )
         return format_html(select)
 
@@ -1011,6 +1017,7 @@ class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
 
     inlines = [BuffaloElectrode]
 
+
     def response_change(self, request, obj):
         return redirect(
             reverse("admin:buffalo_buffalodevicesubject_change", args=[obj.subject.id])
@@ -1037,18 +1044,20 @@ class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
         return self.readonly_fields
 
 
-def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
+def TemplateInitialDataElectrodeLog(data, num_forms):
     class BuffaloElectrodeLog(admin.TabularInline):
         def get_queryset(self, request):
             self.request = request
             return ElectrodeLog.objects.none()
 
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
+            device_id = request.GET.get('device_id', None)
+
             if db_field.name == "electrode":
                 try:
                     kwargs["queryset"] = Electrode.objects.prefetch_related(
-                        "subject"
-                    ).filter(subject=subject_id)
+                        "device__subject"
+                    ).filter(device=device_id)
                 except KeyError:
                     pass
             return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -1100,11 +1109,12 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         super().save_formset(request, form, formset, change)
 
     def get_inline_instances(self, request, obj=None):
-        electrodes = Electrode.objects.filter(subject=obj.id)
+        device_id = request.GET.get('device_id', None)
+        electrodes = Electrode.objects.filter(device=device_id)
         initial = []
         for electrode in electrodes:
             initial.append({"electrode": electrode.id})
-        inlines = [TemplateInitialDataElectrodeLog(initial, len(initial), obj.id)]
+        inlines = [TemplateInitialDataElectrodeLog(initial, len(initial))]
         return [inline(self.model, self.admin_site) for inline in inlines]
 
     def response_change(self, request, obj):
