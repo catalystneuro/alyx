@@ -610,20 +610,20 @@ def get_channelrecording_info(file, sufix):
                                 )
                                 date_str = str(date)
                                 for electrode in electrodes:
-                                    channel_number = str(electrode).strip()
+                                    ch_number = str(electrode).strip()
                                     if date_str in sessions.keys():
                                         session = sessions[date_str]
-                                        if channel_number in session["records"].keys():
-                                            session["records"][channel_number]["sharp_waves"] = True
+                                        if ch_number in session["records"].keys():
+                                            session["records"][ch_number]["sharp_waves"] = True
                                         else:
-                                            session["records"][channel_number] = {
+                                            session["records"][ch_number] = {
                                                 "sharp_waves": True
                                             }
                                     else:  # Session doesn't exist
                                         sessions[date_str] = {
                                             "date": date,
                                             "records": {
-                                                channel_number: {
+                                                ch_number: {
                                                     "sharp_waves": True
                                                 }
                                             }
