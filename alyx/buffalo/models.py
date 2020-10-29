@@ -37,8 +37,8 @@ ALIVE = [
 ]
 
 CHAMBER_CLEANING = [
-    ('yes', "Yes"),
-    ('no', "No"),
+    ("yes", "Yes"),
+    ("no", "No"),
     ("n/a", "N/A"),
 ]
 
@@ -249,6 +249,9 @@ class BuffaloSession(Session):
     pump_setting = models.FloatField(null=True, blank=True)
     chamber_cleaning = models.CharField(
         max_length=10, choices=CHAMBER_CLEANING, null=True, blank=True
+    )
+    unknown_user = models.CharField(
+        blank=True, null=True, max_length=255, help_text="Unknown user initials"
     )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)

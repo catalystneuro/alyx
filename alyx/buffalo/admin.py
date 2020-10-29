@@ -129,19 +129,38 @@ class BuffaloSubjectAdmin(BaseAdmin):
         return self.link(url, "Load Sessions")
 
     def options(self, obj):
-        select = "{} {} {} {} {} {} {} {} {}"
-        select = select.format(
-            self.daily_observations(obj),
-            self.add_session(obj),
-            self.add_stl(obj),
-            self.set_electrodelogs_file(obj),
-            self.set_channelrecordings_file(obj),
-            self.plots(obj),
-            self.session_queries(obj),
-            self.manage_devices(obj),
-            self.load_sessions(obj),
+        dropdown = (
+            """<div class="dropdown" style="display: inline-block;">
+            <button class="btn btn-secondary dropdown-toggle" type="button" 
+            id="dropdownMenuButton"""
+            + obj.nickname
+            + """" data-toggle="dropdown" 
+            aria-haspopup="true" aria-expanded="false">{}</button>
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton"""
+            + str(obj.id)
+            + """">{}{}{}</div></div>"""
         )
-        return format_html(select)
+        session_options = dropdown.format(
+            "Session",
+            self.add_session(obj),
+            self.load_sessions(obj),
+            self.session_queries(obj)
+        )
+        electrodes_options = dropdown.format(
+            "Electrodes",
+            self.new_electrode_logs(obj),
+            self.set_electrodelogs_file(obj),
+            self.set_channelrecordings_file(obj)
+        )
+        options_group = (
+            self.daily_observations(obj)
+            + session_options
+            + electrodes_options
+            + self.add_stl(obj)
+            + self.plots(obj)
+            + self.manage_devices(obj)
+        )
+        return format_html(options_group)
 
 
 class ChannelRecordingFormset(BaseInlineFormSet):
@@ -442,10 +461,7 @@ class ElectrodeListFilter(DefaultListFilter):
         for lookup, title in self.lookup_choices:
             yield {
                 "selected": self.value() == force_text(lookup),
-                "query_string": cl.get_query_string(
-                    {self.parameter_name: lookup},
-                    [],
-                ),
+                "query_string": cl.get_query_string({self.parameter_name: lookup}, [],),
                 "display": title,
             }
 
@@ -461,7 +477,7 @@ class ElectrodeListFilter(DefaultListFilter):
     def queryset(self, request, queryset):
         all_flag = False
         if (
-            self.value() != "all" and
+            self.value() != "all"and
             self.related_filter_parameter in request.GET and
             self.value() is not None
         ):
@@ -608,10 +624,7 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         except KeyError:
             pass
         return super().change_view(
-            request,
-            object_id,
-            form_url,
-            extra_context=extra_context,
+            request, object_id, form_url, extra_context=extra_context,
         )
 
     def save_formset(self, request, form, formset, change):

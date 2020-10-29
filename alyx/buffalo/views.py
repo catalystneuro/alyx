@@ -303,6 +303,8 @@ class ElectrodeLogBulkLoadView(FormView):
                         new_el.impedance = log["impedance"]
                     if log["notes"] is not None:
                         new_el.notes = log["notes"]
+                    if log["user"]:
+                        new_el.users.set(log["user"])
                     new_el.save()
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
@@ -621,11 +623,14 @@ class SessionsLoadView(FormView):
                         )
 
                         if session["1_Handler Initials"].strip():
-                            session_user = get_user_from_initial(
-                                session["1_Handler Initials"]
+                            session_user_obj = get_user_from_initial(
+                                session["1_Handler Initials"].strip()
                             )
-                            if session_user:
-                                newsession.users.set(session_user)
+                            if session_user_obj:
+                                newsession.users.set(session_user_obj)
+                            else:
+                                newsession.unknown_user = session["1_Handler Initials"]
+                                newsession.save()
                         # If the session has weight creates the weight log
                         weight_index = "2_Weight (kg)"
                         if session[weight_index]:
@@ -641,6 +646,7 @@ class SessionsLoadView(FormView):
                             food=food,
                             amount=session_food,
                             session=newsession,
+                            date_time=session["0_Date (mm/dd/yyyy)"],
                         )
                         # Creates the Menstruation log
                         if session["5_Menstration"].strip() == "yes":
