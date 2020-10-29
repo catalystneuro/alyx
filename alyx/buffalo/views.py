@@ -384,7 +384,8 @@ class ChannelRecordingBulkLoadView(FormView):
                             sharp_waves.append(key)
                     if "spikes" in record_data.keys() and record_data["spikes"] is True:
                             spikes.append(key)
-                    new_cr.save()
+                    if save:
+                        new_cr.save()
                 result_json = {
                     "sharp_waves": sharp_waves,
                     "spikes": spikes,
@@ -429,12 +430,13 @@ class PlotsView(View):
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
             subject = BuffaloSubject.objects.get(pk=subject_id)
+            device_id = form.cleaned_data["device"].id
             electrodes = Electrode.objects.prefetch_related("subject").filter(
-                subject=subject_id
+                device=device_id
             )
             electrode_logs = (
                 ElectrodeLog.objects.prefetch_related("electrode")
-                .filter(subject=subject_id)
+                .filter(electrode__device=device_id)
                 .exclude(turn=None)
                 .filter(
                     date_time__year=form.cleaned_data["date"].year,
