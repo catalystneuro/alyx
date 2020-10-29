@@ -131,34 +131,30 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def options(self, obj):
         dropdown = (
             """<div class="dropdown" style="display: inline-block;">
-            <button class="btn btn-secondary dropdown-toggle" type="button" 
-            id="dropdownMenuButton"""
-            + obj.nickname
-            + """" data-toggle="dropdown" 
+            <button class="btn btn-secondary dropdown-toggle" type="button"
+            id="dropdownMenuButton""" +
+            obj.nickname +
+            """" data-toggle="dropdown"
             aria-haspopup="true" aria-expanded="false">{}</button>
-            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton"""
-            + str(obj.id)
-            + """">{}{}{}</div></div>"""
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton""" +
+            str(obj.id) +
+            """">{}</div></div>"""
         )
         session_options = dropdown.format(
             "Session",
-            self.add_session(obj),
-            self.load_sessions(obj),
-            self.session_queries(obj)
+            self.add_session(obj) + self.load_sessions(obj) + self.session_queries(obj)
         )
         electrodes_options = dropdown.format(
             "Electrodes",
-            self.new_electrode_logs(obj),
-            self.set_electrodelogs_file(obj),
-            self.set_channelrecordings_file(obj)
+            self.set_electrodelogs_file(obj) + self.set_channelrecordings_file(obj)
         )
         options_group = (
-            self.daily_observations(obj)
-            + session_options
-            + electrodes_options
-            + self.add_stl(obj)
-            + self.plots(obj)
-            + self.manage_devices(obj)
+            self.daily_observations(obj) +
+            session_options +
+            electrodes_options +
+            self.add_stl(obj) +
+            self.plots(obj) +
+            self.manage_devices(obj)
         )
         return format_html(options_group)
 
@@ -477,7 +473,7 @@ class ElectrodeListFilter(DefaultListFilter):
     def queryset(self, request, queryset):
         all_flag = False
         if (
-            self.value() != "all"and
+            self.value() != "all" and
             self.related_filter_parameter in request.GET and
             self.value() is not None
         ):
@@ -1029,7 +1025,6 @@ class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
     ]
 
     inlines = [BuffaloElectrode]
-
 
     def response_change(self, request, obj):
         return redirect(
