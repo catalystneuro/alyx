@@ -109,7 +109,6 @@ class ChannelRecordingsBulkLoadTests(TestCase):
         )
         self.assertEquals(124, len(ch_rec_180615))
 
-
     def test_upload_well_with_sufix(self):
         sam = BuffaloSubject.objects.get(nickname="Sam")
         dsamp = Device.objects.get(name="posterior-sam", subject=sam)
