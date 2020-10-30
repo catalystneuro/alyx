@@ -109,6 +109,15 @@ class ChannelRecordingsBulkLoadTests(TestCase):
         )
         self.assertEquals(124, len(ch_rec_180615))
 
+        session_name = "2019-09-23 00:00:00_Sam"
+        session_190923 = BuffaloSession.objects.get(
+            subject=sam, name=session_name
+        )
+        ch_rec_ripples_190923 = ChannelRecording.objects.filter(
+            session=session_190923, ripples="yes"
+        )
+        self.assertEquals(9, len(ch_rec_ripples_190923))
+
     def test_upload_well_with_sufix(self):
         sam = BuffaloSubject.objects.get(nickname="Sam")
         dsamp = Device.objects.get(name="posterior-sam", subject=sam)
