@@ -3,7 +3,9 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
-from buffalo.models import BuffaloSubject, Electrode, Device  # ,ChannelRecording, BuffaloSession
+from buffalo.models import (
+    BuffaloSubject, Electrode, Device, ChannelRecording, BuffaloSession
+)
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -89,6 +91,24 @@ class ChannelRecordingsBulkLoadTests(TestCase):
             format="multipart",
         )
         self.assertContains(resp, "File loaded successful")
+        session_name = "2018-05-03 00:00:00_Sam"
+        session_180503 = BuffaloSession.objects.get(
+            subject=sam, name=session_name
+        )
+        ch_rec_180503 = ChannelRecording.objects.filter(
+            session=session_180503
+        )
+        self.assertEquals(124, len(ch_rec_180503))
+
+        session_name = "2018-06-15 00:00:00_Sam"
+        session_180615 = BuffaloSession.objects.get(
+            subject=sam, name=session_name
+        )
+        ch_rec_180615 = ChannelRecording.objects.filter(
+            session=session_180615
+        )
+        self.assertEquals(124, len(ch_rec_180615))
+
 
     def test_upload_well_with_sufix(self):
         sam = BuffaloSubject.objects.get(nickname="Sam")
@@ -107,4 +127,23 @@ class ChannelRecordingsBulkLoadTests(TestCase):
             follow=True,
             format="multipart",
         )
+
         self.assertContains(resp, "File loaded successful")
+
+        session_name = "2018-08-30 00:00:00_Sam"
+        session_180830 = BuffaloSession.objects.get(
+            subject=sam, name=session_name
+        )
+        ch_rec_180830 = ChannelRecording.objects.filter(
+            session=session_180830
+        )
+        self.assertEquals(96, len(ch_rec_180830))
+
+        session_name = "2018-06-15 00:00:00_Sam"
+        session_180615 = BuffaloSession.objects.get(
+            subject=sam, name=session_name
+        )
+        ch_rec_180615 = ChannelRecording.objects.filter(
+            session=session_180615
+        )
+        self.assertEquals(65, len(ch_rec_180615))
