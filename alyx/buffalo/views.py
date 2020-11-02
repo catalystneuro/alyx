@@ -381,9 +381,9 @@ class ChannelRecordingBulkLoadView(FormView):
                     if "ripples" in record_data.keys():
                         new_cr.ripples = "yes" if record_data["ripples"] is True else ""
                     if "sharp_waves" in record_data.keys() and record_data["sharp_waves"] is True:
-                            sharp_waves.append(key)
+                        sharp_waves.append(key)
                     if "spikes" in record_data.keys() and record_data["spikes"] is True:
-                            spikes.append(key)
+                        spikes.append(key)
                     if save:
                         new_cr.save()
                 result_json = {

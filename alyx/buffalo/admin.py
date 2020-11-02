@@ -1154,6 +1154,7 @@ class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
         "turn",
         "impedance",
         "current_location",
+        "is_in_stls",
         "notes",
         "date_time",
     ]
@@ -1188,7 +1189,7 @@ class BuffaloChannelRecording(BaseAdmin):
 
 class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
-    fields = ("stl_file", "subject")
+    fields = ("name", "stl_file", "subject")
 
     def response_add(self, request, obj):
         messages.success(request, "File uploaded successful.")

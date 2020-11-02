@@ -400,6 +400,43 @@ class ElectrodeLog(BaseAction):
         location = self.get_current_location()
         return str(location)
 
+    @property
+    def is_in_stls(self):
+        stls = {}
+        elstls = ElectrodeLogSTL.objects.prefetch_related('stl').filter(
+            electrodelog=self
+        )
+        for elstl in elstls:
+            stl = elstl.stl
+            name = str(stl)
+            if stl.name:
+                name = stl.name
+            stls[name] = elstl.is_in
+        return stls
+
+    def save(self, *args, **kwargs):
+        super(ElectrodeLog, self).save(*args, **kwargs)
+        ell = ElectrodeLog.objects.prefetch_related('electrode__device__subject').get(
+            pk=self.id
+        )
+        subject = ell.electrode.device.subject
+        stls = STLFile.objects.filter(subject=subject)
+        for stl in stls:
+            elstl, _ = ElectrodeLogSTL.objects.get_or_create(
+                stl=stl,
+                electrodelog=self
+            )
+            elstl.is_in = self.is_in_stl(stl.stl_file.name)
+            elstl.save()
+
+    def sync_stl(self, stl):
+        elstl = ElectrodeLogSTL(
+            stl=stl,
+            electrodelog=self
+        )
+        elstl.is_in = self.is_in_stl(stl.stl_file.name)
+        elstl.save()
+
 
 class StartingPointSet(BaseModel):
     name = models.CharField(max_length=255, default="", blank=True)
@@ -471,6 +508,27 @@ class STLFile(Dataset):
         if self.subject:
             name = self.subject.nickname
         return "<Dataset %s - %s created on %s>" % (str(self.pk)[:8], name, date)
+
+    def save(self, *args, **kwargs):
+        new = self.pk is None
+        super(STLFile, self).save(*args, **kwargs)
+        if new:
+            subject = self.subject
+            electrode_logs = ElectrodeLog.objects.filter(electrode__device__subject=subject)
+            for electrode_log in electrode_logs:
+                electrode_log.sync_stl(self)
+
+
+class ElectrodeLogSTL(BaseModel):
+    electrodelog = models.ForeignKey(
+        ElectrodeLog, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    stl = models.ForeignKey(
+        STLFile, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    is_in = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class ChannelRecording(BaseModel):
