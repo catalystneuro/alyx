@@ -363,9 +363,9 @@ class ElectrodeLog(BaseAction):
     def get_current_location(self):
         electrode = self.electrode
         location = {}
-        if electrode:
+        if electrode and len(electrode.starting_point.all()) > 0:
             starting_point = electrode.starting_point.latest("updated")
-            if self.turn:
+            if self.turn is not None:
                 distance = self.turn / self.electrode.turns_per_mm
                 location_list = starting_point.get_norms()
                 initial_position = starting_point.get_start_position()
@@ -381,8 +381,8 @@ class ElectrodeLog(BaseAction):
 
     def is_in_stl(self, stl_file_name):
         electrode = self.electrode
-        if electrode:
-            if self.turn:
+        if electrode and len(electrode.starting_point.all()) > 0:
+            if self.turn is not None:
                 curr_location = self.get_current_location()
                 location_list = [
                     curr_location["x"],
@@ -419,8 +419,9 @@ class ElectrodeLog(BaseAction):
         ell = ElectrodeLog.objects.prefetch_related('electrode__device__subject').get(
             pk=self.id
         )
+        existing = [el.stl.id for el in ell.electrodelogstl.prefetch_related('stl').all()]
         subject = ell.electrode.device.subject
-        stls = STLFile.objects.filter(subject=subject)
+        stls = STLFile.objects.filter(subject=subject).exclude(id__in=existing)
         for stl in stls:
             elstl, _ = ElectrodeLogSTL.objects.get_or_create(
                 stl=stl,
@@ -508,20 +509,27 @@ class STLFile(Dataset):
         if self.subject:
             name = self.subject.nickname
         return "<Dataset %s - %s created on %s>" % (str(self.pk)[:8], name, date)
+    
+    def sync_electrodelogs(self):
+        subject = self.subject
+        electrode_logs = ElectrodeLog.objects.filter(electrode__device__subject=subject)
+        for electrode_log in electrode_logs:
+            electrode_log.sync_stl(self)
 
     def save(self, *args, **kwargs):
         new = self.pk is None
         super(STLFile, self).save(*args, **kwargs)
         if new:
-            subject = self.subject
-            electrode_logs = ElectrodeLog.objects.filter(electrode__device__subject=subject)
-            for electrode_log in electrode_logs:
-                electrode_log.sync_stl(self)
+            self.sync_electrodelogs()
 
 
 class ElectrodeLogSTL(BaseModel):
     electrodelog = models.ForeignKey(
-        ElectrodeLog, on_delete=models.SET_NULL, null=True, blank=True,
+        ElectrodeLog,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="electrodelogstl",
     )
     stl = models.ForeignKey(
         STLFile, on_delete=models.SET_NULL, null=True, blank=True,
