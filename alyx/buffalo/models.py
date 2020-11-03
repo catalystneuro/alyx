@@ -287,9 +287,9 @@ class ElectrodeLog(BaseAction):
     def get_current_location(self):
         electrode = self.electrode
         location = {}
-        if electrode:
+        if electrode and len(electrode.starting_point.all()) > 0:
             starting_point = electrode.starting_point.latest("updated")
-            if self.turn:
+            if self.turn is not None:
                 distance = self.turn / self.electrode.turns_per_mm
                 location_list = starting_point.get_norms()
                 initial_position = starting_point.get_start_position()
@@ -305,8 +305,8 @@ class ElectrodeLog(BaseAction):
 
     def is_in_stl(self, stl_file_name):
         electrode = self.electrode
-        if electrode:
-            if self.turn:
+        if electrode and len(electrode.starting_point.all()) > 0:
+            if self.turn is not None:
                 curr_location = self.get_current_location()
                 location_list = [
                     curr_location["x"],
