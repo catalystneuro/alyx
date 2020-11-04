@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 import plotly.offline as opy
 import plotly.graph_objs as go
 import trimesh
+import json
 
 from django.views.generic import (
     View,
@@ -24,6 +25,7 @@ from .utils import (
     get_sessions_from_file,
     get_user_from_initial,
     get_electrodelog_info,
+    get_channelrecording_info,
 )
 from .constants import TASK_CELLS, SESSIONS_FILE_COLUMNS
 from actions.models import Session, Weighing
@@ -42,15 +44,25 @@ from .models import (
     BuffaloDataset,
     FoodType,
     MenstruationLog,
+    Device,
 )
 from .forms import (
     TaskForm,
     TaskVersionForm,
     ElectrodeBulkLoadForm,
     ElectrodeLogBulkLoadForm,
+    ChannelRecordingBulkLoadForm,
     PlotFilterForm,
     SessionQueriesForm,
     SessionsLoadForm,
+)
+
+from .utils import (
+    DEAD_VALUES,
+    NUMBER_OF_CELLS_VALUES,
+    ALIVE_VALUES,
+    MAYBE_VALUES,
+    NOT_SAVE_VALUES,
 )
 
 
@@ -208,9 +220,9 @@ class ElectrodeBulkLoadView(FormView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        subject_id = self.kwargs.pop("subject_id", None)
-        if subject_id:
-            kwargs["initial"] = {"subject": subject_id}
+        device_id = self.kwargs.pop("device_id", None)
+        if device_id:
+            kwargs["initial"] = {"device": device_id}
         return kwargs
 
     def post(self, request, *args, **kwargs):
@@ -218,12 +230,13 @@ class ElectrodeBulkLoadView(FormView):
         form = self.get_form(form_class)
         if form.is_valid():
             structure_name = form.cleaned_data["structure_name"]
-            subject_id = form.cleaned_data["subject"]
-            subject = BuffaloSubject.objects.get(pk=subject_id)
+            device_id = form.cleaned_data["device"]
+            device = Device.objects.get(pk=device_id)
+            subject = device.subject
             # Create a new Starting point set
             starting_point_set = StartingPointSet()
             starting_point_set.name = "Bulk load - %s" % (datetime.datetime.now())
-            starting_point_set.subject = subject
+            starting_point_set.subject = device.subject
             starting_point_set.save()
 
             if not structure_name:
@@ -233,7 +246,7 @@ class ElectrodeBulkLoadView(FormView):
             )
             for electrode_info in electrodes_info:
                 electrode = Electrode.objects.filter(
-                    subject=subject_id, channel_number=str(electrode_info["channel"])
+                    device=device_id, channel_number=str(electrode_info["channel"])
                 ).first()
                 if electrode:
                     electrode.create_new_starting_point_from_mat(
@@ -242,6 +255,7 @@ class ElectrodeBulkLoadView(FormView):
                 else:
                     new_electrode = Electrode()
                     new_electrode.subject = subject
+                    new_electrode.device = device
                     new_electrode.channel_number = str(electrode_info["channel"])
                     new_electrode.save()
                     new_electrode.create_new_starting_point_from_mat(
@@ -253,7 +267,11 @@ class ElectrodeBulkLoadView(FormView):
             return self.form_invalid(form)
 
     def get_success_url(self):
-        return reverse("admin:buffalo_buffalosubject_changelist")
+        kwargs = super().get_form_kwargs()
+        device = Device.objects.get(pk=kwargs["data"]["device"])
+        return reverse(
+            "admin:buffalo_buffalodevicesubject_change", args=[device.subject.id]
+        )
 
 
 class ElectrodeLogBulkLoadView(FormView):
@@ -273,11 +291,14 @@ class ElectrodeLogBulkLoadView(FormView):
         if form.is_valid():
             subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
+            device = form.cleaned_data["device"]
             electrodelogs_info = get_electrodelog_info(form.cleaned_data.get("file"))
             for electrode_info in electrodelogs_info:
-                electrode = Electrode.objects.get_or_create(
-                    subject=subject, channel_number=electrode_info["electrode"]
-                )[0]
+                electrode, _ = Electrode.objects.get_or_create(
+                    device=device,
+                    subject=subject,
+                    channel_number=electrode_info["electrode"],
+                )
                 for log in electrode_info["logs"]:
                     new_el = ElectrodeLog()
                     new_el.subject = subject
@@ -288,6 +309,8 @@ class ElectrodeLogBulkLoadView(FormView):
                         new_el.impedance = log["impedance"]
                     if log["notes"] is not None:
                         new_el.notes = log["notes"]
+                    if log["user"]:
+                        new_el.users.set(log["user"])
                     new_el.save()
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
@@ -299,6 +322,106 @@ class ElectrodeLogBulkLoadView(FormView):
         return "/buffalo/electrodelog/?subject__id__exact=" + str(
             kwargs["data"]["subject"]
         )
+
+
+class ChannelRecordingBulkLoadView(FormView):
+    form_class = ChannelRecordingBulkLoadForm
+    template_name = "buffalo/channelrecording_bulk_load.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        subject_id = self.kwargs.pop("subject_id", None)
+        if subject_id:
+            kwargs["initial"] = {"subject": subject_id}
+        return kwargs
+
+    def post(self, request, *args, **kwargs):
+        form_class = self.get_form_class()
+        form = self.get_form(form_class)
+        if form.is_valid():
+            subject_id = form.cleaned_data["subject"]
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            device = form.cleaned_data["device"]
+            sufix = form.cleaned_data["sufix"]
+            if sufix.strip() == "":
+                sufix = None
+            channel_recording_info = get_channelrecording_info(
+                form.cleaned_data.get("file"), sufix
+            )
+            for key, session_data in channel_recording_info.items():
+                datetime_str = str(session_data["date"])
+                session_name = f"{datetime_str}_{subject.nicknamesafe()}"
+                session, _ = BuffaloSession.objects.get_or_create(
+                    subject=subject, name=session_name
+                )
+                electrodes_loaded = {}
+                sharp_waves = []
+                spikes = []
+                for key, record_data in session_data["records"].items():
+                    save = True
+                    if key in electrodes_loaded.keys():
+                        electrode = electrodes_loaded[key]
+                    else:
+                        electrode, _ = Electrode.objects.get_or_create(
+                            subject=subject, device=device, channel_number=key
+                        )
+                        electrodes_loaded[key] = electrode
+                    new_cr, _ = ChannelRecording.objects.get_or_create(
+                        electrode=electrode, session=session
+                    )
+                    if "value" in record_data.keys():
+                        if record_data["value"] in NUMBER_OF_CELLS_VALUES:
+                            new_cr.number_of_cells = record_data["value"]
+                            new_cr.alive = "yes"
+                        elif record_data["value"] in ALIVE_VALUES:
+                            new_cr.number_of_cells = 0
+                            new_cr.alive = "yes"
+                        elif record_data["value"] in MAYBE_VALUES:
+                            new_cr.alive = "maybe"
+                        elif record_data["value"] in DEAD_VALUES:
+                            new_cr.alive = "no"
+                        elif record_data["value"] in NOT_SAVE_VALUES:
+                            save = False
+                    if "ripples" in record_data.keys():
+                        new_cr.ripples = "yes" if record_data["ripples"] is True else ""
+                    if (
+                        "sharp_waves" in record_data.keys() and
+                        record_data["sharp_waves"] is True
+                    ):
+                        sharp_waves.append(key)
+                    if "spikes" in record_data.keys() and record_data["spikes"] is True:
+                        spikes.append(key)
+                    if save:
+                        new_cr.save()
+                    else:
+                        new_cr.delete()
+                result_json = {
+                    "sharp_waves": sharp_waves,
+                    "spikes": spikes,
+                }
+                if session.json is not None:
+                    try:
+                        session_json = json.loads(session.json)
+                        session_json["sharp_waves"] = result_json["sharp_waves"]
+                        session_json["spikes"] = result_json["spikes"]
+                        result_json = session_json
+                    except:
+                        print("Error reading existing session json")
+                session.json = json.dumps(result_json, indent=4)
+
+                if "good behavior" in session_data.keys():
+                    session.needs_review = False
+                else:
+                    session.needs_review = True
+                session.save()
+            messages.success(request, "File loaded successful.")
+            return self.form_valid(form)
+        else:
+            return self.form_invalid(form)
+
+    def get_success_url(self):
+        # kwargs = super().get_form_kwargs()
+        return "/buffalo/buffalosubject/"
 
 
 class PlotsView(View):
@@ -315,12 +438,13 @@ class PlotsView(View):
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
             subject = BuffaloSubject.objects.get(pk=subject_id)
+            device_id = form.cleaned_data["device"].id
             electrodes = Electrode.objects.prefetch_related("subject").filter(
-                subject=subject_id
+                device=device_id
             )
             electrode_logs = (
                 ElectrodeLog.objects.prefetch_related("electrode")
-                .filter(subject=subject_id)
+                .filter(electrode__device=device_id)
                 .exclude(turn=None)
                 .filter(
                     date_time__year=form.cleaned_data["date"].year,
@@ -495,7 +619,7 @@ class SessionsLoadView(FormView):
                         newsession_chamber_cleaning = session[
                             "51_Chamber Cleaning"
                         ].strip()
-                        newsession = BuffaloSession.objects.create(
+                        newsession, _ = BuffaloSession.objects.get_or_create(
                             subject=subject,
                             name=newsession_name,
                             narrative=session["6_General Comments"],
@@ -507,32 +631,35 @@ class SessionsLoadView(FormView):
                             else newsession_chamber_cleaning.lower(),
                             start_time=session["0_Date (mm/dd/yyyy)"],
                         )
-
                         if session["1_Handler Initials"].strip():
-                            session_user = get_user_from_initial(
-                                session["1_Handler Initials"]
+                            session_user_obj = get_user_from_initial(
+                                session["1_Handler Initials"].strip()
                             )
-                            if session_user:
-                                newsession.users.set(session_user)
+                            if session_user_obj:
+                                newsession.users.set(session_user_obj)
+                            else:
+                                newsession.unknown_user = session["1_Handler Initials"]
+                                newsession.save()
                         # If the session has weight creates the weight log
                         weight_index = "2_Weight (kg)"
                         if session[weight_index]:
-                            WeighingLog.objects.create(
+                            WeighingLog.objects.get_or_create(
                                 session=newsession,
                                 subject=subject,
                                 weight=session[weight_index],
                                 date_time=session["0_Date (mm/dd/yyyy)"],
                             )
                         # Creates the food log
-                        FoodLog.objects.create(
+                        FoodLog.objects.get_or_create(
                             subject=subject,
                             food=food,
                             amount=session_food,
                             session=newsession,
+                            date_time=session["0_Date (mm/dd/yyyy)"],
                         )
                         # Creates the Menstruation log
                         if session["5_Menstration"].strip() == "yes":
-                            MenstruationLog.objects.create(
+                            MenstruationLog.objects.get_or_create(
                                 subject=subject, menstruation=True, session=newsession,
                             )
                         session_tasks = []
@@ -568,7 +695,7 @@ class SessionsLoadView(FormView):
                                 session_tasks.append(task_info)
                         if session_tasks:
                             for task in session_tasks:
-                                session_task = SessionTask.objects.create(
+                                session_task, _ = SessionTask.objects.get_or_create(
                                     task=task["task"],
                                     general_comments=task["general_comments"],
                                     session=task["session"],
@@ -576,7 +703,7 @@ class SessionsLoadView(FormView):
                                     start_time=task["start_time"],
                                 )
                                 if task["filename"]:
-                                    BuffaloDataset.objects.create(
+                                    BuffaloDataset.objects.get_or_create(
                                         file_name=task["filename"],
                                         session_task=session_task,
                                     )

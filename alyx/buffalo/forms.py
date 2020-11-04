@@ -3,7 +3,14 @@ from django import forms
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
-from .utils import validate_mat_file, validate_electrodelog_file, validate_sessions_file
+
+from .utils import (
+    validate_mat_file,
+    validate_electrodelog_file,
+    validate_channel_recording_file,
+    validate_sessions_file,
+)
+
 
 from .models import (
     Task,
@@ -18,6 +25,7 @@ from .models import (
     STLFile,
     StartingPointSet,
     NeuralPhenomena,
+    Device,
 )
 
 
@@ -147,6 +155,7 @@ class SessionForm(ModelForm):
             "name",
             "subject",
             "users",
+            "unknown_user",
             "lab",
             "needs_review",
             "narrative",
@@ -265,22 +274,23 @@ class ElectrodeBulkLoadForm(forms.Form):
     structure_name = forms.CharField(
         label="Structure name", required=False, max_length=250
     )
-    subject = forms.CharField(widget=forms.HiddenInput())
+    device = forms.CharField(widget=forms.HiddenInput())
 
     def clean(self):
         cleaned_data = super().clean()
         file = cleaned_data.get("file")
-        subject_id = cleaned_data.get("subject")
+        device_id = cleaned_data.get("device")
         structure = cleaned_data.get("structure_name")
         if structure:
             validate_mat_file(file, structure)
         else:
-            subject = BuffaloSubject.objects.get(pk=subject_id)
-            validate_mat_file(file, subject.nickname)
+            device = Device.objects.get(pk=device_id)
+            validate_mat_file(file, device.subject.nickname)
 
 
 class ElectrodeLogBulkLoadForm(forms.Form):
     file = forms.FileField(validators=[FileExtensionValidator(["xlsm"])])
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
     subject = forms.CharField(widget=forms.HiddenInput())
 
     def clean(self):
@@ -288,13 +298,41 @@ class ElectrodeLogBulkLoadForm(forms.Form):
         file = cleaned_data.get("file")
         validate_electrodelog_file(file)
 
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop("subject_id", None)
+        if subject_id is None and "subject" in kwargs["initial"].keys():
+            subject_id = kwargs["initial"]["subject"]
+        super(ElectrodeLogBulkLoadForm, self).__init__(*args, **kwargs)
+        self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
+
+
+class ChannelRecordingBulkLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["xlsx"])])
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
+    sufix = forms.CharField(
+        label="Sufix (Ex. a)", required=False, max_length=250
+    )
+    subject = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        validate_channel_recording_file(file)
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop("subject_id", None)
+        if subject_id is None and "subject" in kwargs["initial"].keys():
+            subject_id = kwargs["initial"]["subject"]
+        super(ChannelRecordingBulkLoadForm, self).__init__(*args, **kwargs)
+        self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
+
 
 class PlotFilterForm(forms.Form):
     cur_year = datetime.today().year
     year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
 
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
-    starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
     date = forms.DateField(initial=date.today)
     download_points = forms.BooleanField(required=False)
 
@@ -302,7 +340,7 @@ class PlotFilterForm(forms.Form):
         subject_id = kwargs.pop("subject_id")
         super(PlotFilterForm, self).__init__(*args, **kwargs)
         self.fields["stl"].queryset = STLFile.objects.filter(subject=subject_id)
-        self.fields["starting_point_set"].queryset = StartingPointSet.objects.filter(
+        self.fields["device"].queryset = Device.objects.filter(
             subject=subject_id
         )
 

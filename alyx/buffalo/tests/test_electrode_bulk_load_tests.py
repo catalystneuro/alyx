@@ -3,7 +3,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
-from buffalo.models import BuffaloSubject, Electrode
+from buffalo.models import BuffaloSubject, Electrode, Device
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -15,9 +15,11 @@ class BulkLoadTests(TestCase):
         self.client = Client()
         self.client.force_login(my_admin)
 
-        BuffaloSubject.objects.get_or_create(nickname="Horacio")
-        BuffaloSubject.objects.get_or_create(nickname="Gromit")
-        BuffaloSubject.objects.get_or_create(nickname="Spock")
+        horacio = BuffaloSubject.objects.get_or_create(nickname="Horacio")[0]
+        spock = BuffaloSubject.objects.get_or_create(nickname="Spock")[0]
+
+        Device.objects.get_or_create(name="posterior-horacio", subject=horacio)
+        Device.objects.get_or_create(name="posterior-spock", subject=spock)
 
         # Open file
         self.file_spock_mat = open(
@@ -28,27 +30,27 @@ class BulkLoadTests(TestCase):
         )
 
     def test_upload_for_another_subject(self):
-        horacio = BuffaloSubject.objects.get(nickname="Horacio")
+        dhoracio = Device.objects.get(name="posterior-horacio")
         bulk_load_url = reverse(
-            "electrode-bulk-load", kwargs={"subject_id": horacio.id}
+            "electrode-bulk-load", kwargs={"device_id": dhoracio.id}
         )
         resp = self.client.post(
             bulk_load_url,
-            {"file": self.file_spock_mat, "subject": horacio.id},
+            {"file": self.file_spock_mat, "device": dhoracio.id},
             format="multipart",
         )
         self.assertContains(resp, "It cannot find an structure called: Horacio")
 
     def test_upload_for_another_subject_using_text_field(self):
-        horacio = BuffaloSubject.objects.get(nickname="Horacio")
+        dhoracio = Device.objects.get(name="posterior-horacio")
         bulk_load_url = reverse(
-            "electrode-bulk-load", kwargs={"subject_id": horacio.id}
+            "electrode-bulk-load", kwargs={"device_id": dhoracio.id}
         )
         resp = self.client.post(
             bulk_load_url,
             {
                 "file": self.file_spock_mat,
-                "subject": horacio.id,
+                "device": dhoracio.id,
                 "structure_name": "Spock",
             },
             follow=True,
@@ -57,15 +59,15 @@ class BulkLoadTests(TestCase):
         self.assertContains(resp, "File loaded successful")
 
     def test_upload_bad_file_extension(self):
-        horacio = BuffaloSubject.objects.get(nickname="Horacio")
+        dhoracio = Device.objects.get(name="posterior-horacio")
         bulk_load_url = reverse(
-            "electrode-bulk-load", kwargs={"subject_id": horacio.id}
+            "electrode-bulk-load", kwargs={"device_id": dhoracio.id}
         )
         resp = self.client.post(
             bulk_load_url,
             {
                 "file": self.file_spock_stl,
-                "subject": horacio.id,
+                "subject": dhoracio.id,
                 "structure_name": "Spock",
             },
             format="multipart",
@@ -73,17 +75,17 @@ class BulkLoadTests(TestCase):
         self.assertContains(resp, "File extension “stl” is not allowed")
 
     def test_upload_well(self):
-        spock = BuffaloSubject.objects.get(nickname="Spock")
-        bulk_load_url = reverse("electrode-bulk-load", kwargs={"subject_id": spock.id})
+        dspock = Device.objects.get(name="posterior-spock")
+        bulk_load_url = reverse("electrode-bulk-load", kwargs={"device_id": dspock.id})
         resp = self.client.post(
             bulk_load_url,
             {
                 "file": self.file_spock_mat,
-                "subject": spock.id,
+                "device": dspock.id,
             },
             follow=True,
             format="multipart",
         )
         self.assertContains(resp, "File loaded successful")
-        electrodes = Electrode.objects.filter(subject=spock.id)
+        electrodes = Electrode.objects.filter(device=dspock.id)
         self.assertEquals(124, len(electrodes))

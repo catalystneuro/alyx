@@ -37,8 +37,8 @@ ALIVE = [
 ]
 
 CHAMBER_CLEANING = [
-    ('yes', "Yes"),
-    ('no', "No"),
+    ("yes", "Yes"),
+    ("no", "No"),
     ("n/a", "N/A"),
 ]
 
@@ -101,6 +101,11 @@ class BuffaloElectrodeSubject(BuffaloSubject):
 
 
 class BuffaloElectrodeLogSubject(BuffaloSubject):
+    class Meta:
+        proxy = True
+
+
+class BuffaloDeviceSubject(BuffaloSubject):
     class Meta:
         proxy = True
 
@@ -245,11 +250,39 @@ class BuffaloSession(Session):
     chamber_cleaning = models.CharField(
         max_length=10, choices=CHAMBER_CLEANING, null=True, blank=True
     )
+    unknown_user = models.CharField(
+        blank=True, null=True, max_length=255, help_text="Unknown user initials"
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Session"
+
+
+class Device(BaseModel):
+    subject = models.ForeignKey(
+        BuffaloSubject,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="The subject on which the device is",
+    )
+    implantation_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    explantation_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    description = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        name = "deleted"
+        if self.subject:
+            name = self.subject.nickname
+        return f"{name} - {self.name}"
+
+
+class BuffaloElectrodeDevice(Device):
+    class Meta:
+        proxy = True
 
 
 class Electrode(BaseAction):
@@ -258,6 +291,13 @@ class Electrode(BaseAction):
         null=True,
         on_delete=models.SET_NULL,
         help_text="The subject on which the electrode is",
+    )
+    device = models.ForeignKey(
+        Device,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="device",
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     millimeters = models.FloatField(null=True, blank=True)
@@ -295,10 +335,15 @@ class Electrode(BaseAction):
         return self.current_location in stl
 
     def __str__(self):
-        name = "deleted"
-        if self.subject:
-            name = self.subject.nickname
-        return f"{name} - {self.channel_number}"
+        device_name = "device-deleted"
+        subject_name = "subject-deleted"
+        if self.device:
+            device = self.device
+            device_name = device.name
+            if device.subject:
+                subject = device.subject
+                subject_name = subject.nickname
+        return f"{subject_name} - {device_name} - {self.channel_number}"
 
 
 class ElectrodeLog(BaseAction):
