@@ -654,14 +654,13 @@ class BuffaloWeight(BaseAdmin):
     ordering = ("-updated",)
 
     def _session(self, obj):
-        if obj is None:
-            return ""
         try:
             url = reverse("session-details", kwargs={"session_id": obj.session.id})
+            name = obj.session.name
         except AttributeError:
             url = ""
-
-        return format_html('<a href="{url}">{name}</a>', url=url, name=obj.session.name)
+            name = ""
+        return format_html('<a href="{url}">{name}</a>', url=url, name=name)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloWeight, self).get_form(request, obj, **kwargs)
