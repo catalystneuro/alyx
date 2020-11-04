@@ -3,7 +3,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
-from buffalo.models import BuffaloSubject, Electrode, Device, ChannelRecording, BuffaloSession
+from buffalo.models import BuffaloSubject, Electrode, Device, BuffaloSession
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 

@@ -380,12 +380,12 @@ class ChannelRecordingBulkLoadView(FormView):
                         elif record_data["value"] in DEAD_VALUES:
                             new_cr.alive = "no"
                         elif record_data["value"] in NOT_SAVE_VALUES:
-                           pass
+                            pass
                     if "ripples" in record_data.keys():
                         new_cr.ripples = "yes" if record_data["ripples"] is True else ""
                     if (
-                        "sharp_waves" in record_data.keys()
-                        and record_data["sharp_waves"] is True
+                        "sharp_waves" in record_data.keys() and
+                        record_data["sharp_waves"] is True
                     ):
                         sharp_waves.append(key)
                     if "spikes" in record_data.keys() and record_data["spikes"] is True:

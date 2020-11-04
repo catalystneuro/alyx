@@ -25,12 +25,12 @@ MAYBE_VALUES = ["0", "", "?", "NOISE", "noise"]
 NOT_SAVE_VALUES = ["not in"]
 OTHER_VALUES = ["5", "X", "11", "10"]
 VALID_VALUES = (
-    NUMBER_OF_CELLS_VALUES
-    + DEAD_VALUES
-    + ALIVE_VALUES
-    + MAYBE_VALUES
-    + NOT_SAVE_VALUES
-    + OTHER_VALUES
+    NUMBER_OF_CELLS_VALUES +
+    DEAD_VALUES +
+    ALIVE_VALUES +
+    MAYBE_VALUES +
+    NOT_SAVE_VALUES +
+    OTHER_VALUES
 )
 
 
@@ -574,8 +574,8 @@ def get_channelrecording_info(file, sufix):
                         if col == 1:
                             cell = sheet.cell(row, col)
                             if (
-                                str(cell.value).strip() == "Y"
-                                and str(cell.value).strip() != ""
+                                str(cell.value).strip() == "Y" and
+                                str(cell.value).strip() != ""
                             ):
                                 electrodes_cell = sheet.cell(row, 2)
                                 date_cell = sheet.cell(row, 0)
@@ -611,8 +611,8 @@ def get_channelrecording_info(file, sufix):
                         elif col == 3:
                             cell = sheet.cell(row, col)
                             if (
-                                str(cell.value).strip() == "Y"
-                                and str(cell.value).strip() != ""
+                                str(cell.value).strip() == "Y" and
+                                str(cell.value).strip() != ""
                             ):
                                 electrodes_cell = sheet.cell(row, 4)
                                 date_cell = sheet.cell(row, 0)
@@ -648,8 +648,8 @@ def get_channelrecording_info(file, sufix):
                         elif col == 5:
                             cell = sheet.cell(row, col)
                             if (
-                                str(cell.value).strip() == "Y"
-                                and str(cell.value).strip() != ""
+                                str(cell.value).strip() == "Y" and
+                                str(cell.value).strip() != ""
                             ):
                                 electrodes_cell = sheet.cell(row, 6)
                                 date_cell = sheet.cell(row, 0)
@@ -684,8 +684,8 @@ def get_channelrecording_info(file, sufix):
                         elif col == 7:
                             cell = sheet.cell(row, col)
                             if (
-                                str(cell.value).strip() == "Y"
-                                and str(cell.value).strip() != ""
+                                str(cell.value).strip() == "Y" and
+                                str(cell.value).strip() != ""
                             ):
                                 date_cell = sheet.cell(row, 0)
                                 date = datetime.datetime(
