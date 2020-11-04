@@ -135,7 +135,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def options(self, obj):
         dropdown = (
             """<div class="dropdown" style="display: inline-block;">
-            <button class="btn btn-secondary dropdown-toggle" type="button" 
+            <button class="btn btn-secondary dropdown-toggle" type="button"
             id="dropdownMenuButton""" + obj.nickname + """" data-toggle="dropdown"
             aria-haspopup="true" aria-expanded="false">{}</button>
             <div class="dropdown-menu" aria-labelledby="dropdownMenuButton""" +
