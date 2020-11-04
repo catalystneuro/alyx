@@ -654,6 +654,8 @@ class BuffaloWeight(BaseAdmin):
     ordering = ("-updated",)
 
     def _session(self, obj):
+        if obj is None:
+            return ""
         try:
             url = reverse("session-details", kwargs={"session_id": obj.session.id})
         except AttributeError:
