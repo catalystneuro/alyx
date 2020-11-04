@@ -393,6 +393,8 @@ class ChannelRecordingBulkLoadView(FormView):
                         spikes.append(key)
                     if save:
                         new_cr.save()
+                    else:
+                        new_cr.delete()
                 result_json = {
                     "sharp_waves": sharp_waves,
                     "spikes": spikes,
