@@ -17,9 +17,9 @@ class ChannelRecordingsBulkLoadTests(TestCase):
         self.client = Client()
         self.client.force_login(my_admin)
 
-        sam = BuffaloSubject.objects.get_or_create(nickname="Sam")[0]
-        dsamp = Device.objects.get_or_create(name="posterior-sam", subject=sam)[0]
-        dsama = Device.objects.get_or_create(name="anterior-sam", subject=sam)[0]
+        sam, _ = BuffaloSubject.objects.get_or_create(nickname="Sam")
+        dsamp, _ = Device.objects.get_or_create(name="posterior-sam", subject=sam)
+        dsama, _ = Device.objects.get_or_create(name="anterior-sam", subject=sam)
         # 331 sesiones
         for i in range(1, 125):
             Electrode.objects.get_or_create(subject=sam, device=dsamp, channel_number=i)

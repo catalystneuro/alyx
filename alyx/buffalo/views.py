@@ -58,9 +58,11 @@ from .forms import (
 )
 
 from .utils import (
-    DEAD_VALUES, NUMBER_OF_CELLS_VALUES,
-    ALIVE_VALUES, MAYBE_VALUES,
-    NOT_SAVE_VALUES
+    DEAD_VALUES,
+    NUMBER_OF_CELLS_VALUES,
+    ALIVE_VALUES,
+    MAYBE_VALUES,
+    NOT_SAVE_VALUES,
 )
 
 
@@ -267,7 +269,9 @@ class ElectrodeBulkLoadView(FormView):
     def get_success_url(self):
         kwargs = super().get_form_kwargs()
         device = Device.objects.get(pk=kwargs["data"]["device"])
-        return reverse("admin:buffalo_buffalodevicesubject_change", args=[device.subject.id])
+        return reverse(
+            "admin:buffalo_buffalodevicesubject_change", args=[device.subject.id]
+        )
 
 
 class ElectrodeLogBulkLoadView(FormView):
@@ -290,9 +294,11 @@ class ElectrodeLogBulkLoadView(FormView):
             device = form.cleaned_data["device"]
             electrodelogs_info = get_electrodelog_info(form.cleaned_data.get("file"))
             for electrode_info in electrodelogs_info:
-                electrode = Electrode.objects.get_or_create(
-                    device=device, subject=subject, channel_number=electrode_info["electrode"]
-                )[0]
+                electrode, _ = Electrode.objects.get_or_create(
+                    device=device,
+                    subject=subject,
+                    channel_number=electrode_info["electrode"],
+                )
                 for log in electrode_info["logs"]:
                     new_el = ElectrodeLog()
                     new_el.subject = subject
@@ -340,16 +346,14 @@ class ChannelRecordingBulkLoadView(FormView):
             if sufix.strip() == "":
                 sufix = None
             channel_recording_info = get_channelrecording_info(
-                form.cleaned_data.get("file"),
-                sufix
+                form.cleaned_data.get("file"), sufix
             )
             for key, session_data in channel_recording_info.items():
                 datetime_str = str(session_data["date"])
                 session_name = f"{datetime_str}_{subject.nicknamesafe()}"
-                session = BuffaloSession.objects.get_or_create(
+                session, _ = BuffaloSession.objects.get_or_create(
                     subject=subject, name=session_name
-                )[0]
-                session.start_time = session_data["date"]
+                )
                 electrodes_loaded = {}
                 sharp_waves = []
                 spikes = []
@@ -358,13 +362,13 @@ class ChannelRecordingBulkLoadView(FormView):
                     if key in electrodes_loaded.keys():
                         electrode = electrodes_loaded[key]
                     else:
-                        electrode = Electrode.objects.get_or_create(
+                        electrode, _ = Electrode.objects.get_or_create(
                             subject=subject, device=device, channel_number=key
-                        )[0]
+                        )
                         electrodes_loaded[key] = electrode
-                    new_cr = ChannelRecording()
-                    new_cr.electrode = electrode
-                    new_cr.session = session
+                    new_cr, _ = ChannelRecording.objects.get_or_create(
+                        electrode=electrode, session=session
+                    )
                     if "value" in record_data.keys():
                         if record_data["value"] in NUMBER_OF_CELLS_VALUES:
                             new_cr.number_of_cells = record_data["value"]
@@ -380,10 +384,13 @@ class ChannelRecordingBulkLoadView(FormView):
                             save = False
                     if "ripples" in record_data.keys():
                         new_cr.ripples = "yes" if record_data["ripples"] is True else ""
-                    if "sharp_waves" in record_data.keys() and record_data["sharp_waves"] is True:
-                            sharp_waves.append(key)
+                    if (
+                        "sharp_waves" in record_data.keys() and
+                        record_data["sharp_waves"] is True
+                    ):
+                        sharp_waves.append(key)
                     if "spikes" in record_data.keys() and record_data["spikes"] is True:
-                            spikes.append(key)
+                        spikes.append(key)
                     if save:
                         new_cr.save()
                 result_json = {
@@ -405,7 +412,6 @@ class ChannelRecordingBulkLoadView(FormView):
                 else:
                     session.needs_review = True
                 session.save()
-
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
         else:
@@ -611,7 +617,7 @@ class SessionsLoadView(FormView):
                         newsession_chamber_cleaning = session[
                             "51_Chamber Cleaning"
                         ].strip()
-                        newsession = BuffaloSession.objects.create(
+                        newsession, _ = BuffaloSession.objects.get_or_create(
                             subject=subject,
                             name=newsession_name,
                             narrative=session["6_General Comments"],
@@ -623,7 +629,6 @@ class SessionsLoadView(FormView):
                             else newsession_chamber_cleaning.lower(),
                             start_time=session["0_Date (mm/dd/yyyy)"],
                         )
-
                         if session["1_Handler Initials"].strip():
                             session_user_obj = get_user_from_initial(
                                 session["1_Handler Initials"].strip()
@@ -636,14 +641,14 @@ class SessionsLoadView(FormView):
                         # If the session has weight creates the weight log
                         weight_index = "2_Weight (kg)"
                         if session[weight_index]:
-                            WeighingLog.objects.create(
+                            WeighingLog.objects.get_or_create(
                                 session=newsession,
                                 subject=subject,
                                 weight=session[weight_index],
                                 date_time=session["0_Date (mm/dd/yyyy)"],
                             )
                         # Creates the food log
-                        FoodLog.objects.create(
+                        FoodLog.objects.get_or_create(
                             subject=subject,
                             food=food,
                             amount=session_food,
@@ -652,7 +657,7 @@ class SessionsLoadView(FormView):
                         )
                         # Creates the Menstruation log
                         if session["5_Menstration"].strip() == "yes":
-                            MenstruationLog.objects.create(
+                            MenstruationLog.objects.get_or_create(
                                 subject=subject, menstruation=True, session=newsession,
                             )
                         session_tasks = []
@@ -688,7 +693,7 @@ class SessionsLoadView(FormView):
                                 session_tasks.append(task_info)
                         if session_tasks:
                             for task in session_tasks:
-                                session_task = SessionTask.objects.create(
+                                session_task, _ = SessionTask.objects.get_or_create(
                                     task=task["task"],
                                     general_comments=task["general_comments"],
                                     session=task["session"],
@@ -696,7 +701,7 @@ class SessionsLoadView(FormView):
                                     start_time=task["start_time"],
                                 )
                                 if task["filename"]:
-                                    BuffaloDataset.objects.create(
+                                    BuffaloDataset.objects.get_or_create(
                                         file_name=task["filename"],
                                         session_task=session_task,
                                     )
