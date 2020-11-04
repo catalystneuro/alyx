@@ -61,6 +61,7 @@ from .forms import (
     FoodTypeForm,
     ElectrodeLogSubjectForm,
     NeuralPhenomenaForm,
+    STLFileForm,
 )
 
 
@@ -1189,7 +1190,8 @@ class BuffaloChannelRecording(BaseAdmin):
 
 class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
-    fields = ("name", "stl_file", "subject")
+    fields = ("name", "stl_file", "subject", "sync_electrodelogs")
+    form = STLFileForm
 
     def response_add(self, request, obj):
         messages.success(request, "File uploaded successful.")

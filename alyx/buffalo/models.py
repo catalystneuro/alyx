@@ -423,7 +423,7 @@ class ElectrodeLog(BaseAction):
         subject = ell.electrode.device.subject
         stls = STLFile.objects.filter(subject=subject).exclude(id__in=existing)
         for stl in stls:
-            elstl, _ = ElectrodeLogSTL.objects.get_or_create(
+            elstl = ElectrodeLogSTL(
                 stl=stl,
                 electrodelog=self
             )
@@ -509,7 +509,7 @@ class STLFile(Dataset):
         if self.subject:
             name = self.subject.nickname
         return "<Dataset %s - %s created on %s>" % (str(self.pk)[:8], name, date)
-    
+
     def sync_electrodelogs(self):
         subject = self.subject
         electrode_logs = ElectrodeLog.objects.filter(electrode__device__subject=subject)
@@ -518,8 +518,9 @@ class STLFile(Dataset):
 
     def save(self, *args, **kwargs):
         new = self.pk is None
+        sync = kwargs.pop("sync", False)
         super(STLFile, self).save(*args, **kwargs)
-        if new:
+        if sync:
             self.sync_electrodelogs()
 
 

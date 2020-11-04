@@ -392,3 +392,38 @@ class NeuralPhenomenaForm(forms.ModelForm):
             "name",
             "description",
         ]
+
+
+def stl_directory_path(instance, filename):
+    return "stl/subject_{0}/{1}".format(instance.subject.id, filename)
+
+
+class STLFileForm(forms.ModelForm):
+
+    stl_file = forms.FileField(
+        validators=[FileExtensionValidator(["stl"])]
+    )
+
+    subject = forms.ModelChoiceField(
+        queryset=BuffaloSubject.objects.all(), required=True
+    )
+
+    sync_electrodelogs = forms.BooleanField(
+        required=False,
+        help_text="Check if the available electrodelogs are within this \
+            mesh and save the result in the database",
+        label="Sync electrodelogs",
+    )
+
+    def save(self, commit=True):
+        stlfile = super(STLFileForm, self).save(commit=False)
+        stlfile.save(sync=self.cleaned_data["sync_electrodelogs"])
+        return stlfile
+
+    class Meta:
+        model = STLFile
+        fields = [
+            "name",
+            "stl_file",
+            "subject"
+        ]
