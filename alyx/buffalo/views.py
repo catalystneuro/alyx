@@ -341,6 +341,7 @@ class ChannelRecordingBulkLoadView(FormView):
         if form.is_valid():
             subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
+            sessions = list(BuffaloSession.objects.filter(subject=subject))
             device = form.cleaned_data["device"]
             sufix = form.cleaned_data["sufix"]
             if sufix.strip() == "":
@@ -348,72 +349,88 @@ class ChannelRecordingBulkLoadView(FormView):
             channel_recording_info = get_channelrecording_info(
                 form.cleaned_data.get("file"), sufix
             )
-            for key, session_data in channel_recording_info.items():
-                datetime_str = str(session_data["date"])
-                session_name = f"{datetime_str}_{subject.nicknamesafe()}"
-                session, _ = BuffaloSession.objects.get_or_create(
-                    subject=subject, name=session_name
-                )
-                electrodes_loaded = {}
-                sharp_waves = []
-                spikes = []
-                for key, record_data in session_data["records"].items():
-                    save = True
-                    if key in electrodes_loaded.keys():
-                        electrode = electrodes_loaded[key]
-                    else:
-                        electrode, _ = Electrode.objects.get_or_create(
-                            subject=subject, device=device, channel_number=key
-                        )
-                        electrodes_loaded[key] = electrode
-                    new_cr, _ = ChannelRecording.objects.get_or_create(
-                        electrode=electrode, session=session
-                    )
-                    if "value" in record_data.keys():
-                        if record_data["value"] in NUMBER_OF_CELLS_VALUES:
-                            new_cr.number_of_cells = record_data["value"]
-                            new_cr.alive = "yes"
-                        elif record_data["value"] in ALIVE_VALUES:
-                            new_cr.number_of_cells = 0
-                            new_cr.alive = "yes"
-                        elif record_data["value"] in MAYBE_VALUES:
-                            new_cr.alive = "maybe"
-                        elif record_data["value"] in DEAD_VALUES:
-                            new_cr.alive = "no"
-                        elif record_data["value"] in NOT_SAVE_VALUES:
-                            save = False
-                    if "ripples" in record_data.keys():
-                        new_cr.ripples = "yes" if record_data["ripples"] is True else ""
-                    if (
-                        "sharp_waves" in record_data.keys() and
-                        record_data["sharp_waves"] is True
-                    ):
-                        sharp_waves.append(key)
-                    if "spikes" in record_data.keys() and record_data["spikes"] is True:
-                        spikes.append(key)
-                    if save:
-                        new_cr.save()
-                    else:
-                        new_cr.delete()
-                result_json = {
-                    "sharp_waves": sharp_waves,
-                    "spikes": spikes,
-                }
-                if session.json is not None:
-                    try:
-                        session_json = json.loads(session.json)
-                        session_json["sharp_waves"] = result_json["sharp_waves"]
-                        session_json["spikes"] = result_json["spikes"]
-                        result_json = session_json
-                    except:
-                        print("Error reading existing session json")
-                session.json = json.dumps(result_json, indent=4)
+            try:
+                with transaction.atomic():
+                    for key, session_data in channel_recording_info.items():
+                        datetime_str = str(session_data["date"])
+                        session_name = f"{datetime_str}_{subject.nicknamesafe()}"
+                        session = None
+                        for se in sessions:
+                            if se.name == session_name:
+                                session = se
+                                sessions.remove(se)
+                                break
+                        if session is None:
+                            session = BuffaloSession.objects.create(
+                                subject=subject, name=session_name
+                            )
+                        sharp_waves = []
+                        spikes = []
+                        electrodes = list(Electrode.objects.filter(device__subject=subject))
+                        for key, record_data in session_data["records"].items():
+                            save = True
+                            electrode = None
+                            for el in electrodes:
+                                if el.channel_number == key:
+                                    electrode = el
+                                    break
+                            if electrode is None:
+                                electrode = Electrode.objects.create(
+                                    subject=subject, device=device, channel_number=key
+                                )
+                            new_cr = ChannelRecording.objects.create(
+                                electrode=electrode, session=session
+                            )
+                            if "value" in record_data.keys():
+                                if record_data["value"] in NUMBER_OF_CELLS_VALUES:
+                                    new_cr.number_of_cells = record_data["value"]
+                                    new_cr.alive = "yes"
+                                elif record_data["value"] in ALIVE_VALUES:
+                                    new_cr.number_of_cells = 0
+                                    new_cr.alive = "yes"
+                                elif record_data["value"] in MAYBE_VALUES:
+                                    new_cr.alive = "maybe"
+                                elif record_data["value"] in DEAD_VALUES:
+                                    new_cr.alive = "no"
+                                elif record_data["value"] in NOT_SAVE_VALUES:
+                                    save = False
+                            if "ripples" in record_data.keys():
+                                new_cr.ripples = "yes" if record_data["ripples"] is True else ""
+                            if (
+                                "sharp_waves" in record_data.keys() and
+                                record_data["sharp_waves"] is True
+                            ):
+                                sharp_waves.append(key)
+                            if "spikes" in record_data.keys() and record_data["spikes"] is True:
+                                spikes.append(key)
+                            if save:
+                                new_cr.save()
+                            else:
+                                new_cr.delete()
+                        result_json = {
+                            "sharp_waves": sharp_waves,
+                            "spikes": spikes,
+                        }
+                        if session.json is not None:
+                            try:
+                                session_json = json.loads(session.json)
+                                session_json["sharp_waves"] = result_json["sharp_waves"]
+                                session_json["spikes"] = result_json["spikes"]
+                                result_json = session_json
+                            except:
+                                print("Error reading existing session json")
+                        session.json = json.dumps(result_json, indent=4)
 
-                if "good behavior" in session_data.keys():
-                    session.needs_review = False
-                else:
-                    session.needs_review = True
-                session.save()
+                        if "good behavior" in session_data.keys():
+                            session.needs_review = False
+                        else:
+                            session.needs_review = True
+                        session.save()
+            except DatabaseError:
+                messages.error(
+                    request,
+                    "There has been an error in the database saving the Sessions",
+                )
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
         else:
