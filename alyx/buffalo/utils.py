@@ -19,19 +19,19 @@ from buffalo.constants import (
 )
 
 NUMBER_OF_CELLS_VALUES = ["1", "2", "3", "4"]
-
 DEAD_VALUES = ["dead", "dead?", "DEAD"]
-
 ALIVE_VALUES = ["sparse"]
-
 MAYBE_VALUES = ["0", "", "?", "NOISE", "noise"]
-
 NOT_SAVE_VALUES = ["not in"]
-
 OTHER_VALUES = ["5", "X", "11", "10"]
-
-VALID_VALUES = NUMBER_OF_CELLS_VALUES + DEAD_VALUES + ALIVE_VALUES + \
-    MAYBE_VALUES + NOT_SAVE_VALUES + OTHER_VALUES
+VALID_VALUES = (
+    NUMBER_OF_CELLS_VALUES +
+    DEAD_VALUES +
+    ALIVE_VALUES +
+    MAYBE_VALUES +
+    NOT_SAVE_VALUES +
+    OTHER_VALUES
+)
 
 
 def is_date_session(value):
@@ -43,22 +43,11 @@ def is_date_session(value):
 
 
 def get_date_session(value):
-    regex_dates = "^[\\d]{6}[A]*$"
-    date_str = ""
-    try:
-        if re.search(regex_dates, str(int(value)).strip()):
-            date_str = str(int(value)).strip()
-    except:
-        date_str = value[0:6]
-    year = date_str[0:2]
-    month = date_str[2:4]
-    day = date_str[4:6]
-    date = datetime.datetime(
-        year=(int(year) + 2000),
-        month=int(month),
-        day=int(day)
+    date = str(value)
+    session_date = datetime.datetime(
+        year=(int(date[0:2]) + 2000), month=int(date[2:4]), day=int(date[4:6])
     )
-    return date
+    return session_date
 
 
 def get_value(value):
@@ -180,6 +169,7 @@ def is_valid_time(time):
 def validate_sessions_file(file):
     workbook = xlrd.open_workbook(file_contents=file.read())
     sessions_sheet = workbook.sheet_by_index(0)
+    dates = {}
     for i, column_name in enumerate(SESSIONS_FILE_COLUMNS):
         if SESSIONS_FILE_COLUMNS[i] != sessions_sheet.cell_value(0, i):
             error_message = f"""The column {i} should be {SESSIONS_FILE_COLUMNS[i]} and
@@ -194,10 +184,19 @@ def validate_sessions_file(file):
             for i, _ in enumerate(SESSIONS_FILE_COLUMNS):
                 if sessions_sheet.cell_value(row, i):
                     raise ValidationError(
-                        f"This value date in row {row} column {i} must be a valid date",
+                        f"This value in row {row} column {1} must be a valid date",
                         code="invalid",
                         params={"file": file},
                     )
+        elif sessions_sheet.cell(row, 0).value in dates.keys():
+            repeated_date_row = dates[sessions_sheet.cell(row, 0).value]
+            # import pdb; pdb.set_trace()
+            raise ValidationError(
+                f"The row {row + 1} and the row {repeated_date_row + 1 } have the same date",
+                code="invalid",
+                params={"file": file},
+            )
+        dates[sessions_sheet.cell(row, 0).value] = row
         # validate number values
         for number_cell in NUMBER_CELLS:
             value = sessions_sheet.cell_value(row, int(number_cell))
@@ -409,11 +408,12 @@ def validate_channel_recording_file(file):
 
     try:
         workbook = xlrd.open_workbook(file_contents=file.read())
-
         # Check columns
         sheet_number = 1
         msg = "Error loading the file - Sheet: {} - Row: {} - Column: {} - File: {}"
-        msg_cr = "Channel number name error - Sheet: {} - Row: {} - Column: {} - File: {}"
+        msg_cr = (
+            "Channel number name error - Sheet: {} - Row: {} - Column: {} - File: {}"
+        )
         msg_num = "Invalid value error - Sheet: {} - Row: {} - Column: {} - File: {} - Value: {}"
         msg_date = "Invalid date error - Sheet: {} - Row: {} - Column: {} - File: {} - Value: {}"
         for sheet in workbook.sheets():
@@ -425,7 +425,9 @@ def validate_channel_recording_file(file):
                             if col > 0:
                                 # Check dates row in sheet 1
                                 cell = sheet.cell(row, col)
-                                if not is_date_session(cell.value):
+                                if not is_date_session(cell.value) or not isinstance(
+                                    cell.value, float
+                                ):
                                     raise ValidationError(
                                         msg.format(sheet.name, row + 1, col + 1, file),
                                         code="invalid",
@@ -435,12 +437,14 @@ def validate_channel_recording_file(file):
                             if col == 0:
                                 # Check channel number
                                 cell = sheet.cell(row, col)
-                                if str(cell.value).strip() == "":
+                                if not str(cell.value).strip():
                                     row_valid = False
                                 else:
                                     if re.search(regex, get_value(cell.value)) is None:
                                         raise ValidationError(
-                                            msg_cr.format(sheet.name, row + 1, col + 1, file),
+                                            msg_cr.format(
+                                                sheet.name, row + 1, col + 1, file
+                                            ),
                                             code="invalid",
                                             params={"file": file},
                                         )
@@ -448,14 +452,14 @@ def validate_channel_recording_file(file):
                                 if row_valid:
                                     # Check values
                                     cell = sheet.cell(row, col)
-
                                     if get_value(cell.value) not in VALID_VALUES:
                                         raise ValidationError(
                                             msg_num.format(
                                                 sheet.name,
                                                 row + 1,
                                                 col + 1,
-                                                file, get_value(cell.value)
+                                                file,
+                                                get_value(cell.value),
                                             ),
                                             code="invalid",
                                             params={"file": file},
@@ -470,8 +474,7 @@ def validate_channel_recording_file(file):
                                 try:
                                     datetime.datetime(
                                         *xlrd.xldate_as_tuple(
-                                            cell.value,
-                                            workbook.datemode
+                                            cell.value, workbook.datemode
                                         )
                                     )
                                 except:
@@ -480,7 +483,8 @@ def validate_channel_recording_file(file):
                                             sheet.name,
                                             row + 1,
                                             col + 1,
-                                            file, get_value(cell.value)
+                                            file,
+                                            get_value(cell.value),
                                         ),
                                         code="invalid",
                                         params={"file": file},
@@ -493,7 +497,8 @@ def validate_channel_recording_file(file):
                                             sheet.name,
                                             row + 1,
                                             col + 1,
-                                            file, get_value(cell.value)
+                                            file,
+                                            get_value(cell.value),
                                         ),
                                         code="invalid",
                                         params={"file": file},
@@ -501,8 +506,10 @@ def validate_channel_recording_file(file):
                             elif col == 2 or col == 4 or col == 6:
                                 cell = sheet.cell(row, col)
                                 try:
-                                    if cell.value.strip() != "":
-                                        values = cell.value.strip().strip(",").split(",")
+                                    if cell.value.strip():
+                                        values = (
+                                            cell.value.strip().strip(",").split(",")
+                                        )
                                         for value in values:
                                             int(value.strip())
                                 except:
@@ -511,7 +518,8 @@ def validate_channel_recording_file(file):
                                             sheet.name,
                                             row + 1,
                                             col + 1,
-                                            file, get_value(values)
+                                            file,
+                                            get_value(values),
                                         ),
                                         code="invalid",
                                         params={"file": file},
@@ -565,14 +573,18 @@ def get_channelrecording_info(file, sufix):
                         # Ripples
                         if col == 1:
                             cell = sheet.cell(row, col)
-                            if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
+                            if (
+                                str(cell.value).strip() == "Y" and
+                                str(cell.value).strip() != ""
+                            ):
                                 electrodes_cell = sheet.cell(row, 2)
                                 date_cell = sheet.cell(row, 0)
-                                electrodes = electrodes_cell.value.strip().strip(",").split(",")
+                                electrodes = (
+                                    electrodes_cell.value.strip().strip(",").split(",")
+                                )
                                 date = datetime.datetime(
                                     *xlrd.xldate_as_tuple(
-                                        date_cell.value,
-                                        workbook.datemode
+                                        date_cell.value, workbook.datemode
                                     )
                                 )
                                 date_str = str(date)
@@ -581,7 +593,9 @@ def get_channelrecording_info(file, sufix):
                                     if date_str in sessions.keys():
                                         session = sessions[date_str]
                                         if channel_number in session["records"].keys():
-                                            session["records"][channel_number]["ripples"] = True
+                                            session["records"][channel_number][
+                                                "ripples"
+                                            ] = True
                                         else:
                                             session["records"][channel_number] = {
                                                 "ripples": True
@@ -590,22 +604,24 @@ def get_channelrecording_info(file, sufix):
                                         sessions[date_str] = {
                                             "date": date,
                                             "records": {
-                                                channel_number: {
-                                                    "ripples": True
-                                                }
-                                            }
+                                                channel_number: {"ripples": True}
+                                            },
                                         }
                         # Sharp waves
                         elif col == 3:
                             cell = sheet.cell(row, col)
-                            if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
+                            if (
+                                str(cell.value).strip() == "Y" and
+                                str(cell.value).strip() != ""
+                            ):
                                 electrodes_cell = sheet.cell(row, 4)
                                 date_cell = sheet.cell(row, 0)
-                                electrodes = electrodes_cell.value.strip().strip(",").split(",")
+                                electrodes = (
+                                    electrodes_cell.value.strip().strip(",").split(",")
+                                )
                                 date = datetime.datetime(
                                     *xlrd.xldate_as_tuple(
-                                        date_cell.value,
-                                        workbook.datemode
+                                        date_cell.value, workbook.datemode
                                     )
                                 )
                                 date_str = str(date)
@@ -631,14 +647,18 @@ def get_channelrecording_info(file, sufix):
                         # Spikes
                         elif col == 5:
                             cell = sheet.cell(row, col)
-                            if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
+                            if (
+                                str(cell.value).strip() == "Y" and
+                                str(cell.value).strip() != ""
+                            ):
                                 electrodes_cell = sheet.cell(row, 6)
                                 date_cell = sheet.cell(row, 0)
-                                electrodes = electrodes_cell.value.strip().strip(",").split(",")
+                                electrodes = (
+                                    electrodes_cell.value.strip().strip(",").split(",")
+                                )
                                 date = datetime.datetime(
                                     *xlrd.xldate_as_tuple(
-                                        date_cell.value,
-                                        workbook.datemode
+                                        date_cell.value, workbook.datemode
                                     )
                                 )
                                 date_str = str(date)
@@ -647,7 +667,9 @@ def get_channelrecording_info(file, sufix):
                                     if date_str in sessions.keys():
                                         session = sessions[date_str]
                                         if channel_number in session["records"].keys():
-                                            session["records"][channel_number]["spikes"] = True
+                                            session["records"][channel_number][
+                                                "spikes"
+                                            ] = True
                                         else:
                                             session["records"][channel_number] = {
                                                 "spikes": True
@@ -656,30 +678,32 @@ def get_channelrecording_info(file, sufix):
                                         sessions[date_str] = {
                                             "date": date,
                                             "records": {
-                                                channel_number: {
-                                                    "spikes": True
-                                                }
-                                            }
+                                                channel_number: {"spikes": True}
+                                            },
                                         }
                         elif col == 7:
                             cell = sheet.cell(row, col)
-                            if str(cell.value).strip() == "Y" and str(cell.value).strip() != "":
+                            if (
+                                str(cell.value).strip() == "Y" and
+                                str(cell.value).strip() != ""
+                            ):
                                 date_cell = sheet.cell(row, 0)
                                 date = datetime.datetime(
                                     *xlrd.xldate_as_tuple(
-                                        date_cell.value,
-                                        workbook.datemode
+                                        date_cell.value, workbook.datemode
                                     )
                                 )
                                 date_str = str(date)
                                 if date_str in sessions.keys():
                                     if str(cell.value) != "":
                                         session = sessions[date_str]
-                                        session["good behavior"] = str(cell.value).strip()
+                                        session["good behavior"] = str(
+                                            cell.value
+                                        ).strip()
                                 else:
                                     sessions[date_str] = {
                                         "date": date,
-                                        "good behavior": str(cell.value).strip()
+                                        "good behavior": str(cell.value).strip(),
                                     }
         sheet_number += 1
     return sessions

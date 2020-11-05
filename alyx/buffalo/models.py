@@ -557,6 +557,12 @@ class ChannelRecording(BaseModel):
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = (
+            "electrode",
+            "session",
+        )
+
 
 class ProcessedRecording(Dataset):
     """sam_unitstracking sheet 2 two can be created by querying this model"""
