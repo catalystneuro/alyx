@@ -293,12 +293,24 @@ class ElectrodeLogBulkLoadView(FormView):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             device = form.cleaned_data["device"]
             electrodelogs_info = get_electrodelog_info(form.cleaned_data.get("file"))
-            for electrode_info in electrodelogs_info:
-                electrode, _ = Electrode.objects.get_or_create(
-                    device=device,
-                    subject=subject,
-                    channel_number=electrode_info["electrode"],
+            subject_electrodes = list(
+                Electrode.objects.filter(subject=subject, device=device).order_by(
+                    "channel_number"
                 )
+            )
+            for electrode_info in electrodelogs_info:
+                electrode = None
+                for elec in subject_electrodes:
+                    if elec.channel_number == str(electrode_info["electrode"]):
+                        electrode = elec
+                        break
+                if electrode is None:
+                    electrode = Electrode.objects.create(
+                        device=device,
+                        subject=subject,
+                        channel_number=electrode_info["electrode"],
+                    )
+                    subject_electrodes.append(electrode)
                 for log in electrode_info["logs"]:
                     new_el = ElectrodeLog()
                     new_el.subject = subject
@@ -309,9 +321,10 @@ class ElectrodeLogBulkLoadView(FormView):
                         new_el.impedance = log["impedance"]
                     if log["notes"] is not None:
                         new_el.notes = log["notes"]
+                    new_el.save()
                     if log["user"]:
                         new_el.users.set(log["user"])
-                    new_el.save()
+                        new_el.save()
             messages.success(request, "File loaded successful.")
             return self.form_valid(form)
         else:
