@@ -637,6 +637,8 @@ class SessionsLoadView(FormView):
             subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
             sessions = get_sessions_from_file(form.cleaned_data.get("file"))
+            subject_sessions = BuffaloSession.objects.filter(subject=subject)
+            tasks = Task.objects.all()
             try:
                 with transaction.atomic():
                     for session in sessions:
@@ -649,18 +651,24 @@ class SessionsLoadView(FormView):
                         newsession_chamber_cleaning = session[
                             "51_Chamber Cleaning"
                         ].strip()
-                        newsession, _ = BuffaloSession.objects.get_or_create(
-                            subject=subject,
-                            name=newsession_name,
-                            narrative=session["6_General Comments"],
-                            pump_setting=None
-                            if not session["4_Pump Setting"]
-                            else session["4_Pump Setting"],
-                            chamber_cleaning=None
-                            if not newsession_chamber_cleaning
-                            else newsession_chamber_cleaning.lower(),
-                            start_time=session["0_Date (mm/dd/yyyy)"],
-                        )
+                        newsession = None
+                        for subject_session in subject_sessions:
+                            if subject_session.name == newsession_name:
+                                newsession = subject_session
+                                break
+                        if newsession is None:
+                            newsession = BuffaloSession.objects.create(
+                                subject=subject,
+                                name=newsession_name,
+                                narrative=session["6_General Comments"],
+                                pump_setting=None
+                                if not session["4_Pump Setting"]
+                                else session["4_Pump Setting"],
+                                chamber_cleaning=None
+                                if not newsession_chamber_cleaning
+                                else newsession_chamber_cleaning.lower(),
+                                start_time=session["0_Date (mm/dd/yyyy)"],
+                            )
                         if session["1_Handler Initials"].strip():
                             session_user_obj = get_user_from_initial(
                                 session["1_Handler Initials"].strip()
@@ -673,14 +681,14 @@ class SessionsLoadView(FormView):
                         # If the session has weight creates the weight log
                         weight_index = "2_Weight (kg)"
                         if session[weight_index]:
-                            WeighingLog.objects.get_or_create(
+                            WeighingLog.objects.create(
                                 session=newsession,
                                 subject=subject,
                                 weight=session[weight_index],
                                 date_time=session["0_Date (mm/dd/yyyy)"],
                             )
                         # Creates the food log
-                        FoodLog.objects.get_or_create(
+                        FoodLog.objects.create(
                             subject=subject,
                             food=food,
                             amount=session_food,
@@ -689,9 +697,14 @@ class SessionsLoadView(FormView):
                         )
                         # Creates the Menstruation log
                         if session["5_Menstration"].strip() == "yes":
-                            MenstruationLog.objects.get_or_create(
-                                subject=subject, menstruation=True, session=newsession,
+                            subject_mentruation_logs = MenstruationLog.objects.filter(
+                                subject=subject, 
+                                session=newsession
                             )
+                            if not subject_mentruation_logs:
+                                MenstruationLog.objects.create(
+                                    subject=subject, menstruation=True, session=newsession,
+                                )
                         session_tasks = []
                         task_secuence = 1
                         for task_cell in TASK_CELLS:
@@ -701,11 +714,17 @@ class SessionsLoadView(FormView):
                             start_time_index = (
                                 f"{cell+1}_{SESSIONS_FILE_COLUMNS[cell+1]}"
                             )
+                            task = None
                             if session[task_name_index]:
                                 task_info = {}
-                                task, _ = Task.objects.get_or_create(
-                                    name=session[task_name_index]
-                                )
+                                for t in tasks:
+                                    if t.name == session[task_name_index]:
+                                        task = t
+                                        break
+                                if task is None:
+                                    task = Task.objects.create(
+                                        name=session[task_name_index]
+                                    )
                                 task_info = {
                                     "task": task,
                                     "general_comments": session[comments_index],
