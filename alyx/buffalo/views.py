@@ -364,7 +364,6 @@ class ChannelRecordingBulkLoadView(FormView):
                             session = BuffaloSession.objects.create(
                                 subject=subject, name=session_name
                             )
-                        electrodes_loaded = {}
                         sharp_waves = []
                         spikes = []
                         electrodes = list(Electrode.objects.filter(device__subject=subject))
