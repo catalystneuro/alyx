@@ -638,7 +638,6 @@ class SessionsLoadView(FormView):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             sessions = get_sessions_from_file(form.cleaned_data.get("file"))
             subject_sessions = BuffaloSession.objects.filter(subject=subject)
-            tasks = Task.objects.all()
             try:
                 with transaction.atomic():
                     for session in sessions:
