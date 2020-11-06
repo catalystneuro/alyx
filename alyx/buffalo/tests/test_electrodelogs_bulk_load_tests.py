@@ -20,7 +20,7 @@ class ElectrodeLogsBulkLoadTests(TestCase):
         dsam = Device.objects.get_or_create(name="posterior-sam", subject=sam)[0]
 
         for i in range(1, 97):
-            Electrode.objects.get_or_create(device=dsam, subject=sam, channel_number=i)
+            Electrode.objects.create(device=dsam, subject=sam, channel_number=i)
 
         # Open file
         self.file_sam_xlsm = open(

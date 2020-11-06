@@ -132,6 +132,10 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = reverse("sessions-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Load Sessions")
 
+    def see_subject_sessions(self, obj):
+        url = f"/buffalo/buffalosession/?subject__id__exact={obj.id}"
+        return self.link(url, "See Sessions")
+
     def options(self, obj):
         dropdown = (
             """<div class="dropdown" style="display: inline-block;">
@@ -146,7 +150,10 @@ class BuffaloSubjectAdmin(BaseAdmin):
         )
         session_options = dropdown.format(
             "Session",
-            self.add_session(obj) + self.load_sessions(obj) + self.session_queries(obj)
+            self.see_subject_sessions(obj) +
+            self.add_session(obj) +
+            self.load_sessions(obj) +
+            self.session_queries(obj)
         )
         electrodes_options = dropdown.format(
             "Electrodes",
@@ -958,7 +965,6 @@ class BuffaloDevice(admin.TabularInline):
         return self.link(url, "New electrode logs")
 
     def manage_electrodes(self, obj):
-
         select = "{}<br><br>{}<br><br>{}".format(
             self.set_electrodes_file(obj), self.set_electrodes(obj),
             self.new_electrode_logs(obj)
