@@ -638,7 +638,6 @@ class SessionsLoadView(FormView):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             sessions = get_sessions_from_file(form.cleaned_data.get("file"))
             subject_sessions = BuffaloSession.objects.filter(subject=subject)
-            tasks = Task.objects.all()
             try:
                 with transaction.atomic():
                     for session in sessions:
@@ -714,17 +713,11 @@ class SessionsLoadView(FormView):
                             start_time_index = (
                                 f"{cell+1}_{SESSIONS_FILE_COLUMNS[cell+1]}"
                             )
-                            task = None
                             if session[task_name_index]:
                                 task_info = {}
-                                for t in tasks:
-                                    if t.name == session[task_name_index]:
-                                        task = t
-                                        break
-                                if task is None:
-                                    task = Task.objects.create(
-                                        name=session[task_name_index]
-                                    )
+                                task, _ = Task.objects.get_or_create(
+                                    name=session[task_name_index]
+                                )
                                 task_info = {
                                     "task": task,
                                     "general_comments": session[comments_index],
