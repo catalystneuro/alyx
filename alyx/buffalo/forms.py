@@ -415,11 +415,6 @@ class STLFileForm(forms.ModelForm):
         label="Sync electrodelogs",
     )
 
-    def save(self, commit=True):
-        stlfile = super(STLFileForm, self).save(commit=False)
-        stlfile.save(sync=self.cleaned_data["sync_electrodelogs"])
-        return stlfile
-
     class Meta:
         model = STLFile
         fields = [

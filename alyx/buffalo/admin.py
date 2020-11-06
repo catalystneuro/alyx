@@ -49,6 +49,7 @@ from .models import (
     Device,
     BuffaloElectrodeDevice,
     MenstruationLog,
+    BuffaloAsyncTask,
 )
 from .forms import (
     SubjectWeighingForm,
@@ -63,6 +64,8 @@ from .forms import (
     NeuralPhenomenaForm,
     STLFileForm,
 )
+
+from .tasks import sync_electrodelogs_stl
 
 
 class BuffaloSubjectAdmin(BaseAdmin):
@@ -1193,6 +1196,9 @@ class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     fields = ("name", "stl_file", "subject", "sync_electrodelogs")
     form = STLFileForm
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+    ]
 
     def response_add(self, request, obj):
         messages.success(request, "File uploaded successful.")
@@ -1210,7 +1216,34 @@ class BuffaloSTLFile(BaseAdmin):
         subject_id = request.GET.get("subject", None)
         if subject_id:
             form.base_fields["subject"].initial = subject_id
+        form.base_fields["sync_electrodelogs"].initial = True
         return form
+
+    def save_model(self, request, obj, form, change):
+        ret = super(BuffaloSTLFile, self).save_model(request, obj, form, change)
+        if form.cleaned_data["sync_electrodelogs"]:
+            sync_electrodelogs_stl.send(str(obj.id))
+        return ret
+
+
+class BuffaloAsyncTaskAdmin(BaseAdmin):
+    change_form_template = "buffalo/change_form.html"
+    fields = ("description", "status", "message")
+    list_display = [
+        "description",
+        "status",
+        "message",
+        "created",
+    ]
+
+    ordering = ("-created",)
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloAsyncTaskAdmin, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
 
 
 class BuffaloStartingPoint(admin.ModelAdmin):
@@ -1349,3 +1382,4 @@ admin.site.register(Platform)
 admin.site.register(FoodType, FoodTypeAdmin)
 admin.site.register(BuffaloDataset, BuffaloDatasetAdmin)
 admin.site.register(NeuralPhenomena, NeuralPhenomenaAdmin)
+admin.site.register(BuffaloAsyncTask, BuffaloAsyncTaskAdmin)

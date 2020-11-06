@@ -65,6 +65,8 @@ from .utils import (
     NOT_SAVE_VALUES,
 )
 
+from .tasks import sync_electrodelogs_device
+
 
 class TaskCreateView(CreateView):
     template_name = "buffalo/task.html"
@@ -312,7 +314,9 @@ class ElectrodeLogBulkLoadView(FormView):
                     if log["user"]:
                         new_el.users.set(log["user"])
                     new_el.save()
+            sync_electrodelogs_device.send(str(device.id))
             messages.success(request, "File loaded successful.")
+            messages.info(request, "The platform is syncing the stl/electrodelogs info.")
             return self.form_valid(form)
         else:
             return self.form_invalid(form)

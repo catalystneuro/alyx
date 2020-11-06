@@ -415,20 +415,22 @@ class ElectrodeLog(BaseAction):
         return stls
 
     def save(self, *args, **kwargs):
+        sync = kwargs.pop("sync", None)
         super(ElectrodeLog, self).save(*args, **kwargs)
         ell = ElectrodeLog.objects.prefetch_related('electrode__device__subject').get(
             pk=self.id
         )
-        existing = [el.stl.id for el in ell.electrodelogstl.prefetch_related('stl').all()]
-        subject = ell.electrode.device.subject
-        stls = STLFile.objects.filter(subject=subject).exclude(id__in=existing)
-        for stl in stls:
-            elstl = ElectrodeLogSTL(
-                stl=stl,
-                electrodelog=self
-            )
-            elstl.is_in = self.is_in_stl(stl.stl_file.name)
-            elstl.save()
+        if sync:
+            existing = ell.electrodelogstl.prefetch_related("stl").all().values("id")
+            subject = ell.electrode.device.subject
+            stls = STLFile.objects.filter(subject=subject).exclude(id__in=existing)
+            for stl in stls:
+                elstl = ElectrodeLogSTL(
+                    stl=stl,
+                    electrodelog=self
+                )
+                elstl.is_in = self.is_in_stl(stl.stl_file.name)
+                elstl.save()
 
     def sync_stl(self, stl):
         elstl = ElectrodeLogSTL(
@@ -508,20 +510,18 @@ class STLFile(Dataset):
         name = "deleted"
         if self.subject:
             name = self.subject.nickname
-        return "<Dataset %s - %s created on %s>" % (str(self.pk)[:8], name, date)
+        name_stl = ""
+        if self.name:
+            name_stl = self.name
+        else:
+            name_stl = str(self.pk)[:8]
+        return "<Dataset %s - %s created on %s>" % (name_stl, name, date)
 
     def sync_electrodelogs(self):
         subject = self.subject
         electrode_logs = ElectrodeLog.objects.filter(electrode__device__subject=subject)
         for electrode_log in electrode_logs:
             electrode_log.sync_stl(self)
-
-    def save(self, *args, **kwargs):
-        new = self.pk is None
-        sync = kwargs.pop("sync", False)
-        super(STLFile, self).save(*args, **kwargs)
-        if sync:
-            self.sync_electrodelogs()
 
 
 class ElectrodeLogSTL(BaseModel):
@@ -536,6 +536,22 @@ class ElectrodeLogSTL(BaseModel):
         STLFile, on_delete=models.SET_NULL, null=True, blank=True,
     )
     is_in = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
+class BuffaloAsyncTask(BaseModel):
+    PENDING = "PEN"
+    COMPLETED = "COM"
+    ERROR = "ERR"
+    STATUS = (
+        (PENDING, "PENDING"),
+        (COMPLETED, "COMPLETED"),
+        (ERROR, "ERROR"),
+    )
+    description = models.CharField(max_length=255, default="", blank=True)
+    status = models.CharField(max_length=3, default=PENDING, choices=STATUS)
+    message = models.CharField(max_length=255, default="", blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
