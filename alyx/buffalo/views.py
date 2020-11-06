@@ -313,7 +313,7 @@ class ElectrodeLogBulkLoadView(FormView):
                         new_el.notes = log["notes"]
                     if log["user"]:
                         new_el.users.set(log["user"])
-                    new_el.save()
+                    new_el.save(sync=False)
             sync_electrodelogs_device.send(str(device.id))
             messages.success(request, "File loaded successful.")
             messages.info(request, "The platform is syncing the stl/electrodelogs info.")

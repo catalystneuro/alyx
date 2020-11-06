@@ -50,7 +50,10 @@ def sync_electrodelogs_device(device_id):
                 )
                 elstl.is_in = ell.is_in_stl(stl.stl_file.name)
                 elstl.save()
-        print(f"Completed Syncing electrodelogs of device: {device} - {datetime.datetime.now().strftime('%H:%M:%S')}")
+        print(f"""
+            Completed Syncing electrodelogs of device: {device}
+            - {datetime.datetime.now().strftime('%H:%M:%S')}
+        """)
         task.status = BuffaloAsyncTask.COMPLETED
     except Exception as err:
         task.status = BuffaloAsyncTask.ERROR

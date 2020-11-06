@@ -415,12 +415,12 @@ class ElectrodeLog(BaseAction):
         return stls
 
     def save(self, *args, **kwargs):
-        sync = kwargs.pop("sync", None)
+        sync = kwargs.pop("sync", True)
         super(ElectrodeLog, self).save(*args, **kwargs)
-        ell = ElectrodeLog.objects.prefetch_related('electrode__device__subject').get(
-            pk=self.id
-        )
         if sync:
+            ell = ElectrodeLog.objects.prefetch_related('electrode__device__subject').get(
+                pk=self.id
+            )
             existing = ell.electrodelogstl.prefetch_related("stl").all().values("id")
             subject = ell.electrode.device.subject
             stls = STLFile.objects.filter(subject=subject).exclude(id__in=existing)
