@@ -638,6 +638,7 @@ class SessionsLoadView(FormView):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             sessions = get_sessions_from_file(form.cleaned_data.get("file"))
             subject_sessions = BuffaloSession.objects.filter(subject=subject)
+            tasks = list(Task.objects.all())
             try:
                 with transaction.atomic():
                     for session in sessions:
@@ -713,11 +714,18 @@ class SessionsLoadView(FormView):
                             start_time_index = (
                                 f"{cell+1}_{SESSIONS_FILE_COLUMNS[cell+1]}"
                             )
+                            task = None
                             if session[task_name_index]:
                                 task_info = {}
-                                task, _ = Task.objects.get_or_create(
-                                    name=session[task_name_index]
-                                )
+                                for t in tasks:
+                                    if t.name == session[task_name_index]:
+                                        task = t
+                                        break
+                                if task is None:
+                                    task = Task.objects.create(
+                                        name=session[task_name_index]
+                                    )
+                                tasks.append(task)
                                 task_info = {
                                     "task": task,
                                     "general_comments": session[comments_index],
@@ -736,14 +744,25 @@ class SessionsLoadView(FormView):
                                 task_secuence += 1
                                 session_tasks.append(task_info)
                         if session_tasks:
+                            existing_session_tasks = list(SessionTask.objects.filter(session=newsession))
                             for task in session_tasks:
-                                session_task, _ = SessionTask.objects.get_or_create(
-                                    task=task["task"],
-                                    general_comments=task["general_comments"],
-                                    session=task["session"],
-                                    task_sequence=task["task_sequence"],
-                                    start_time=task["start_time"],
-                                )
+                                session_task = None
+                                for existing_session_task in existing_session_tasks:
+                                    if (
+                                        task["task"] == existing_session_task.task
+                                        and task["task_sequence"] == existing_session_task.task_sequence
+                                    ):
+                                        session_task = existing_session_task
+                                        break
+                                if session_task is None:
+                                    session_task = SessionTask.objects.create(
+                                        task=task["task"],
+                                        general_comments=task["general_comments"],
+                                        session=task["session"],
+                                        task_sequence=task["task_sequence"],
+                                        start_time=task["start_time"],
+                                    )
+                                existing_session_tasks.append(session_task)
                                 if task["filename"]:
                                     BuffaloDataset.objects.get_or_create(
                                         file_name=task["filename"],

@@ -417,9 +417,9 @@ class SessionTaskListFilter(DefaultListFilter):
 
     def lookups(self, request, model_admin):
         sessions_tasks = set(
-            [c.task for c in SessionTask.objects.filter(task__isnull=False)]
+            [(c.id, c) for c in Task.objects.all()]
         )
-        return [("all", "All")] + [(c.id, c) for c in sessions_tasks]
+        return [("all", "All")] + list(sessions_tasks)
 
     def queryset(self, request, queryset):
         if self.value() == "all":
@@ -509,7 +509,6 @@ class SessionDatasetInline(nested_admin.NestedTabularInline):
 
 class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
     form = SessionForm
-    # change_list_template = "buffalo/change_list.html"
     change_form_template = "buffalo/change_form.html"
     source = ""
     extra = 0
