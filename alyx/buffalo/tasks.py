@@ -1,3 +1,4 @@
+from django.db.models import Count
 import dramatiq
 import datetime
 from .models import (
@@ -12,13 +13,20 @@ from .models import (
 @dramatiq.actor
 def sync_electrodelogs_stl(stl_id):
     stl = STLFile.objects.get(pk=stl_id)
-    print(f"Syncing electrodelogs of stl: {stl}")
+    print(f"""
+        Syncing electrodelogs of stl: {stl} - {datetime.datetime.now().strftime('%H:%M:%S')}
+    """)
     task = BuffaloAsyncTask(
         description=f"Sync electrodelogs of stl: {stl}"
     )
+
     try:
         task.save()
         stl.sync_electrodelogs()
+        print(f"""
+            Completed Syncing electrodelogs of stl: {stl}
+            - {datetime.datetime.now().strftime('%H:%M:%S')}
+        """)
         task.status = BuffaloAsyncTask.COMPLETED
     except Exception as err:
         task.status = BuffaloAsyncTask.ERROR
@@ -34,12 +42,18 @@ def sync_electrodelogs_device(device_id):
         description=f"Syncing electrodelogs of device: {device}"
     )
     subject = device.subject
-    print(f"Syncing electrodelogs of device: {device} - {datetime.datetime.now().strftime('%H:%M:%S')}")
+    stls = STLFile.objects.filter(subject=subject.id)
+    print(f"""
+        Syncing electrodelogs of device: {device} - {datetime.datetime.now().strftime('%H:%M:%S')}
+    """)
+    task.save()
     try:
-        task.save()
-        electrodelogs = ElectrodeLog.objects.prefetch_related('electrode__device__subject').filter(
-            electrode__device=device_id
-        )
+        electrodelogs = ElectrodeLog.objects.filter(
+            electrode__device=device
+        ).annotate(
+            num_stls=Count('electrodelogstl')
+        ).filter(num_stls__lt=len(stls))
+
         for ell in electrodelogs:
             existing = ell.electrodelogstl.prefetch_related("stl").all().values("id")
             stls = STLFile.objects.filter(subject=subject).exclude(id__in=existing)
@@ -48,7 +62,7 @@ def sync_electrodelogs_device(device_id):
                     stl=stl,
                     electrodelog=ell
                 )
-                elstl.is_in = ell.is_in_stl(stl.stl_file.name)
+                elstl.is_in, elstl.distance = ell.is_in_stl(stl.stl_file.name)
                 elstl.save()
         print(f"""
             Completed Syncing electrodelogs of device: {device}

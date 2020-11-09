@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.db.models import Count
 from django.core.validators import MinValueValidator, FileExtensionValidator
 from django.conf import settings
 
@@ -392,8 +393,8 @@ class ElectrodeLog(BaseAction):
                 mesh = trimesh.load(settings.UPLOADED_PATH + stl_file_name)
                 dist = proximity.signed_distance(mesh, [location_list])
                 if dist[0] > 0:
-                    return True
-        return False
+                    return True, dist[0]
+        return False, None
 
     @property
     def current_location(self):
@@ -429,7 +430,7 @@ class ElectrodeLog(BaseAction):
                     stl=stl,
                     electrodelog=self
                 )
-                elstl.is_in = self.is_in_stl(stl.stl_file.name)
+                elstl.is_in, elstl.distance = self.is_in_stl(stl.stl_file.name)
                 elstl.save()
 
     def sync_stl(self, stl):
@@ -437,7 +438,7 @@ class ElectrodeLog(BaseAction):
             stl=stl,
             electrodelog=self
         )
-        elstl.is_in = self.is_in_stl(stl.stl_file.name)
+        elstl.is_in, elstl.distance = self.is_in_stl(stl.stl_file.name)
         elstl.save()
 
 
@@ -519,7 +520,13 @@ class STLFile(Dataset):
 
     def sync_electrodelogs(self):
         subject = self.subject
-        electrode_logs = ElectrodeLog.objects.filter(electrode__device__subject=subject)
+        stls = STLFile.objects.filter(subject=subject)
+        electrode_logs = ElectrodeLog.objects.filter(
+            electrode__device__subject=subject
+        ).annotate(
+            num_stls=Count('electrodelogstl')
+        ).filter(num_stls__lt=len(stls))
+
         for electrode_log in electrode_logs:
             electrode_log.sync_stl(self)
 
@@ -536,6 +543,7 @@ class ElectrodeLogSTL(BaseModel):
         STLFile, on_delete=models.SET_NULL, null=True, blank=True,
     )
     is_in = models.BooleanField(default=False)
+    distance = models.FloatField(null=True, blank=True, default=None)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
