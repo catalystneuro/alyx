@@ -394,6 +394,8 @@ class ElectrodeLog(BaseAction):
                 dist = proximity.signed_distance(mesh, [location_list])
                 if dist[0] > 0:
                     return True, dist[0]
+                else:
+                    return False, dist[0]
         return False, None
 
     @property
@@ -412,11 +414,10 @@ class ElectrodeLog(BaseAction):
             name = str(stl)
             if stl.name:
                 name = stl.name
-            stls[name] = elstl.is_in
+            stls[name] = f"{str(elstl.is_in)} ({elstl.distance})"
         return stls
 
-    def save(self, *args, **kwargs):
-        sync = kwargs.pop("sync", True)
+    def save(self, sync=True, *args, **kwargs):
         super(ElectrodeLog, self).save(*args, **kwargs)
         if sync:
             ell = ElectrodeLog.objects.prefetch_related('electrode__device__subject').get(

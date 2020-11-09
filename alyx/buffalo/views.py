@@ -323,10 +323,10 @@ class ElectrodeLogBulkLoadView(FormView):
                         new_el.impedance = log["impedance"]
                     if log["notes"] is not None:
                         new_el.notes = log["notes"]
-                    new_el.save()
+                    new_el.save(sync=False)
                     if log["user"]:
                         new_el.users.set(log["user"])
-                        new_el.save()
+                        new_el.save(sync=False)
             if not settings.TESTING:
                 sync_electrodelogs_device.send(str(device.id))
             messages.success(request, "File loaded successful.")

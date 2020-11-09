@@ -475,7 +475,9 @@ class ElectrodeListFilter(DefaultListFilter):
     def lookups(self, request, model_admin):
         electrodes = Electrode.objects.all()
         if self.related_filter_parameter in request.GET:
-            electrodes = electrodes.filter(
+            electrodes = electrodes.prefetch_related(
+                "device__subject"
+            ).filter(
                 subject_id=request.GET[self.related_filter_parameter]
             )
 
