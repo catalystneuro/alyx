@@ -260,6 +260,7 @@ UPLOADED_IMAGE_WIDTH = 800
 
 TIME_ZONE = config('TIME_ZONE', default='UTC')
 
+TESTING = config("TESTING", default=False, cast=bool)
 SITE_HEADER = config('SITE_HEADER', default='Alyx')
 SITE_TITLE = config('SITE_TITLE', default='Alyx')
 SITE_URL = config('SITE_URL', default=None)
