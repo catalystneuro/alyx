@@ -137,10 +137,7 @@ class Task(BaseModel):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        if self.version is None:
-            return self.name
-        return f"{self.name} (version: {self.version})"
-
+        return self.name
     class Meta:
         verbose_name = "TaskType"
 
