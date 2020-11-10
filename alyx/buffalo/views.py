@@ -749,15 +749,19 @@ class SessionsLoadView(FormView):
                                 task_secuence += 1
                                 session_tasks.append(task_info)
                         if session_tasks:
-                            existing_session_tasks = list(SessionTask.objects.filter(session=newsession))
+                            existing_session_tasks = list(
+                                SessionTask.objects.filter(
+                                    session=newsession
+                                )
+                            )
                             for task in session_tasks:
                                 session_task = None
-                                for existing_session_task in existing_session_tasks:
+                                for exist_session_task in existing_session_tasks:
                                     if (
-                                        task["task"] == existing_session_task.task
-                                        and task["task_sequence"] == existing_session_task.task_sequence
+                                        task["task"] == exist_session_task.task and
+                                        task["task_sequence"] == exist_session_task.task_sequence
                                     ):
-                                        session_task = existing_session_task
+                                        session_task = exist_session_task
                                         break
                                 if session_task is None:
                                     session_task = SessionTask.objects.create(
