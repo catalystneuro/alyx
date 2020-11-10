@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.db.models import Count
 from django.core.validators import MinValueValidator, FileExtensionValidator
 from django.conf import settings
 
@@ -136,9 +137,7 @@ class Task(BaseModel):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        if self.version is None:
-            return self.name
-        return f"{self.name} (version: {self.version})"
+        return self.name
 
     class Meta:
         verbose_name = "TaskType"
@@ -363,9 +362,9 @@ class ElectrodeLog(BaseAction):
     def get_current_location(self):
         electrode = self.electrode
         location = {}
-        if electrode:
+        if electrode and len(electrode.starting_point.all()) > 0:
             starting_point = electrode.starting_point.latest("updated")
-            if self.turn:
+            if self.turn is not None:
                 distance = self.turn / self.electrode.turns_per_mm
                 location_list = starting_point.get_norms()
                 initial_position = starting_point.get_start_position()
@@ -381,8 +380,8 @@ class ElectrodeLog(BaseAction):
 
     def is_in_stl(self, stl_file_name):
         electrode = self.electrode
-        if electrode:
-            if self.turn:
+        if electrode and len(electrode.starting_point.all()) > 0:
+            if self.turn is not None:
                 curr_location = self.get_current_location()
                 location_list = [
                     curr_location["x"],
@@ -392,13 +391,54 @@ class ElectrodeLog(BaseAction):
                 mesh = trimesh.load(settings.UPLOADED_PATH + stl_file_name)
                 dist = proximity.signed_distance(mesh, [location_list])
                 if dist[0] > 0:
-                    return True
-        return False
+                    return True, dist[0]
+                else:
+                    return False, dist[0]
+        return False, None
 
     @property
     def current_location(self):
         location = self.get_current_location()
         return str(location)
+
+    @property
+    def is_in_stls(self):
+        stls = {}
+        elstls = ElectrodeLogSTL.objects.prefetch_related('stl').filter(
+            electrodelog=self
+        )
+        for elstl in elstls:
+            stl = elstl.stl
+            name = str(stl)
+            if stl.name:
+                name = stl.name
+            stls[name] = f"{str(elstl.is_in)} ({elstl.distance})"
+        return stls
+
+    def save(self, sync=True, *args, **kwargs):
+        super(ElectrodeLog, self).save(*args, **kwargs)
+        if sync:
+            ell = ElectrodeLog.objects.prefetch_related('electrode__device__subject').get(
+                pk=self.id
+            )
+            existing = ell.electrodelogstl.prefetch_related("stl").all().values("id")
+            subject = ell.electrode.device.subject
+            stls = STLFile.objects.filter(subject=subject).exclude(id__in=existing)
+            for stl in stls:
+                elstl = ElectrodeLogSTL(
+                    stl=stl,
+                    electrodelog=self
+                )
+                elstl.is_in, elstl.distance = self.is_in_stl(stl.stl_file.name)
+                elstl.save()
+
+    def sync_stl(self, stl):
+        elstl = ElectrodeLogSTL(
+            stl=stl,
+            electrodelog=self
+        )
+        elstl.is_in, elstl.distance = self.is_in_stl(stl.stl_file.name)
+        elstl.save()
 
 
 class StartingPointSet(BaseModel):
@@ -470,7 +510,57 @@ class STLFile(Dataset):
         name = "deleted"
         if self.subject:
             name = self.subject.nickname
-        return "<Dataset %s - %s created on %s>" % (str(self.pk)[:8], name, date)
+        name_stl = ""
+        if self.name:
+            name_stl = self.name
+        else:
+            name_stl = str(self.pk)[:8]
+        return "<Dataset %s - %s created on %s>" % (name_stl, name, date)
+
+    def sync_electrodelogs(self):
+        subject = self.subject
+        stls = STLFile.objects.filter(subject=subject)
+        electrode_logs = ElectrodeLog.objects.filter(
+            electrode__device__subject=subject
+        ).annotate(
+            num_stls=Count('electrodelogstl')
+        ).filter(num_stls__lt=len(stls))
+
+        for electrode_log in electrode_logs:
+            electrode_log.sync_stl(self)
+
+
+class ElectrodeLogSTL(BaseModel):
+    electrodelog = models.ForeignKey(
+        ElectrodeLog,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="electrodelogstl",
+    )
+    stl = models.ForeignKey(
+        STLFile, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    is_in = models.BooleanField(default=False)
+    distance = models.FloatField(null=True, blank=True, default=None)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
+class BuffaloAsyncTask(BaseModel):
+    PENDING = "PEN"
+    COMPLETED = "COM"
+    ERROR = "ERR"
+    STATUS = (
+        (PENDING, "PENDING"),
+        (COMPLETED, "COMPLETED"),
+        (ERROR, "ERROR"),
+    )
+    description = models.CharField(max_length=255, default="", blank=True)
+    status = models.CharField(max_length=3, default=PENDING, choices=STATUS)
+    message = models.CharField(max_length=255, default="", blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class ChannelRecording(BaseModel):

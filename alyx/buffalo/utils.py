@@ -137,7 +137,7 @@ def download_csv_points_mesh(subject_name, date, electrodes, electrode_logs, stl
     logs = {}
     for electrode_log in electrode_logs:
         location = electrode_log.get_current_location()
-        is_in = electrode_log.is_in_stl(stl_file)
+        is_in, _ = electrode_log.is_in_stl(stl_file)
         row = [
             electrode_log.electrode.channel_number,
             date,
