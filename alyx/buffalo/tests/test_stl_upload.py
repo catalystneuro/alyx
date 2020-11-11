@@ -48,7 +48,12 @@ class STLUploadTests(TestCase):
         stl_add_url = reverse("admin:buffalo_stlfile_add") + f"?subject={spock.id}"
         resp = self.client.post(
             stl_add_url,
-            {"stl_file": self.file_spock_stl, "subject": spock.id},
+            {
+                "name": "hpc",
+                "stl_file": self.file_spock_stl,
+                "subject": spock.id,
+                "sync_electrodelogs": False
+            },
             follow=True,
             format="multipart",
         )

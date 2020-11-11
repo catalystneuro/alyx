@@ -49,6 +49,7 @@ from .models import (
     Device,
     BuffaloElectrodeDevice,
     MenstruationLog,
+    BuffaloAsyncTask,
 )
 from .forms import (
     SubjectWeighingForm,
@@ -61,7 +62,10 @@ from .forms import (
     FoodTypeForm,
     ElectrodeLogSubjectForm,
     NeuralPhenomenaForm,
+    STLFileForm,
 )
+
+from .tasks import sync_electrodelogs_stl
 
 
 class BuffaloSubjectAdmin(BaseAdmin):
@@ -417,9 +421,9 @@ class SessionTaskListFilter(DefaultListFilter):
 
     def lookups(self, request, model_admin):
         sessions_tasks = set(
-            [c.task for c in SessionTask.objects.filter(task__isnull=False)]
+            [(c.id, c) for c in Task.objects.all()]
         )
-        return [("all", "All")] + [(c.id, c) for c in sessions_tasks]
+        return [("all", "All")] + list(sessions_tasks)
 
     def queryset(self, request, queryset):
         if self.value() == "all":
@@ -471,7 +475,9 @@ class ElectrodeListFilter(DefaultListFilter):
     def lookups(self, request, model_admin):
         electrodes = Electrode.objects.all()
         if self.related_filter_parameter in request.GET:
-            electrodes = electrodes.filter(
+            electrodes = electrodes.prefetch_related(
+                "device__subject"
+            ).filter(
                 subject_id=request.GET[self.related_filter_parameter]
             )
 
@@ -509,7 +515,6 @@ class SessionDatasetInline(nested_admin.NestedTabularInline):
 
 class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
     form = SessionForm
-    # change_list_template = "buffalo/change_list.html"
     change_form_template = "buffalo/change_form.html"
     source = ""
     extra = 0
@@ -1125,7 +1130,7 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 
     def get_inline_instances(self, request, obj=None):
         device_id = request.GET.get('device_id', None)
-        electrodes = Electrode.objects.filter(device=device_id)
+        electrodes = Electrode.objects.filter(device=device_id).order_by('created')
         initial = []
         for electrode in electrodes:
             initial.append({"electrode": electrode.id})
@@ -1161,6 +1166,7 @@ class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
         "turn",
         "impedance",
         "current_location",
+        "is_in_stls",
         "notes",
         "date_time",
     ]
@@ -1195,7 +1201,11 @@ class BuffaloChannelRecording(BaseAdmin):
 
 class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
-    fields = ("stl_file", "subject")
+    fields = ("name", "stl_file", "subject", "sync_electrodelogs")
+    form = STLFileForm
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+    ]
 
     def response_add(self, request, obj):
         messages.success(request, "File uploaded successful.")
@@ -1213,7 +1223,34 @@ class BuffaloSTLFile(BaseAdmin):
         subject_id = request.GET.get("subject", None)
         if subject_id:
             form.base_fields["subject"].initial = subject_id
+        form.base_fields["sync_electrodelogs"].initial = True
         return form
+
+    def save_model(self, request, obj, form, change):
+        ret = super(BuffaloSTLFile, self).save_model(request, obj, form, change)
+        if form.cleaned_data["sync_electrodelogs"]:
+            sync_electrodelogs_stl.send(str(obj.id))
+        return ret
+
+
+class BuffaloAsyncTaskAdmin(BaseAdmin):
+    change_form_template = "buffalo/change_form.html"
+    fields = ("description", "status", "message")
+    list_display = [
+        "description",
+        "status",
+        "message",
+        "created",
+    ]
+
+    ordering = ("-created",)
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloAsyncTaskAdmin, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
 
 
 class BuffaloStartingPoint(admin.ModelAdmin):
@@ -1352,3 +1389,4 @@ admin.site.register(Platform)
 admin.site.register(FoodType, FoodTypeAdmin)
 admin.site.register(BuffaloDataset, BuffaloDatasetAdmin)
 admin.site.register(NeuralPhenomena, NeuralPhenomenaAdmin)
+admin.site.register(BuffaloAsyncTask, BuffaloAsyncTaskAdmin)
