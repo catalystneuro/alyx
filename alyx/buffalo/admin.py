@@ -1130,7 +1130,7 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 
     def get_inline_instances(self, request, obj=None):
         device_id = request.GET.get('device_id', None)
-        electrodes = Electrode.objects.filter(device=device_id)
+        electrodes = Electrode.objects.filter(device=device_id).order_by('created')
         initial = []
         for electrode in electrodes:
             initial.append({"electrode": electrode.id})
