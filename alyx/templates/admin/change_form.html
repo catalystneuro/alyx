@@ -65,7 +65,6 @@ $(window).bind('beforeunload', function(){
     Cookies.set(getFieldsetCookieName(), fieldsetsIds);
 });
 
-
 $(window).on("load", function() {
     $(":input").attr("autocomplete", "off");
 
@@ -105,4 +104,27 @@ $(window).on("load", function() {
 
 </script>
 
+{% endblock %}
+{% block loading %}
+    <style>
+        #loading {
+            background: url("{% static "buffalo/img/loading.svg" %}") no-repeat center center;
+            position: absolute;
+            top: 90%;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            z-index: 9999999;
+        }
+    </style>
+    <script>
+    $(document).ready(function() {
+        $('#loading').hide()
+        $('.builk-load').on('click',function () {
+            if ($('#id_file').val()) {
+                $('#loading').show()
+            }
+        })
+    })
+</script>
 {% endblock %}
