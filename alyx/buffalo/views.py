@@ -190,11 +190,11 @@ class SessionDetails(TemplateView):
                 session_task=session_task["id"]
             ).values("file_name", "collection")
             if session_task_id in session_task_dataset_type:
-                session_task_dataset_type[session_task_id].append(session_task_datasets)
+                session_task_dataset_type[session_task['task_sequence']].append(session_task_datasets)
             else:
                 session_tasks.append(session_task)
                 session_task_dataset_type.update(
-                    {session_task_id: [session_task_datasets]}
+                    {session_task['task_sequence']: [session_task_datasets]}
                 )
         channels_recording = ChannelRecording.objects.filter(session=session_id,)
         session = BuffaloSession.objects.get(pk=session_id)
@@ -206,7 +206,7 @@ class SessionDetails(TemplateView):
             "session_menstruationlog": MenstruationLog.objects.filter(
                 session=session_id
             ).first(),
-            "session_tasks": session_tasks,
+            "session_tasks": all_session_tasks,
             "channels_recording": list(channels_recording),
             "session_task_dataset_type": session_task_dataset_type,
             "session_datasets": BuffaloDataset.objects.filter(
