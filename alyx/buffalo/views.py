@@ -190,7 +190,9 @@ class SessionDetails(TemplateView):
                 session_task=session_task["id"]
             ).values("file_name", "collection")
             if session_task_id in session_task_dataset_type:
-                session_task_dataset_type[session_task['task_sequence']].append(session_task_datasets)
+                session_task_dataset_type[session_task['task_sequence']].append(
+                    session_task_datasets
+                )
             else:
                 session_tasks.append(session_task)
                 session_task_dataset_type.update(
