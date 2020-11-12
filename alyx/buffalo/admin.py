@@ -150,8 +150,8 @@ class BuffaloSubjectAdmin(BaseAdmin):
         )
         session_options = dropdown.format(
             "Session",
-            self.see_subject_sessions(obj) +
             self.add_session(obj) +
+            self.see_subject_sessions(obj) +
             self.load_sessions(obj) +
             self.session_queries(obj)
         )
