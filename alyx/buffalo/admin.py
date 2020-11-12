@@ -322,6 +322,9 @@ class BuffaloSubjectFood(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     list_display = ["subject", "session_", "amount", "date_time"]
     source = ""
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+    ]
 
     def session_(self, obj):
         try:
@@ -662,6 +665,9 @@ class BuffaloWeight(BaseAdmin):
         "user",
         "_session",
         "date_time",
+    ]
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
     ]
     ordering = ("-updated",)
 
@@ -1020,7 +1026,6 @@ class BuffaloDeviceSubjectAdmin(BaseAdmin):
 
 class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
     change_form_template = "buffalo/change_form.html"
-    # form = SubjectForm
 
     list_display = ["name", "description"]
 
@@ -1186,11 +1191,16 @@ class BuffaloChannelRecording(BaseAdmin):
         "alive",
         "number_of_cells",
     ]
+    list_filter = [
+        ("session__subject", RelatedDropdownFilter),
+    ]
 
     def session_(self, obj):
         if obj.session is None:
             return ""
-        return obj.session.name
+        url = reverse("session-details", kwargs={"session_id": obj.session.id})
+        name = obj.session
+        return format_html('<a href="{url}">{name}</a>', url=url, name=name)
 
     def subject_recorded(self, obj):
         if obj.session is None:
