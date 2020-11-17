@@ -200,12 +200,18 @@ initial_general_comments_required = () => {
 
 // HACK: date widget in local timezone.
 (function($){
-    let today = new Date()
-    today = moment(today).toISOString()
-     $('#id_subject').change(function(){
+    set_date_in_session_name = () => {
+        let new_date = moment($('#id_start_time_0').val(), "DD/MM/YYYY")
+        let session_start_time = new_date.toISOString()
         let subject = $("#id_subject option:selected").text()
         $("#buffalosession_form #id_name").val("")
-        $("#buffalosession_form #id_name").val(today + "_" + subject)
+        $("#buffalosession_form #id_name").val(session_start_time + "_" + subject)
+    }
+     $('#id_subject').change(function(){
+        set_date_in_session_name()
+    })
+    $('#id_start_time_0').focus(function () {
+        set_date_in_session_name()
     })
   $(function(){
     document.body.setAttribute("data-admin-utc-offset", (new Date()).getTimezoneOffset() * -60);
