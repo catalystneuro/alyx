@@ -32,6 +32,10 @@ VALID_VALUES = (
     NOT_SAVE_VALUES +
     OTHER_VALUES
 )
+NOT_SAVE_TASKS = [
+    "mid-day break",
+    "done, home"
+]
 
 
 def is_date_session(value):
