@@ -45,6 +45,7 @@ from .models import (
     FoodType,
     MenstruationLog,
     Device,
+    Platform,
 )
 from .forms import (
     TaskForm,
@@ -63,6 +64,7 @@ from .utils import (
     ALIVE_VALUES,
     MAYBE_VALUES,
     NOT_SAVE_VALUES,
+    NOT_SAVE_TASKS,
 )
 
 from .tasks import sync_electrodelogs_device
@@ -646,6 +648,7 @@ class SessionsLoadView(FormView):
             sessions = get_sessions_from_file(form.cleaned_data.get("file"))
             subject_sessions = BuffaloSession.objects.filter(subject=subject)
             tasks = list(Task.objects.all())
+            platforms = list(Platform.objects.all())
             try:
                 with transaction.atomic():
                     for session in sessions:
@@ -723,6 +726,8 @@ class SessionsLoadView(FormView):
                             )
                             task = None
                             if session[task_name_index]:
+                                if session[task_name_index].lower().strip() in NOT_SAVE_TASKS:
+                                    continue
                                 task_info = {}
                                 for t in tasks:
                                     if t.name == session[task_name_index]:
@@ -732,6 +737,19 @@ class SessionsLoadView(FormView):
                                     task = Task.objects.create(
                                         name=session[task_name_index]
                                     )
+                                if task.name.strip().endswith(".sav"):
+                                    platform = None
+                                    for p in platforms:
+                                        if p.name == "cortex":
+                                            platform = p
+                                    if platform is None:
+                                        platform = Platform.objects.create(
+                                            name="cortex"
+                                        )
+                                        platforms.append(platform)
+                                    if not task.platform:
+                                        task.platform = platform
+                                        task.save()
                                 tasks.append(task)
                                 task_info = {
                                     "task": task,
