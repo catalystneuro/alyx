@@ -103,15 +103,15 @@ if 'TRAVIS' in os.environ or 'READTHEDOCS' in os.environ:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.8/howto/deployment/checklist/
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# SECURITY WARNING: don't run with debug turned on in production!!
+DEBUG = config('DEBUG', default=True, cast=bool)
 
 # Production settings:
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     X_FRAME_OPTIONS = 'DENY'
     SESSION_COOKIE_SECURE = True
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_SECONDS = 30
@@ -226,6 +226,8 @@ STATIC_URL = '/static/'
 MEDIA_ROOT = os.path.realpath(os.path.join(BASE_DIR, '../uploaded/'))
 MEDIA_URL = '/uploaded/'
 UPLOADED_IMAGE_WIDTH = 800
+
+TIME_ZONE = config('TIME_ZONE', default='UTC')
 
 SITE_HEADER = config('SITE_HEADER', default='Alyx')
 SITE_TITLE = config('SITE_TITLE', default='Alyx')
