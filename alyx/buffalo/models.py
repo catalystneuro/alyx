@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.core.validators import MinValueValidator, FileExtensionValidator
+from django.db import transaction, IntegrityError
 from django.conf import settings
 
 from alyx.base import BaseModel
@@ -216,6 +217,19 @@ class BuffaloSession(Session):
 
     class Meta:
         verbose_name = "Session"
+
+    def save(self, block_table=True, *args, **kwargs):
+        if block_table:
+            with transaction.atomic():
+                subject_sessions = BuffaloSession.objects.filter(
+                    subject=self.subject,
+                    start_time=self.start_time
+                ).exists()
+                BuffaloSession.objects.select_for_update().all()
+                if subject_sessions:
+                    raise IntegrityError("This Session already exists.")
+                return super(BuffaloSession, self).save(*args, **kwargs)
+        return super(BuffaloSession, self).save(*args, **kwargs)
 
 
 class Electrode(BaseAction):
