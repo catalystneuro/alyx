@@ -158,6 +158,12 @@ $(document).ready(function() {
         $("#channelrecording_set-group .add-row a").on("click", function() {
             new_data.prop('disabled', false)
         })
+
+        disable_save_button()
+    }
+
+    if (current_location.includes("buffalosession/add/?_changelist_filters=")) {
+        disable_save_button()
     }
     
     make_narrative_required()
@@ -195,6 +201,13 @@ initial_general_comments_required = () => {
             make_general_comments_required(value)
         }
     }
+}
+
+disable_save_button = () => {
+    $("[name='_save']").on("click", function() {
+        $(this).prop('disabled', true)
+        $(this).parents('form:first').submit()
+    })
 }
 
 

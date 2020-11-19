@@ -404,7 +404,6 @@ class SessionQueriesView(View):
                 }
                 final_sessions.append(session_dict)
 
-            # import pdb; pdb.set_trace()
         return render(
             request, self.template_name, {"form": form, "sessions": final_sessions}
         )
