@@ -447,7 +447,7 @@ class ChannelRecordingBulkLoadView(FormView):
                             session.needs_review = False
                         else:
                             session.needs_review = True
-                        session.save()
+                        session.save(block_table=False)
             except DatabaseError:
                 messages.error(
                     request,
@@ -687,7 +687,7 @@ class SessionsLoadView(FormView):
                                 newsession.users.set(session_user_obj)
                             else:
                                 newsession.unknown_user = session["1_Handler Initials"]
-                                newsession.save()
+                                newsession.save(block_table=False)
                         # If the session has weight creates the weight log
                         weight_index = "2_Weight (kg)"
                         if session[weight_index]:
