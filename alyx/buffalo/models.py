@@ -219,7 +219,7 @@ class BuffaloSession(Session):
         verbose_name = "Session"
 
     def save(self, block_table=True, *args, **kwargs):
-        if block_table:
+        if not self.pk and block_table:
             with transaction.atomic():
                 subject_sessions = BuffaloSession.objects.filter(
                     subject=self.subject,
