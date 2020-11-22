@@ -4,6 +4,8 @@ import re
 import datetime
 from datetime import timedelta
 from scipy.io import loadmat
+from csv import reader
+from io import TextIOWrapper
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -175,7 +177,9 @@ def validate_sessions_file(file):
             error_message = f"""The column {i} should be {SESSIONS_FILE_COLUMNS[i]} and
             is {sessions_sheet.cell_value(0, i)} instead."""
             raise ValidationError(
-                error_message, code="invalid", params={"file": file},
+                error_message,
+                code="invalid",
+                params={"file": file},
             )
 
     for row in range(sessions_sheet.nrows)[1:]:
@@ -190,7 +194,6 @@ def validate_sessions_file(file):
                     )
         elif sessions_sheet.cell(row, 0).value in dates.keys():
             repeated_date_row = dates[sessions_sheet.cell(row, 0).value]
-            # import pdb; pdb.set_trace()
             raise ValidationError(
                 f"The row {row + 1} and the row {repeated_date_row + 1 } have the same date",
                 code="invalid",
@@ -630,7 +633,9 @@ def get_channelrecording_info(file, sufix):
                                     if date_str in sessions.keys():
                                         session = sessions[date_str]
                                         if ch_number in session["records"].keys():
-                                            session["records"][ch_number]["sharp_waves"] = True
+                                            session["records"][ch_number][
+                                                "sharp_waves"
+                                            ] = True
                                         else:
                                             session["records"][ch_number] = {
                                                 "sharp_waves": True
@@ -707,3 +712,56 @@ def get_channelrecording_info(file, sufix):
                                     }
         sheet_number += 1
     return sessions
+
+
+def get_tasks_info(file):
+    file.seek(0)
+    f = TextIOWrapper(file, encoding="ascii")
+    file_content = csv.reader(f)
+    tasks = {}
+    for i, file_row in file_content:
+        task_data = {}
+        if i:
+            task_info = file_row.split("_")
+            separate_extension = task_info[-1].split(".")[0]
+            task_info[-1] = separate_extension
+            year_index = None
+            for word in task_info:
+                if word.lower().endswith('log') or word.lower() == 'log':
+                    year_index = task_info.index(word) + 1
+                    break
+            try:
+                startdate = datetime.datetime(
+                    year=(int(task_info[year_index])),
+                    month=int(task_info[year_index+1]),
+                    day=int(task_info[year_index+2]),
+                    hour=int(task_info[year_index+3]),
+                    minute=int(task_info[year_index+4]),
+                    second=int(task_info[year_index+5]),
+                )
+            except:
+                continue
+            str_startdate = startdate.strftime("%Y_%m_%d")
+            #task_data[task_info[1]] = {
+            task_data = {
+                "name": task_info[1],
+                "dataset_type": f"{task_info[2]}_{task_info[9]}"
+                if len(task_info) > 9
+                else task_info[2],
+                "start_time": startdate
+                }
+            if str_startdate in tasks.keys(): #and task_data not in tasks[str_startdate]:
+                try:
+                    if task_data not in tasks[str_startdate][task_info[1]]:
+                        #tasks[str_startdate].append(task_data)
+                        tasks[str_startdate][task_info[1]].append(task_data)
+                except:
+                    tasks[str_startdate].update({task_info[1]: [task_data]})
+            else:
+                #tasks[str_startdate] = [task_data]
+                tasks[str_startdate] = {task_info[1]: [task_data]}
+    return tasks
+
+
+def get_task_startime(task):
+    return task.get('start_time')

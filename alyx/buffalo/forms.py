@@ -422,3 +422,8 @@ class STLFileForm(forms.ModelForm):
             "stl_file",
             "subject"
         ]
+
+
+class TasksLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["csv"])])
+    subject = forms.CharField(widget=forms.HiddenInput())
