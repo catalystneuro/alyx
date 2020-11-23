@@ -158,6 +158,12 @@ $(document).ready(function() {
         $("#channelrecording_set-group .add-row a").on("click", function() {
             new_data.prop('disabled', false)
         })
+
+        disable_save_button()
+    }
+
+    if (current_location.includes("buffalosession/add/?_changelist_filters=")) {
+        disable_save_button()
     }
     
     make_narrative_required()
@@ -197,20 +203,35 @@ initial_general_comments_required = () => {
     }
 }
 
+disable_save_button = () => {
+    $("[name='_save']").on("click", function() {
+        $(this).prop('disabled', true)
+        $(this).parents('form:first').submit()
+    })
+}
+
 
 // HACK: date widget in local timezone.
 (function($){
     set_date_in_session_name = () => {
-        let new_date = moment($('#id_start_time_0').val(), "DD/MM/YYYY")
-        let session_start_time = new_date.toISOString()
+        let new_start_date = $('#id_start_time_0').val().split("/")
+        let year = new_start_date[2]
+        let month = new_start_date[1]
+        let day = new_start_date[0]
+        let new_start_time = $('#id_start_time_1').val()
+        let session_start_time = year+"-"+month+"-"+day+"T"+new_start_time
         let subject = $("#id_subject option:selected").text()
         $("#buffalosession_form #id_name").val("")
         $("#buffalosession_form #id_name").val(session_start_time + "_" + subject)
     }
+    set_date_in_session_name()
      $('#id_subject').change(function(){
         set_date_in_session_name()
     })
-    $('#id_start_time_0').focus(function () {
+    $('#id_start_time_0, #id_start_time_1').focus(function () {
+        set_date_in_session_name()
+    })
+    $('#id_start_time_0, #id_start_time_1').change(function () {
         set_date_in_session_name()
     })
   $(function(){
