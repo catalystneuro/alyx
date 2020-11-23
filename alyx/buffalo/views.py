@@ -1,5 +1,4 @@
-import datetime
-
+from datetime import datetime
 from plotly.subplots import make_subplots
 import plotly.offline as opy
 import plotly.graph_objs as go
@@ -17,7 +16,7 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.shortcuts import render
 from django.conf import settings
-from django.db import transaction, DatabaseError
+from django.db import transaction, DatabaseError, IntegrityError
 
 from .utils import (
     get_mat_file_info,
@@ -246,7 +245,7 @@ class ElectrodeBulkLoadView(FormView):
             subject = device.subject
             # Create a new Starting point set
             starting_point_set = StartingPointSet()
-            starting_point_set.name = "Bulk load - %s" % (datetime.datetime.now())
+            starting_point_set.name = "Bulk load - %s" % (datetime.now())
             starting_point_set.subject = device.subject
             starting_point_set.save()
 
@@ -823,62 +822,71 @@ class TasksLoadView(FormView):
             tasks_info = get_tasks_info(form.cleaned_data.get("file"))
             subject_sessions = BuffaloSession.objects.filter(subject=subject)
             tasks = list(Task.objects.all())
-            contador = 0
-            session_contador = 0
+            tasks_categories = TaskCategory.objects.all()
             for i, task_date in enumerate(tasks_info):
                 session = None
-                task_name = list(tasks_info[task_date].keys())[0]
-                for task_name in tasks_info[task_date]:
-                    tasks_info[task_date][task_name].sort(key=get_task_startime)
-
+                first_task_name = list(tasks_info[task_date][0].keys())[0]               
                 for sess in subject_sessions:
                     if sess.start_time.strftime("%Y_%m_%d") == task_date:
                         session = sess
                         break
+                session_start_time = datetime.combine(tasks_info[task_date][0][first_task_name][0][
+                            "start_time"
+                    ], datetime.min.time())
                 if session is None:
-                    newsession_name = f"{task_date}_{subject}"
+                    newsession_name = f"{session_start_time.strftime('%Y-%m-%dT%H:%M:%S')}_{subject}"
                     session = BuffaloSession.objects.create(
                         subject=subject,
                         name=newsession_name,
-                        start_time=tasks_info[task_date][task_name][0][
-                            "start_time"
-                        ].date(),
+                        start_time=session_start_time,
                     )
-                session_contador += 1
-                ordered_tasks = []
-                for task in tasks_info[task_date]:
-                    ordered_tasks.append(
-                        {
-                            "name": tasks_info[task_date][task][0]["name"],
-                            "start_time": tasks_info[task_date][task][0]["start_time"],
-                        }
-                    )
-                ordered_tasks.sort(key=get_task_startime)
-                for i, task in enumerate(ordered_tasks):
+                for i, task_info in enumerate(tasks_info[task_date]):
+                    training = False
+                    task_name = list(task_info.keys())[0]
+                    if 'training' in task_name.lower():
+                        task_name = 'Training'
+                        training = True
                     new_task = None
                     for t in tasks:
-                        if task["name"].lower() == t.name.lower():
+                        if task_name.lower() == t.name.lower():
                             new_task = t
                             break
                     if new_task is None:
-                        contador += 1
-                        new_task = Task.objects.create(name=task["name"])
+                        task_category = None
+                        for category in tasks_categories:
+                            if category.name.lower() in task_name.lower():
+                                task_category = category
+                                break
+                        new_task = Task.objects.create(
+                            name=task_name,
+                            category=task_category,
+                            training=training
+                        )
                         tasks.append(new_task)
-                    session_task = SessionTask.objects.create(
-                        task=new_task,
-                        session=session,
-                        task_sequence=i + 1,
-                        start_time=tasks_info[task_date][task["name"]][0]["start_time"],
-                    )
-                    for i, t_info in enumerate(tasks_info[task_date][task["name"]]):
+                    task_name = list(task_info.keys())[0]
+                    try:
+                        session_task = SessionTask.objects.create(
+                            task=new_task,
+                            session=session,
+                            task_sequence=i+1,
+                            start_time=task_info[task_name][0]["start_time"],
+                        )
+                    except IntegrityError:
+                        session_task = SessionTask.objects.filter(
+                            task=new_task,
+                            session=session,
+                            task_sequence=i+1,
+                            start_time=task_info[task_name][0]["start_time"],
+                        ).first()
+
+                    for i, t_info in enumerate(tasks_info[task_date][i][task_name]):
                         dataset_type, _ = DatasetType.objects.get_or_create(
                             name=t_info["dataset_type"]
                         )
-                        BuffaloDataset.objects.create(
+                        BuffaloDataset.objects.get_or_create(
                             dataset_type=dataset_type,
-                            session_task=session_task,
+                            session_task=session_task
                         )
-
             return self.form_valid(form)
         else:
             return self.form_invalid(form)

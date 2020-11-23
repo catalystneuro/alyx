@@ -261,8 +261,8 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
     )
     extra = 0
     inlines = [SessionDataNestedsetInline]
-
-
+    ordering = ("task_sequence",)
+    
 def TemplateInitialDataAddChannelRecording(data, num_forms):
     class AlwaysChangedModelForm(ModelForm):
         def has_changed(self):

@@ -726,9 +726,15 @@ def get_tasks_info(file):
             separate_extension = task_info[-1].split(".")[0]
             task_info[-1] = separate_extension
             year_index = None
+            log_index = None
+            name = ''
             for word in task_info:
                 if word.lower().endswith('log') or word.lower() == 'log':
-                    year_index = task_info.index(word) + 1
+                    log_index = task_info.index(word)
+                    year_index = log_index + 1
+                    for i in range(1, log_index):
+                        name += f'{task_info[i]} '
+                    name = name.strip()
                     break
             try:
                 startdate = datetime.datetime(
@@ -742,25 +748,35 @@ def get_tasks_info(file):
             except:
                 continue
             str_startdate = startdate.strftime("%Y_%m_%d")
-            #task_data[task_info[1]] = {
             task_data = {
-                "name": task_info[1],
-                "dataset_type": f"{task_info[2]}_{task_info[9]}"
-                if len(task_info) > 9
-                else task_info[2],
+                "name": name,
+                "dataset_type": task_info[log_index],
                 "start_time": startdate
                 }
             if str_startdate in tasks.keys(): #and task_data not in tasks[str_startdate]:
                 try:
-                    if task_data not in tasks[str_startdate][task_info[1]]:
-                        #tasks[str_startdate].append(task_data)
-                        tasks[str_startdate][task_info[1]].append(task_data)
+                    if task_data not in tasks[str_startdate]:
+                        tasks[str_startdate].append(task_data)
                 except:
-                    tasks[str_startdate].update({task_info[1]: [task_data]})
+                    tasks[str_startdate].update([task_data])
             else:
-                #tasks[str_startdate] = [task_data]
-                tasks[str_startdate] = {task_info[1]: [task_data]}
-    return tasks
+                tasks[str_startdate] = [task_data]
+    ordered_tasks = {}
+    for session_date in tasks:
+        tasks[session_date].sort(key=get_task_startime)
+        ordered_tasks.update({session_date: []})
+        for task in tasks[session_date]:
+            task_name =  task['name']
+            if ordered_tasks[session_date]:
+                if task_name not in ordered_tasks[session_date][-1]:
+                    ordered_tasks[session_date].append({task_name:[task]})
+                else:
+                    current_key = list(ordered_tasks[session_date][-1].keys())
+                    ordered_tasks[session_date][-1][current_key[0]].append(task)
+            else:
+                ordered_tasks[session_date].append({task_name:[task]})
+
+    return ordered_tasks
 
 
 def get_task_startime(task):
