@@ -437,3 +437,10 @@ class TasksLoadForm(forms.Form):
             raise forms.ValidationError(
                 f"{subject_code} is not this subject's code."
             )
+class DashboardFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+
+    start_date = forms.DateField(initial=date.today)
+    finish_date = forms.DateField(initial=date.today)
+       

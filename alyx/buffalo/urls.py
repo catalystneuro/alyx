@@ -14,6 +14,7 @@ from buffalo.views import (
     SessionQueriesView,
     SessionsLoadView,
     TasksLoadView,
+    DashboardView,
 )
 
 urlpatterns = [
@@ -78,5 +79,10 @@ urlpatterns = [
         "tasks-load/<uuid:subject_id>",
         TasksLoadView.as_view(),
         name="tasks-load",
-    )
+    ),
+    path()
+        "dashboard/<uuid:subject_id>",
+        login_required(DashboardView.as_view(), login_url="/login/",),
+        name="dashboard",
+    ),
 ]

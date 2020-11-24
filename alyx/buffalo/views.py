@@ -68,6 +68,7 @@ from .forms import (
     SessionQueriesForm,
     SessionsLoadForm,
     TasksLoadForm,
+    DashboardFilterForm,
 )
 
 from .utils import get_sessions_file_columns
@@ -1016,3 +1017,79 @@ class TasksLoadView(FormView):
         subject_id = kwargs["data"]["subject"]
         sessions_subject_url = f"{self.success_url}/?subject__id__exact={subject_id}"
         return sessions_subject_url
+
+
+class DashboardView(View):
+    form_class = DashboardFilterForm
+    template_name = "buffalo/dashboard.html"
+
+    def get(self, request, *args, **kwargs):
+        form = self.form_class()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            start_date = form.cleaned_data["start_date"]
+            finish_date = form.cleaned_data["finish_date"]
+
+            sdate = datetime.date(
+                start_date.year,
+                start_date.month,
+                start_date.day
+            )   # start date
+            edate = datetime.date(
+                finish_date.year,
+                finish_date.month,
+                finish_date.day
+            )
+
+            delta = edate - sdate
+            weight_days = {}
+            for i in range(delta.days + 1):
+                day = sdate + datetime.timedelta(days=i)
+                weight_days[str(day)] = []
+                session = BuffaloSession.objects.filter(
+                    start_time__year=day.year,
+                    start_time__month=day.month,
+                    start_time__day=day.day
+                ).first()
+                if session:
+                    weight = WeighingLog.objects.filter(
+                        session=session
+                    ).first()
+                    if weight:
+                        weight_days[str(day)].append(weight.weight)
+
+                weights = WeighingLog.objects.filter(
+                    date_time__year=day.year,
+                    date_time__month=day.month,
+                    date_time__day=day.day
+                ).values("weight")
+
+                for we in weights:
+                    weight_days[str(day)].append(we["weight"])
+
+                fig = make_subplots()
+
+                if not weight_days[str(day)]:
+                    weight_days[str(day)].append(0)
+
+            y = [weight[0] for weight in weight_days.values()]
+            trace = go.Scatter(
+                x=list(weight_days.keys()),
+                y=y,
+                name="Weights",
+            )
+
+            #import pdb; pdb.set_trace()
+            fig.add_trace(trace)
+            fig.update_layout(autosize=True, height=900)
+
+            graph = opy.plot(fig, auto_open=False, output_type="div")
+
+            return render(request, self.template_name, {"form": form, "graph": graph})
+
+        return render(request, self.template_name, {"form": form})
