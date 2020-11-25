@@ -1056,7 +1056,8 @@ class DashboardView(View):
                 session = BuffaloSession.objects.filter(
                     start_time__year=day.year,
                     start_time__month=day.month,
-                    start_time__day=day.day
+                    start_time__day=day.day,
+                    subject=subject
                 ).first()
                 if session:
                     weight = WeighingLog.objects.filter(
@@ -1074,13 +1075,15 @@ class DashboardView(View):
                 weights = WeighingLog.objects.filter(
                     date_time__year=day.year,
                     date_time__month=day.month,
-                    date_time__day=day.day
+                    date_time__day=day.day,
+                    subject=subject,
                 ).values("weight")
 
                 foods = FoodLog.objects.filter(
                     date_time__year=day.year,
                     date_time__month=day.month,
-                    date_time__day=day.day
+                    date_time__day=day.day,
+                    subject=subject,
                 ).values("amount")
 
                 for we in weights:
