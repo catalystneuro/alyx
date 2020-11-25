@@ -443,4 +443,8 @@ class DashboardFilterForm(forms.Form):
 
     start_date = forms.DateField(initial=date.today)
     finish_date = forms.DateField(initial=date.today)
-       
+    food_type = forms.ModelChoiceField(queryset=FoodType.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        super(DashboardFilterForm, self).__init__(*args, **kwargs)
+        self.fields["food_type"].queryset = FoodType.objects.all()

@@ -1048,9 +1048,11 @@ class DashboardView(View):
 
             delta = edate - sdate
             weight_days = {}
+            food_days = {}
             for i in range(delta.days + 1):
                 day = sdate + datetime.timedelta(days=i)
                 weight_days[str(day)] = []
+                food_days[str(day)] = []
                 session = BuffaloSession.objects.filter(
                     start_time__year=day.year,
                     start_time__month=day.month,
@@ -1060,8 +1062,14 @@ class DashboardView(View):
                     weight = WeighingLog.objects.filter(
                         session=session
                     ).first()
+                    food = FoodLog.objects.filter(
+                        session=session,
+                        food=form.cleaned_data["food_type"]
+                    ).first()
                     if weight:
                         weight_days[str(day)].append(weight.weight)
+                    if food:
+                        food_days[str(day)].append(food.amount)
 
                 weights = WeighingLog.objects.filter(
                     date_time__year=day.year,
@@ -1069,24 +1077,48 @@ class DashboardView(View):
                     date_time__day=day.day
                 ).values("weight")
 
+                foods = FoodLog.objects.filter(
+                    date_time__year=day.year,
+                    date_time__month=day.month,
+                    date_time__day=day.day
+                ).values("amount")
+
                 for we in weights:
                     weight_days[str(day)].append(we["weight"])
 
-                fig = make_subplots()
+                for fo in foods:
+                    food_days[str(day)].append(fo["amount"])
 
                 if not weight_days[str(day)]:
-                    weight_days[str(day)].append(0)
+                    weight_days.pop(str(day))
 
-            y = [weight[0] for weight in weight_days.values()]
-            trace = go.Scatter(
+                if not food_days[str(day)]:
+                    food_days.pop(str(day))
+
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+            y_weight = [weight[0] for weight in weight_days.values() if weight]
+            trace_weight = go.Scatter(
                 x=list(weight_days.keys()),
-                y=y,
+                y=y_weight,
                 name="Weights",
             )
 
-            #import pdb; pdb.set_trace()
-            fig.add_trace(trace)
-            fig.update_layout(autosize=True, height=900)
+            y_food = [food[0] for food in food_days.values() if food]
+            trace_food = go.Scatter(
+                x=list(food_days.keys()),
+                y=y_food,
+                name="Food",
+                yaxis="y2"
+            )
+
+            fig.add_trace(trace_weight, secondary_y=False)
+            fig.add_trace(trace_food, secondary_y=True)
+            fig.update_yaxes(rangemode="tozero")
+            fig.update_layout(
+                autosize=True,
+                height=900,
+            )
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
 
