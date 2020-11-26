@@ -437,7 +437,9 @@ class TasksLoadForm(forms.Form):
             raise forms.ValidationError(
                 f"{subject_code} is not this subject's code."
             )
-class DashboardFilterForm(forms.Form):
+
+
+class FoodWeightFilterForm(forms.Form):
     cur_year = datetime.today().year
     year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
 
@@ -446,5 +448,5 @@ class DashboardFilterForm(forms.Form):
     food_type = forms.ModelChoiceField(queryset=FoodType.objects.none())
 
     def __init__(self, *args, **kwargs):
-        super(DashboardFilterForm, self).__init__(*args, **kwargs)
+        super(FoodWeightFilterForm, self).__init__(*args, **kwargs)
         self.fields["food_type"].queryset = FoodType.objects.all()

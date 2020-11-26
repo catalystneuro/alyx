@@ -69,6 +69,7 @@ from .forms import (
     SessionsLoadForm,
     TasksLoadForm,
     DashboardFilterForm,
+    FoodWeightFilterForm,
 )
 
 from .utils import get_sessions_file_columns
@@ -1019,9 +1020,9 @@ class TasksLoadView(FormView):
         return sessions_subject_url
 
 
-class DashboardView(View):
-    form_class = DashboardFilterForm
-    template_name = "buffalo/dashboard.html"
+class FoodWeightView(View):
+    form_class = FoodWeightFilterForm
+    template_name = "buffalo/food_weight.html"
 
     def get(self, request, *args, **kwargs):
         form = self.form_class()

@@ -15,6 +15,7 @@ from buffalo.views import (
     SessionsLoadView,
     TasksLoadView,
     DashboardView,
+    FoodWeightView,
 )
 
 urlpatterns = [
@@ -80,9 +81,14 @@ urlpatterns = [
         TasksLoadView.as_view(),
         name="tasks-load",
     ),
-    path()
+    path(
         "dashboard/<uuid:subject_id>",
         login_required(DashboardView.as_view(), login_url="/login/",),
         name="dashboard",
+    ),
+    path(
+        "food-weight-plot/<uuid:subject_id>",
+        login_required(FoodWeightView.as_view(), login_url="/login/",),
+        name="food-weight-plot",
     ),
 ]
