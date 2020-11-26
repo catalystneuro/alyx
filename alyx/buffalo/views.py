@@ -70,6 +70,7 @@ from .forms import (
     TasksLoadForm,
     DashboardFilterForm,
     FoodWeightFilterForm,
+    ElectrodelogsPlotFilterForm
 )
 
 from .utils import get_sessions_file_columns
@@ -1118,6 +1119,86 @@ class FoodWeightView(View):
 
             fig.add_trace(trace_weight, secondary_y=False)
             fig.add_trace(trace_food, secondary_y=True)
+            fig.update_yaxes(rangemode="tozero")
+            fig.update_layout(
+                autosize=True,
+                height=900,
+            )
+
+            graph = opy.plot(fig, auto_open=False, output_type="div")
+
+            return render(request, self.template_name, {"form": form, "graph": graph})
+
+        return render(request, self.template_name, {"form": form})
+
+
+class ElectrodeLogPlotView(View):
+    form_class = ElectrodelogsPlotFilterForm
+    template_name = "buffalo/electrodelog_plot.html"
+
+    def get(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(subject_id=subject_id)
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST, subject_id=subject_id)
+        if form.is_valid():
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            start_date = form.cleaned_data["start_date"]
+            finish_date = form.cleaned_data["finish_date"]
+            device = form.cleaned_data["device"]
+
+            sdate = datetime.date(
+                start_date.year,
+                start_date.month,
+                start_date.day
+            )   # start date
+            edate = datetime.date(
+                finish_date.year,
+                finish_date.month,
+                finish_date.day
+            )
+
+            delta = edate - sdate
+            elogs_days = {}
+            electrodes = Electrode.objects.filter(
+                device=device
+            )
+            fig = make_subplots()
+            for electrode in electrodes:
+                for i in range(delta.days + 1):
+                    day = sdate + datetime.timedelta(days=i)
+                    elogs_days[str(day)] = []
+
+                    elogs = ElectrodeLog.objects.filter(
+                        date_time__year=day.year,
+                        date_time__month=day.month,
+                        date_time__day=day.day,
+                        electrode=electrode
+                    )
+
+                    for elog in elogs:
+                        elogs_days[str(day)].append(elog.turn)
+
+                    if not elogs_days[str(day)]:
+                        elogs_days.pop(str(day))
+
+                
+                #import pdb; pdb.set_trace()
+                x_values = []
+                y_values = []
+                for key, value in elogs_days.items():
+                    for e in value:
+                        x_values.append(key)
+                        y_values.append(e)
+                trace_turns = go.Scatter(
+                    x=x_values,
+                    y=y_values,
+                    mode='lines+markers'
+                )
+                fig.add_trace(trace_turns)
             fig.update_yaxes(rangemode="tozero")
             fig.update_layout(
                 autosize=True,
