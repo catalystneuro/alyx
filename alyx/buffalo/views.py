@@ -70,7 +70,8 @@ from .forms import (
     TasksLoadForm,
     DashboardFilterForm,
     FoodWeightFilterForm,
-    ElectrodelogsPlotFilterForm
+    ElectrodelogsPlotFilterForm,
+    TaskPlotFilterForm,
 )
 
 from .utils import get_sessions_file_columns
@@ -1186,7 +1187,6 @@ class ElectrodeLogPlotView(View):
                         elogs_days.pop(str(day))
 
                 
-                #import pdb; pdb.set_trace()
                 x_values = []
                 y_values = []
                 for key, value in elogs_days.items():
@@ -1196,7 +1196,8 @@ class ElectrodeLogPlotView(View):
                 trace_turns = go.Scatter(
                     x=x_values,
                     y=y_values,
-                    mode='lines+markers'
+                    mode='lines+markers',
+                    name=f"electrode-{electrode.channel_number}"
                 )
                 fig.add_trace(trace_turns)
             fig.update_yaxes(rangemode="tozero")
@@ -1204,6 +1205,92 @@ class ElectrodeLogPlotView(View):
                 autosize=True,
                 height=900,
             )
+
+            graph = opy.plot(fig, auto_open=False, output_type="div")
+
+            return render(request, self.template_name, {"form": form, "graph": graph})
+
+        return render(request, self.template_name, {"form": form})
+
+
+class TaskPlotView(View):
+    form_class = TaskPlotFilterForm
+    template_name = "buffalo/task_plot.html"
+
+    def get(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            start_date = form.cleaned_data["start_date"]
+            finish_date = form.cleaned_data["finish_date"]
+            tasks_filtered = form.cleaned_data["tasks"]
+
+            sdate = datetime.date(
+                start_date.year,
+                start_date.month,
+                start_date.day
+            )   # start date
+            edate = datetime.date(
+                finish_date.year,
+                finish_date.month,
+                finish_date.day
+            )
+            delta = edate - sdate
+            task_list = []
+
+            days = [str(sdate + datetime.timedelta(days=i)) for i in range(delta.days + 1)]
+            task_names = []
+            got_one = False
+            for task in tasks_filtered:
+                task_names.append(task.name)
+                task_days = {}
+                for i in range(delta.days + 1):
+                    day = sdate + datetime.timedelta(days=i)
+                    task_days[str(day)] = None
+
+                    tasks = SessionTask.objects.filter(
+                        session__start_time__year=day.year,
+                        session__start_time__month=day.month,
+                        session__start_time__day=day.day,
+                        session__subject=subject,
+                        task=task
+                    )
+                    if len(tasks) > 0:
+                        task_days[str(day)] = 1
+                        got_one = True
+                    else:
+                        task_days[str(day)] = 0
+                task_list.append(list(task_days.values()))
+
+            subjects = [subject.nickname]
+
+            color_one = [1, "rgb(49,54,149)"]
+            if not got_one:
+                color_one = [1, "rgb(250, 250, 250)"]
+
+            fig = go.Figure(
+                data=go.Heatmap(
+                    z=task_list,
+                    x=days,
+                    y=task_names,
+                    colorscale=[
+                        [0, "rgb(250, 250, 250)"],
+                        color_one,
+                    ],
+                )
+            )
+
+            fig.update_layout(
+                title='task',
+                xaxis_nticks=delta.days + 1
+            )
+            fig.update_traces(showscale=False)
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
 
