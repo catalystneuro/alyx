@@ -156,8 +156,8 @@ class BuffaloSubjectAdmin(BaseAdmin):
             "Session",
             self.add_session(obj) +
             self.see_subject_sessions(obj) +
-            self.load_sessions(obj) +
             self.load_tasks(obj) +
+            self.load_sessions(obj) +
             self.session_queries(obj)
         )
         electrodes_options = dropdown.format(
@@ -262,7 +262,8 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
     extra = 0
     inlines = [SessionDataNestedsetInline]
     ordering = ("task_sequence",)
-    
+
+
 def TemplateInitialDataAddChannelRecording(data, num_forms):
     class AlwaysChangedModelForm(ModelForm):
         def has_changed(self):

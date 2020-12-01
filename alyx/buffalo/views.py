@@ -28,7 +28,7 @@ from .utils import (
     get_tasks_info,
     get_task_startime,
 )
-from .constants import TASK_CELLS, SESSIONS_FILE_COLUMNS
+from .constants import TASK_CELLS, CATEGORIES_KEY_WORDS
 from actions.models import Session, Weighing
 from data.models import DatasetType
 from .models import (
@@ -66,6 +66,7 @@ from .utils import (
     ALIVE_VALUES,
     MAYBE_VALUES,
     NOT_SAVE_VALUES,
+    get_sessions_file_columns,
 )
 
 from .tasks import sync_electrodelogs_device
@@ -190,9 +191,13 @@ class SessionDetails(TemplateView):
         for session_task in all_session_tasks:
             session_task_id = session_task["task__id"]
 
-            session_task_datasets = BuffaloDataset.objects.filter(
-                session_task=session_task["id"]
-            ).values("file_name", "collection", "dataset_type__name")
+            session_task_datasets = (
+                BuffaloDataset.objects.filter(session_task=session_task["id"])
+                .values(
+                    "file_name", "collection", "dataset_type__name", "created_datetime"
+                )
+                .order_by("created_datetime")
+            )
             if session_task_id in session_task_dataset_type:
                 session_task_dataset_type[session_task["task_sequence"]].append(
                     session_task_datasets
@@ -338,7 +343,9 @@ class ElectrodeLogBulkLoadView(FormView):
             if not settings.TESTING:
                 sync_electrodelogs_device.send(str(device.id))
             messages.success(request, "File loaded successful.")
-            messages.info(request, "The platform is syncing the stl/electrodelogs info.")
+            messages.info(
+                request, "The platform is syncing the stl/electrodelogs info."
+            )
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
@@ -392,7 +399,9 @@ class ChannelRecordingBulkLoadView(FormView):
                             )
                         sharp_waves = []
                         spikes = []
-                        electrodes = list(Electrode.objects.filter(device__subject=subject))
+                        electrodes = list(
+                            Electrode.objects.filter(device__subject=subject)
+                        )
                         for key, record_data in session_data["records"].items():
                             save = True
                             electrode = None
@@ -421,13 +430,18 @@ class ChannelRecordingBulkLoadView(FormView):
                                 elif record_data["value"] in NOT_SAVE_VALUES:
                                     save = False
                             if "ripples" in record_data.keys():
-                                new_cr.ripples = "yes" if record_data["ripples"] is True else ""
+                                new_cr.ripples = (
+                                    "yes" if record_data["ripples"] is True else ""
+                                )
                             if (
                                 "sharp_waves" in record_data.keys() and
                                 record_data["sharp_waves"] is True
                             ):
                                 sharp_waves.append(key)
-                            if "spikes" in record_data.keys() and record_data["spikes"] is True:
+                            if (
+                                "spikes" in record_data.keys() and
+                                record_data["spikes"] is True
+                            ):
                                 spikes.append(key)
                             if save:
                                 new_cr.save()
@@ -649,9 +663,10 @@ class SessionsLoadView(FormView):
         if form.is_valid():
             subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
-            sessions = get_sessions_from_file(form.cleaned_data.get("file"))
+            sessions = get_sessions_from_file(form.cleaned_data.get("file"), subject)
             subject_sessions = BuffaloSession.objects.filter(subject=subject)
             tasks = list(Task.objects.all())
+            SESSIONS_FILE_COLUMNS = get_sessions_file_columns(subject)
             try:
                 with transaction.atomic():
                     for session in sessions:
@@ -660,26 +675,44 @@ class SessionsLoadView(FormView):
                             0 if not session[food_index] else session[food_index]
                         )
                         food, _ = FoodType.objects.get_or_create(name="chow", unit="ml")
-                        newsession_name = f"{session['0_Date (mm/dd/yyyy)']}_{subject}"
+                        new_session_date = f"{session['0_Date (mm/dd/yyyy)'].date()}T{datetime.min.time()}"
+                        newsession_name = f"{new_session_date}_{subject}"
+                        newsession_start_date = (
+                            session["0_Date (mm/dd/yyyy)"].date().strftime("%Y-%m-%d")
+                        )
                         newsession_chamber_cleaning = session[
                             "51_Chamber Cleaning"
                         ].strip()
                         newsession = None
+                        narrative = session["6_General Comments"]
+                        pump_setting = (
+                            None
+                            if not session["4_Pump Setting"]
+                            else session["4_Pump Setting"]
+                        )
+                        chamber_cleaning = (
+                            None
+                            if not newsession_chamber_cleaning
+                            else newsession_chamber_cleaning.lower()
+                        )
                         for subject_session in subject_sessions:
-                            if subject_session.name == newsession_name:
+                            if (
+                                subject_session.start_time.date().strftime("%Y-%m-%d") ==
+                                newsession_start_date
+                            ):
                                 newsession = subject_session
+                                newsession.narrative = narrative
+                                newsession.pump_setting = pump_setting
+                                newsession.chamber_cleaning = chamber_cleaning
+                                newsession.save()
                                 break
                         if newsession is None:
                             newsession = BuffaloSession.objects.create(
                                 subject=subject,
                                 name=newsession_name,
-                                narrative=session["6_General Comments"],
-                                pump_setting=None
-                                if not session["4_Pump Setting"]
-                                else session["4_Pump Setting"],
-                                chamber_cleaning=None
-                                if not newsession_chamber_cleaning
-                                else newsession_chamber_cleaning.lower(),
+                                narrative=narrative,
+                                pump_setting=pump_setting,
+                                chamber_cleaning=chamber_cleaning,
                                 start_time=session["0_Date (mm/dd/yyyy)"],
                             )
                         if session["1_Handler Initials"].strip():
@@ -709,16 +742,21 @@ class SessionsLoadView(FormView):
                             date_time=session["0_Date (mm/dd/yyyy)"],
                         )
                         # Creates the Menstruation log
-                        if session["5_Menstration"].strip() == "yes":
-                            subject_mentruation_logs = MenstruationLog.objects.filter(
-                                subject=subject, session=newsession
-                            )
-                            if not subject_mentruation_logs:
-                                MenstruationLog.objects.create(
-                                    subject=subject,
-                                    menstruation=True,
-                                    session=newsession,
+                        try:
+                            if session["5_Menstration"].strip() == "yes":
+                                subject_mentruation_logs = (
+                                    MenstruationLog.objects.filter(
+                                        subject=subject, session=newsession
+                                    )
                                 )
+                                if not subject_mentruation_logs:
+                                    MenstruationLog.objects.create(
+                                        subject=subject,
+                                        menstruation=True,
+                                        session=newsession,
+                                    )
+                        except:
+                            pass
                         session_tasks = []
                         task_secuence = 1
                         for task_cell in TASK_CELLS:
@@ -735,6 +773,7 @@ class SessionsLoadView(FormView):
                                     if t.name == session[task_name_index]:
                                         task = t
                                         break
+
                                 if task is None:
                                     task = Task.objects.create(
                                         name=session[task_name_index]
@@ -757,34 +796,77 @@ class SessionsLoadView(FormView):
                                 )
                                 task_secuence += 1
                                 session_tasks.append(task_info)
+                        ordered_tasks = []
+                        existing = []
+                        existing_session_tasks = list(
+                            SessionTask.objects.filter(session=newsession)
+                        )
                         if session_tasks:
-                            existing_session_tasks = list(
-                                SessionTask.objects.filter(session=newsession)
-                            )
+                            default_secuence = 100
                             for task in session_tasks:
-                                session_task = None
+                                default_secuence = default_secuence + 1
+                                existe = False
                                 for exist_session_task in existing_session_tasks:
+                                    default_secuence = default_secuence + 1
                                     if (
-                                        task["task"] == exist_session_task.task
-                                        and task["task_sequence"]
-                                        == exist_session_task.task_sequence
+                                        task["task"] == exist_session_task.task and
+                                        task["start_time"] == exist_session_task.start_time
                                     ):
-                                        session_task = exist_session_task
-                                        break
-                                if session_task is None:
+                                        existe = True
+                                        if task["filename"]:
+                                            BuffaloDataset.objects.create(
+                                                file_name=task["filename"],
+                                                session_task=exist_session_task,
+                                            )
+                                    if {
+                                        "start_time": exist_session_task.start_time,
+                                        "task": exist_session_task.task,
+                                        "session_task": exist_session_task,
+                                    } not in existing:
+                                        exist_session_task.task_sequence = (
+                                            exist_session_task.task_sequence * 10
+                                        )
+                                        exist_session_task.save()
+                                        existing.append(
+                                            {
+                                                "start_time": exist_session_task.start_time,
+                                                "task": exist_session_task.task,
+                                                "session_task": exist_session_task,
+                                            }
+                                        )
+                                if not existe:
+                                    if task not in ordered_tasks:
+                                        ordered_tasks.append(task)
+                            all_tasks = ordered_tasks + existing
+                            if not all_tasks:
+                                all_tasks = session_tasks
+                            else:
+                                try:
+                                    all_tasks.sort(key=get_task_startime)
+                                except:
+                                    pass
+                            for task in all_tasks:
+                                if "session_task" in task.keys():
+                                    task["session_task"].task_sequence = (
+                                        all_tasks.index(task) + 1
+                                    )
+                                    task["session_task"].save()
+                                else:
                                     session_task = SessionTask.objects.create(
                                         task=task["task"],
                                         general_comments=task["general_comments"],
-                                        session=task["session"],
-                                        task_sequence=task["task_sequence"],
+                                        session=newsession,
+                                        task_sequence=all_tasks.index(task) + 1,
                                         start_time=task["start_time"],
                                     )
-                                existing_session_tasks.append(session_task)
-                                if task["filename"]:
-                                    BuffaloDataset.objects.get_or_create(
-                                        file_name=task["filename"],
-                                        session_task=session_task,
-                                    )
+                                    if task["filename"]:
+                                        import pdb
+
+                                        pdb.set_trace()
+                                        BuffaloDataset.objects.create(
+                                            file_name=task["filename"],
+                                            session_task=session_task,
+                                        )
             except DatabaseError:
                 messages.error(
                     request,
@@ -819,22 +901,34 @@ class TasksLoadView(FormView):
         if form.is_valid():
             subject_id = form.cleaned_data["subject"]
             subject = BuffaloSubject.objects.get(pk=subject_id)
-            tasks_info = get_tasks_info(form.cleaned_data.get("file"))
+            tasks_info = get_tasks_info(form.cleaned_data.get("file"), subject)
             subject_sessions = BuffaloSession.objects.filter(subject=subject)
             tasks = list(Task.objects.all())
-            tasks_categories = TaskCategory.objects.all()
+            tasks_categories = {}
+            tasks_categories["pseudodiscrete"] = TaskCategory.objects.filter(
+                name="ColorGame"
+            ).first()
+            for category in CATEGORIES_KEY_WORDS:
+                category_obj = TaskCategory.objects.filter(
+                    name__icontains=category
+                ).first()
+                if category_obj:
+                    tasks_categories[category] = category_obj
             for i, task_date in enumerate(tasks_info):
                 session = None
-                first_task_name = list(tasks_info[task_date][0].keys())[0]               
+                first_task_name = list(tasks_info[task_date][0].keys())[0]
                 for sess in subject_sessions:
                     if sess.start_time.strftime("%Y_%m_%d") == task_date:
                         session = sess
                         break
-                session_start_time = datetime.combine(tasks_info[task_date][0][first_task_name][0][
-                            "start_time"
-                    ], datetime.min.time())
+                session_start_time = datetime.combine(
+                    tasks_info[task_date][0][first_task_name][0]["start_time"],
+                    datetime.min.time(),
+                )
                 if session is None:
-                    newsession_name = f"{session_start_time.strftime('%Y-%m-%dT%H:%M:%S')}_{subject}"
+                    newsession_name = (
+                        f"{session_start_time.strftime('%Y-%m-%dT%H:%M:%S')}_{subject}"
+                    )
                     session = BuffaloSession.objects.create(
                         subject=subject,
                         name=newsession_name,
@@ -843,8 +937,8 @@ class TasksLoadView(FormView):
                 for i, task_info in enumerate(tasks_info[task_date]):
                     training = False
                     task_name = list(task_info.keys())[0]
-                    if 'training' in task_name.lower():
-                        task_name = 'Training'
+                    if "training" in task_name.lower():
+                        task_name = "Training"
                         training = True
                     new_task = None
                     for t in tasks:
@@ -853,29 +947,30 @@ class TasksLoadView(FormView):
                             break
                     if new_task is None:
                         task_category = None
-                        for category in tasks_categories:
-                            if category.name.lower() in task_name.lower():
-                                task_category = category
+                        for category, value in tasks_categories.items():
+                            if category in task_name.lower():
+                                if category == "colorgame":
+                                    task_category = value
+                                else:
+                                    task_category = value
                                 break
                         new_task = Task.objects.create(
-                            name=task_name,
-                            category=task_category,
-                            training=training
+                            name=task_name, category=task_category, training=training
                         )
                         tasks.append(new_task)
                     task_name = list(task_info.keys())[0]
                     try:
-                        session_task = SessionTask.objects.create(
+                        session_task, _ = SessionTask.objects.get_or_create(
                             task=new_task,
                             session=session,
-                            task_sequence=i+1,
+                            task_sequence=i + 1,
                             start_time=task_info[task_name][0]["start_time"],
                         )
                     except IntegrityError:
                         session_task = SessionTask.objects.filter(
                             task=new_task,
                             session=session,
-                            task_sequence=i+1,
+                            task_sequence=i + 1,
                             start_time=task_info[task_name][0]["start_time"],
                         ).first()
 
@@ -885,7 +980,8 @@ class TasksLoadView(FormView):
                         )
                         BuffaloDataset.objects.get_or_create(
                             dataset_type=dataset_type,
-                            session_task=session_task
+                            session_task=session_task,
+                            created_datetime=t_info["start_time"],
                         )
             return self.form_valid(form)
         else:

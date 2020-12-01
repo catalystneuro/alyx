@@ -156,9 +156,14 @@
                                         {% if dt.file_name %}
                                             {{dt.collection|default:""}}/{{dt.file_name|default:""}}
                                         {% endif %}
+                                        {% endfor %}
                                         </td>
-                                        <td class="col-sm-3">
-                                            <span style="">{{dt.dataset_type__name}}</span>
+                                        <td class="col-sm-3" style="line-height: 20px;">
+                                        {% for dt in s.1.0%}
+                                            {% ifnotequal dt.dataset_type__name "unknown" %}
+                                                <span style="font-weight: bold;">{{dt.dataset_type__name}}</span>
+                                                <span>{{dt.created_datetime|date:"D d M Y H:i:s"}}</span>
+                                            {% endifnotequal %}
                                          <br>
                                         {% endfor %}
                                         </td>
