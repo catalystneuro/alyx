@@ -562,7 +562,10 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
 
         if subject is not None:
             subject = BuffaloSubject.objects.get(pk=subject)
-            session_name = f"{datetime.today().isoformat()}_{subject.nicknamesafe()}"
+            today = datetime.today()
+            session_name = (
+                f"{today.strftime('%Y-%m-%dT%H:%M:%S')}_{subject.nicknamesafe()}"
+            )
             form.base_fields["name"].initial = session_name
             form.base_fields["subject"].initial = subject
         return form

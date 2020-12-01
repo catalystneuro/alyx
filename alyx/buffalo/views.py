@@ -47,6 +47,7 @@ from .models import (
     FoodType,
     MenstruationLog,
     Device,
+    Platform,
 )
 from .forms import (
     TaskForm,
@@ -66,6 +67,7 @@ from .utils import (
     ALIVE_VALUES,
     MAYBE_VALUES,
     NOT_SAVE_VALUES,
+    NOT_SAVE_TASKS,
     get_sessions_file_columns,
 )
 
@@ -465,7 +467,7 @@ class ChannelRecordingBulkLoadView(FormView):
                             session.needs_review = False
                         else:
                             session.needs_review = True
-                        session.save()
+                        session.save(block_table=False)
             except DatabaseError:
                 messages.error(
                     request,
@@ -667,6 +669,7 @@ class SessionsLoadView(FormView):
             subject_sessions = BuffaloSession.objects.filter(subject=subject)
             tasks = list(Task.objects.all())
             SESSIONS_FILE_COLUMNS = get_sessions_file_columns(subject)
+            platforms = list(Platform.objects.all())
             try:
                 with transaction.atomic():
                     for session in sessions:
@@ -723,7 +726,7 @@ class SessionsLoadView(FormView):
                                 newsession.users.set(session_user_obj)
                             else:
                                 newsession.unknown_user = session["1_Handler Initials"]
-                                newsession.save()
+                                newsession.save(block_table=False)
                         # If the session has weight creates the weight log
                         weight_index = "2_Weight (kg)"
                         if session[weight_index]:
@@ -768,6 +771,8 @@ class SessionsLoadView(FormView):
                             )
                             task = None
                             if session[task_name_index]:
+                                if session[task_name_index].lower().strip() in NOT_SAVE_TASKS:
+                                    continue
                                 task_info = {}
                                 for t in tasks:
                                     if t.name == session[task_name_index]:
@@ -778,6 +783,19 @@ class SessionsLoadView(FormView):
                                     task = Task.objects.create(
                                         name=session[task_name_index]
                                     )
+                                if task.name.strip().endswith(".sav"):
+                                    platform = None
+                                    for p in platforms:
+                                        if p.name == "cortex":
+                                            platform = p
+                                    if platform is None:
+                                        platform = Platform.objects.create(
+                                            name="cortex"
+                                        )
+                                        platforms.append(platform)
+                                    if not task.platform:
+                                        task.platform = platform
+                                        task.save()
                                 tasks.append(task)
                                 task_info = {
                                     "task": task,

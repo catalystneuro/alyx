@@ -26,13 +26,18 @@ ALIVE_VALUES = ["sparse"]
 MAYBE_VALUES = ["0", "", "?", "NOISE", "noise"]
 NOT_SAVE_VALUES = ["not in"]
 OTHER_VALUES = ["5", "X", "11", "10"]
-VALID_VALUES = (NUMBER_OF_CELLS_VALUES +
-                DEAD_VALUES +
-                ALIVE_VALUES +
-                MAYBE_VALUES +
-                NOT_SAVE_VALUES +
-                OTHER_VALUES
-                )
+VALID_VALUES = (
+    NUMBER_OF_CELLS_VALUES +
+    DEAD_VALUES +
+    ALIVE_VALUES +
+    MAYBE_VALUES +
+    NOT_SAVE_VALUES +
+    OTHER_VALUES
+)
+NOT_SAVE_TASKS = [
+    "mid-day break",
+    "done, home"
+]
 
 
 def is_date_session(value):
