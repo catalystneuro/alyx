@@ -878,9 +878,6 @@ class SessionsLoadView(FormView):
                                         start_time=task["start_time"],
                                     )
                                     if task["filename"]:
-                                        import pdb
-
-                                        pdb.set_trace()
                                         BuffaloDataset.objects.create(
                                             file_name=task["filename"],
                                             session_task=session_task,
@@ -926,81 +923,89 @@ class TasksLoadView(FormView):
             tasks_categories["pseudodiscrete"] = TaskCategory.objects.filter(
                 name="ColorGame"
             ).first()
-            for category in CATEGORIES_KEY_WORDS:
-                category_obj = TaskCategory.objects.filter(
-                    name__icontains=category
-                ).first()
-                if category_obj:
-                    tasks_categories[category] = category_obj
-            for i, task_date in enumerate(tasks_info):
-                session = None
-                first_task_name = list(tasks_info[task_date][0].keys())[0]
-                for sess in subject_sessions:
-                    if sess.start_time.strftime("%Y_%m_%d") == task_date:
-                        session = sess
-                        break
-                session_start_time = datetime.combine(
-                    tasks_info[task_date][0][first_task_name][0]["start_time"],
-                    datetime.min.time(),
-                )
-                if session is None:
-                    newsession_name = (
-                        f"{session_start_time.strftime('%Y-%m-%dT%H:%M:%S')}_{subject}"
-                    )
-                    session = BuffaloSession.objects.create(
-                        subject=subject,
-                        name=newsession_name,
-                        start_time=session_start_time,
-                    )
-                for i, task_info in enumerate(tasks_info[task_date]):
-                    training = False
-                    task_name = list(task_info.keys())[0]
-                    if "training" in task_name.lower():
-                        task_name = "Training"
-                        training = True
-                    new_task = None
-                    for t in tasks:
-                        if task_name.lower() == t.name.lower():
-                            new_task = t
-                            break
-                    if new_task is None:
-                        task_category = None
-                        for category, value in tasks_categories.items():
-                            if category in task_name.lower():
-                                if category == "colorgame":
-                                    task_category = value
-                                else:
-                                    task_category = value
-                                break
-                        new_task = Task.objects.create(
-                            name=task_name, category=task_category, training=training
-                        )
-                        tasks.append(new_task)
-                    task_name = list(task_info.keys())[0]
-                    try:
-                        session_task, _ = SessionTask.objects.get_or_create(
-                            task=new_task,
-                            session=session,
-                            task_sequence=i + 1,
-                            start_time=task_info[task_name][0]["start_time"],
-                        )
-                    except IntegrityError:
-                        session_task = SessionTask.objects.filter(
-                            task=new_task,
-                            session=session,
-                            task_sequence=i + 1,
-                            start_time=task_info[task_name][0]["start_time"],
+            try:
+                with transaction.atomic():
+                    for category in CATEGORIES_KEY_WORDS:
+                        category_obj = TaskCategory.objects.filter(
+                            name__icontains=category
                         ).first()
+                        if category_obj:
+                            tasks_categories[category] = category_obj
+                    for i, task_date in enumerate(tasks_info):
+                        session = None
+                        first_task_name = list(tasks_info[task_date][0].keys())[0]
+                        for sess in subject_sessions:
+                            if sess.start_time.strftime("%Y_%m_%d") == task_date:
+                                session = sess
+                                break
+                        session_start_time = datetime.combine(
+                            tasks_info[task_date][0][first_task_name][0]["start_time"],
+                            datetime.min.time(),
+                        )
+                        if session is None:
+                            newsession_name = (
+                                f"{session_start_time.strftime('%Y-%m-%dT%H:%M:%S')}_{subject}"
+                            )
+                            session = BuffaloSession.objects.create(
+                                subject=subject,
+                                name=newsession_name,
+                                start_time=session_start_time,
+                            )
+                        for i, task_info in enumerate(tasks_info[task_date]):
+                            training = False
+                            task_name = list(task_info.keys())[0]
+                            if "training" in task_name.lower():
+                                task_name = "Training"
+                                training = True
+                            new_task = None
+                            for t in tasks:
+                                if task_name.lower() == t.name.lower():
+                                    new_task = t
+                                    break
+                            if new_task is None:
+                                task_category = None
+                                for category, value in tasks_categories.items():
+                                    if category in task_name.lower():
+                                        if category == "colorgame":
+                                            task_category = value
+                                        else:
+                                            task_category = value
+                                        break
+                                new_task = Task.objects.create(
+                                    name=task_name, category=task_category, training=training
+                                )
+                                tasks.append(new_task)
+                            task_name = list(task_info.keys())[0]
+                            try:
+                                session_task, _ = SessionTask.objects.get_or_create(
+                                    task=new_task,
+                                    session=session,
+                                    task_sequence=i + 1,
+                                    start_time=task_info[task_name][0]["start_time"],
+                                )
+                            except IntegrityError:
+                                session_task = SessionTask.objects.filter(
+                                    task=new_task,
+                                    session=session,
+                                    task_sequence=i + 1,
+                                    start_time=task_info[task_name][0]["start_time"],
+                                ).first()
 
-                    for i, t_info in enumerate(tasks_info[task_date][i][task_name]):
-                        dataset_type, _ = DatasetType.objects.get_or_create(
-                            name=t_info["dataset_type"]
-                        )
-                        BuffaloDataset.objects.get_or_create(
-                            dataset_type=dataset_type,
-                            session_task=session_task,
-                            created_datetime=t_info["start_time"],
-                        )
+                            for i, t_info in enumerate(tasks_info[task_date][i][task_name]):
+                                dataset_type, _ = DatasetType.objects.get_or_create(
+                                    name=t_info["dataset_type"]
+                                )
+                                BuffaloDataset.objects.get_or_create(
+                                    dataset_type=dataset_type,
+                                    session_task=session_task,
+                                    created_datetime=t_info["start_time"],
+                                )
+            except DatabaseError:
+                messages.error(
+                    request,
+                    "There has been an error in the database saving the Tasks",
+                )
+            messages.success(request, "File loaded successful.")
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
