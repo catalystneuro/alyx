@@ -119,3 +119,21 @@ START_TIME_CELLS = ["9", "13", "17", "21", "25", "29", "33", "37", "41"]
 TASK_CELLS = ["8", "12", "16", "20", "24", "28", "32", "36", "40"]
 
 CATEGORIES_KEY_WORDS = ["ymaze", "foraging", "arnov", "colorgame", "calibration"]
+
+DEAD_VALUES = ["dead", "dead?", "DEAD"]
+NUMBER_OF_CELLS_VALUES = ["1", "2", "3", "4"]
+ALIVE_VALUES = ["sparse"]
+MAYBE_VALUES = ["0", "", "?", "NOISE", "noise"]
+NOT_SAVE_VALUES = ["not in"]
+OTHER_VALUES = ["5", "X", "11", "10"]
+
+VALID_VALUES = (
+    NUMBER_OF_CELLS_VALUES +
+    DEAD_VALUES +
+    ALIVE_VALUES +
+    MAYBE_VALUES +
+    NOT_SAVE_VALUES +
+    OTHER_VALUES
+)
+
+NOT_SAVE_TASKS = ["mid-day break", "done, home"]

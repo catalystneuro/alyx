@@ -28,7 +28,16 @@ from .utils import (
     get_tasks_info,
     get_task_startime,
 )
-from .constants import TASK_CELLS, CATEGORIES_KEY_WORDS
+from .constants import (
+    TASK_CELLS,
+    CATEGORIES_KEY_WORDS,
+    DEAD_VALUES,
+    NUMBER_OF_CELLS_VALUES,
+    ALIVE_VALUES,
+    MAYBE_VALUES,
+    NOT_SAVE_VALUES,
+    NOT_SAVE_TASKS,
+)
 from actions.models import Session, Weighing
 from data.models import DatasetType
 from .models import (
@@ -61,16 +70,7 @@ from .forms import (
     TasksLoadForm,
 )
 
-from .utils import (
-    DEAD_VALUES,
-    NUMBER_OF_CELLS_VALUES,
-    ALIVE_VALUES,
-    MAYBE_VALUES,
-    NOT_SAVE_VALUES,
-    NOT_SAVE_TASKS,
-    get_sessions_file_columns,
-)
-
+from .utils import get_sessions_file_columns
 from .tasks import sync_electrodelogs_device
 
 
@@ -887,7 +887,7 @@ class SessionsLoadView(FormView):
                     request,
                     "There has been an error in the database saving the Sessions",
                 )
-            messages.success(request, "File loaded successful.")
+            messages.success(request, "File loaded successfully.")
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
@@ -1005,7 +1005,7 @@ class TasksLoadView(FormView):
                     request,
                     "There has been an error in the database saving the Tasks",
                 )
-            messages.success(request, "File loaded successful.")
+            messages.success(request, "File loaded successfully.")
             return self.form_valid(form)
         else:
             return self.form_invalid(form)
