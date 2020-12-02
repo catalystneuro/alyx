@@ -137,6 +137,7 @@
                             <th class="session-task-fields col-3" scope="col">Task Comments</th>
                             <th class="session-task-fields col-2" scope="col">Task Datetime (run)</th>
                             <th class="session-task-fields col-3" scope="col">Directory/File Name</th>
+                            <th class="session-task-fields col-3" scope="col">Dataset type</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -152,7 +153,18 @@
                                     {% ifequal session_task.task_sequence s.0 %}
                                         <td class="col-sm-3">
                                         {% for dt in s.1.0%}
-                                            {{dt.collection|default:""}}/{{dt.file_name|default:""}}<br>
+                                        {% if dt.file_name %}
+                                            {{dt.collection|default:""}}/{{dt.file_name|default:""}}
+                                        {% endif %}
+                                        {% endfor %}
+                                        </td>
+                                        <td class="col-sm-3" style="line-height: 20px;">
+                                        {% for dt in s.1.0%}
+                                            {% ifnotequal dt.dataset_type__name "unknown" %}
+                                                <span style="font-weight: bold;">{{dt.dataset_type__name}}</span>
+                                                <span>{{dt.created_datetime|date:"D d M Y H:i:s"}}</span>
+                                            {% endifnotequal %}
+                                         <br>
                                         {% endfor %}
                                         </td>
                                     {% endifequal %}

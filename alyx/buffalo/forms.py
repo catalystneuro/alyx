@@ -382,7 +382,7 @@ class SessionsLoadForm(forms.Form):
                 "The file name is different than the subject's nickname"
             )
 
-        validate_sessions_file(file)
+        validate_sessions_file(file, subject)
 
 
 class NeuralPhenomenaForm(forms.ModelForm):
@@ -422,3 +422,18 @@ class STLFileForm(forms.ModelForm):
             "stl_file",
             "subject"
         ]
+
+
+class TasksLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["csv"])])
+    subject = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        subject_code = file.name.split("_")[0]
+        subject = BuffaloSubject.objects.get(pk=cleaned_data.get("subject"))
+        if subject_code.lower() != subject.code.lower():
+            raise forms.ValidationError(
+                f"{subject_code} is not this subject's code."
+            )

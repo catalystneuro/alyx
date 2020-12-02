@@ -136,6 +136,10 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = f"/buffalo/buffalosession/?subject__id__exact={obj.id}"
         return self.link(url, "See Sessions")
 
+    def load_tasks(self, obj):
+        url = reverse("tasks-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Load tasks")
+
     def options(self, obj):
         dropdown = (
             """<div class="dropdown" style="display: inline-block;">
@@ -152,6 +156,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
             "Session",
             self.add_session(obj) +
             self.see_subject_sessions(obj) +
+            self.load_tasks(obj) +
             self.load_sessions(obj) +
             self.session_queries(obj)
         )
@@ -256,6 +261,7 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
     )
     extra = 0
     inlines = [SessionDataNestedsetInline]
+    ordering = ("task_sequence",)
 
 
 def TemplateInitialDataAddChannelRecording(data, num_forms):

@@ -1,9 +1,10 @@
 import csv
 import xlrd
 import re
-import datetime
+from datetime import datetime
 from datetime import timedelta
 from scipy.io import loadmat
+from io import TextIOWrapper
 
 from django.contrib.auth import get_user_model
 from django.db.models import Q
@@ -11,31 +12,14 @@ from django.db.models import Q
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from buffalo.constants import (
-    SESSIONS_FILE_COLUMNS,
+    SESSIONS_FILE_COLUMNS_V1,
+    SESSIONS_FILE_COLUMNS_V2,
     BOOLEAN_VALUES,
     BOOLEAN_CELLS,
     START_TIME_CELLS,
     NUMBER_CELLS,
+    VALID_VALUES
 )
-
-NUMBER_OF_CELLS_VALUES = ["1", "2", "3", "4"]
-DEAD_VALUES = ["dead", "dead?", "DEAD"]
-ALIVE_VALUES = ["sparse"]
-MAYBE_VALUES = ["0", "", "?", "NOISE", "noise"]
-NOT_SAVE_VALUES = ["not in"]
-OTHER_VALUES = ["5", "X", "11", "10"]
-VALID_VALUES = (
-    NUMBER_OF_CELLS_VALUES +
-    DEAD_VALUES +
-    ALIVE_VALUES +
-    MAYBE_VALUES +
-    NOT_SAVE_VALUES +
-    OTHER_VALUES
-)
-NOT_SAVE_TASKS = [
-    "mid-day break",
-    "done, home"
-]
 
 
 def is_date_session(value):
@@ -48,7 +32,7 @@ def is_date_session(value):
 
 def get_date_session(value):
     date = str(value)
-    session_date = datetime.datetime(
+    session_date = datetime(
         year=(int(date[0:2]) + 2000), month=int(date[2:4]), day=int(date[4:6])
     )
     return session_date
@@ -64,7 +48,7 @@ def get_value(value):
 
 def is_datetime(date, workbook):
     try:
-        datetime.datetime(*xlrd.xldate_as_tuple(date, workbook.datemode))
+        datetime(*xlrd.xldate_as_tuple(date, workbook.datemode))
         return True
 
     except:
@@ -170,16 +154,20 @@ def is_valid_time(time):
     return True
 
 
-def validate_sessions_file(file):
+def validate_sessions_file(file, subject):
     workbook = xlrd.open_workbook(file_contents=file.read())
     sessions_sheet = workbook.sheet_by_index(0)
     dates = {}
+    SESSIONS_FILE_COLUMNS = get_sessions_file_columns(subject)
+
     for i, column_name in enumerate(SESSIONS_FILE_COLUMNS):
         if SESSIONS_FILE_COLUMNS[i] != sessions_sheet.cell_value(0, i):
             error_message = f"""The column {i} should be {SESSIONS_FILE_COLUMNS[i]} and
             is {sessions_sheet.cell_value(0, i)} instead."""
             raise ValidationError(
-                error_message, code="invalid", params={"file": file},
+                error_message,
+                code="invalid",
+                params={"file": file},
             )
 
     for row in range(sessions_sheet.nrows)[1:]:
@@ -194,7 +182,6 @@ def validate_sessions_file(file):
                     )
         elif sessions_sheet.cell(row, 0).value in dates.keys():
             repeated_date_row = dates[sessions_sheet.cell(row, 0).value]
-            # import pdb; pdb.set_trace()
             raise ValidationError(
                 f"The row {row + 1} and the row {repeated_date_row + 1 } have the same date",
                 code="invalid",
@@ -240,20 +227,18 @@ def validate_sessions_file(file):
                     )
 
 
-def get_sessions_from_file(file):
+def get_sessions_from_file(file, subject):
     file.seek(0)
     workbook = xlrd.open_workbook(file_contents=file.read())
     sessions = []
     session = {}
     sessions_sheet = workbook.sheet_by_index(0)
-
+    SESSIONS_FILE_COLUMNS = get_sessions_file_columns(subject)
     for row in range(sessions_sheet.nrows)[1:]:
         session_date = sessions_sheet.cell(row, 0).value
         if not session_date:
             continue
-        session_date = datetime.datetime(
-            *xlrd.xldate_as_tuple(session_date, workbook.datemode)
-        )
+        session_date = datetime(*xlrd.xldate_as_tuple(session_date, workbook.datemode))
         session["0_Date (mm/dd/yyyy)"] = session_date
         for i, column_name in enumerate(SESSIONS_FILE_COLUMNS[1:]):
             i += 1
@@ -266,7 +251,9 @@ def get_sessions_from_file(file):
                         value, workbook.datemode
                     )
                     start_time = timedelta(
-                        hours=start_time.hour, minutes=start_time.minute
+                        hours=start_time.hour,
+                        minutes=start_time.minute,
+                        seconds=start_time.second,
                     )
                     value = session_date + start_time
                 else:
@@ -378,7 +365,7 @@ def get_electrodelog_info(file):
                     if str(date.value).strip():
                         if is_datetime(date.value, workbook):
                             log = {}
-                            log_datetime = datetime.datetime(
+                            log_datetime = datetime(
                                 *xlrd.xldate_as_tuple(date.value, workbook.datemode)
                             )
                             log["turns"] = float(turns.value)
@@ -476,7 +463,7 @@ def validate_channel_recording_file(file):
                             if col == 0:
                                 cell = sheet.cell(row, 0)
                                 try:
-                                    datetime.datetime(
+                                    datetime(
                                         *xlrd.xldate_as_tuple(
                                             cell.value, workbook.datemode
                                         )
@@ -586,7 +573,7 @@ def get_channelrecording_info(file, sufix):
                                 electrodes = (
                                     electrodes_cell.value.strip().strip(",").split(",")
                                 )
-                                date = datetime.datetime(
+                                date = datetime(
                                     *xlrd.xldate_as_tuple(
                                         date_cell.value, workbook.datemode
                                     )
@@ -623,7 +610,7 @@ def get_channelrecording_info(file, sufix):
                                 electrodes = (
                                     electrodes_cell.value.strip().strip(",").split(",")
                                 )
-                                date = datetime.datetime(
+                                date = datetime(
                                     *xlrd.xldate_as_tuple(
                                         date_cell.value, workbook.datemode
                                     )
@@ -634,7 +621,9 @@ def get_channelrecording_info(file, sufix):
                                     if date_str in sessions.keys():
                                         session = sessions[date_str]
                                         if ch_number in session["records"].keys():
-                                            session["records"][ch_number]["sharp_waves"] = True
+                                            session["records"][ch_number][
+                                                "sharp_waves"
+                                            ] = True
                                         else:
                                             session["records"][ch_number] = {
                                                 "sharp_waves": True
@@ -643,10 +632,8 @@ def get_channelrecording_info(file, sufix):
                                         sessions[date_str] = {
                                             "date": date,
                                             "records": {
-                                                ch_number: {
-                                                    "sharp_waves": True
-                                                }
-                                            }
+                                                ch_number: {"sharp_waves": True}
+                                            },
                                         }
                         # Spikes
                         elif col == 5:
@@ -660,7 +647,7 @@ def get_channelrecording_info(file, sufix):
                                 electrodes = (
                                     electrodes_cell.value.strip().strip(",").split(",")
                                 )
-                                date = datetime.datetime(
+                                date = datetime(
                                     *xlrd.xldate_as_tuple(
                                         date_cell.value, workbook.datemode
                                     )
@@ -692,7 +679,7 @@ def get_channelrecording_info(file, sufix):
                                 str(cell.value).strip() != ""
                             ):
                                 date_cell = sheet.cell(row, 0)
-                                date = datetime.datetime(
+                                date = datetime(
                                     *xlrd.xldate_as_tuple(
                                         date_cell.value, workbook.datemode
                                     )
@@ -711,3 +698,81 @@ def get_channelrecording_info(file, sufix):
                                     }
         sheet_number += 1
     return sessions
+
+
+def get_tasks_info(file, subject):
+
+    file.seek(0)
+    f = TextIOWrapper(file, encoding="ascii")
+    file_content = csv.reader(f)
+    tasks = {}
+    for i, file_row in file_content:
+        task_data = {}
+        if i:
+            task_info = file_row.split("_")
+            separate_extension = task_info[-1].split(".")[0]
+            task_info[-1] = separate_extension
+            year_index = None
+            log_index = None
+            name = ""
+            for word in task_info:
+                if word.lower().endswith("log") or word.lower() == "log":
+                    log_index = task_info.index(word)
+                    year_index = log_index + 1
+                    for i in range(1, log_index):
+                        name += f"{task_info[i]} "
+                    name = name.strip()
+                    break
+            try:
+                startdate = datetime(
+                    year=(int(task_info[year_index])),
+                    month=int(task_info[year_index + 1]),
+                    day=int(task_info[year_index + 2]),
+                    hour=int(task_info[year_index + 3]),
+                    minute=int(task_info[year_index + 4]),
+                    second=int(task_info[year_index + 5]),
+                )
+            except:
+                continue
+            str_startdate = startdate.strftime("%Y_%m_%d")
+            task_data = {
+                "name": name,
+                "dataset_type": task_info[log_index],
+                "start_time": startdate,
+            }
+            if (
+                str_startdate in tasks.keys()
+            ):  # and task_data not in tasks[str_startdate]:
+                try:
+                    if task_data not in tasks[str_startdate]:
+                        tasks[str_startdate].append(task_data)
+                except:
+                    tasks[str_startdate].update([task_data])
+            else:
+                tasks[str_startdate] = [task_data]
+    ordered_tasks = {}
+    for session_date in tasks:
+        tasks[session_date].sort(key=get_task_startime)
+        ordered_tasks.update({session_date: []})
+        for task in tasks[session_date]:
+            task_name = task["name"]
+            if ordered_tasks[session_date]:
+                if task_name not in ordered_tasks[session_date][-1]:
+                    ordered_tasks[session_date].append({task_name: [task]})
+                else:
+                    current_key = list(ordered_tasks[session_date][-1].keys())
+                    ordered_tasks[session_date][-1][current_key[0]].append(task)
+            else:
+                ordered_tasks[session_date].append({task_name: [task]})
+
+    return ordered_tasks
+
+
+def get_task_startime(task):
+    return task.get("start_time", None)
+
+
+def get_sessions_file_columns(subject):
+    if subject.sex == "F":
+        return SESSIONS_FILE_COLUMNS_V1
+    return SESSIONS_FILE_COLUMNS_V2

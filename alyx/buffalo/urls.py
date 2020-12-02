@@ -13,6 +13,7 @@ from buffalo.views import (
     PlotsView,
     SessionQueriesView,
     SessionsLoadView,
+    TasksLoadView,
 )
 
 urlpatterns = [
@@ -73,4 +74,9 @@ urlpatterns = [
         SessionsLoadView.as_view(),
         name="sessions-load",
     ),
+    path(
+        "tasks-load/<uuid:subject_id>",
+        TasksLoadView.as_view(),
+        name="tasks-load",
+    )
 ]
