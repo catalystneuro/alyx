@@ -678,7 +678,8 @@ class SessionsLoadView(FormView):
                             0 if not session[food_index] else session[food_index]
                         )
                         food, _ = FoodType.objects.get_or_create(name="chow", unit="ml")
-                        new_session_date = f"{session['0_Date (mm/dd/yyyy)'].date()}T{datetime.min.time()}"
+                        partial_date = session['0_Date (mm/dd/yyyy)'].date()
+                        new_session_date = f"{partial_date}T{datetime.min.time()}"
                         newsession_name = f"{new_session_date}_{subject}"
                         newsession_start_date = (
                             session["0_Date (mm/dd/yyyy)"].date().strftime("%Y-%m-%d")
