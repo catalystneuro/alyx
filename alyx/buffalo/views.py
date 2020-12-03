@@ -1037,6 +1037,7 @@ class FoodWeightView(View):
             subject = BuffaloSubject.objects.get(pk=subject_id)
             start_date = form.cleaned_data["start_date"]
             finish_date = form.cleaned_data["finish_date"]
+            food_type = form.cleaned_data["food_type"]
 
             sdate = datetime.date(
                 start_date.year,
@@ -1068,7 +1069,7 @@ class FoodWeightView(View):
                     ).first()
                     food = FoodLog.objects.filter(
                         session=session,
-                        food=form.cleaned_data["food_type"]
+                        food=food_type
                     ).first()
                     if weight:
                         weight_days[str(day)].append(weight.weight)
@@ -1118,12 +1119,24 @@ class FoodWeightView(View):
                 yaxis="y2"
             )
 
+            unit = ""
+            if food_type.unit:
+                unit = food_type.unit
+
             fig.add_trace(trace_weight, secondary_y=False)
             fig.add_trace(trace_food, secondary_y=True)
             fig.update_yaxes(rangemode="tozero")
             fig.update_layout(
                 autosize=True,
                 height=900,
+                yaxis={
+                    "color": "blue",
+                    "ticksuffix": " Kg"
+                },
+                yaxis2={
+                    "color": "red",
+                    "ticksuffix": f" {unit}"
+                },
             )
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
@@ -1178,7 +1191,7 @@ class ElectrodeLogPlotView(View):
                         date_time__month=day.month,
                         date_time__day=day.day,
                         electrode=electrode
-                    )
+                    ).order_by('date_time')
 
                     for elog in elogs:
                         elogs_days[str(day)].append(elog.turn)
@@ -1186,18 +1199,23 @@ class ElectrodeLogPlotView(View):
                     if not elogs_days[str(day)]:
                         elogs_days.pop(str(day))
 
-                
                 x_values = []
                 y_values = []
-                for key, value in elogs_days.items():
+
+                ordered_keys = sorted(elogs_days.keys())
+
+                for key in ordered_keys:
+                    value = elogs_days[key]
                     for e in value:
                         x_values.append(key)
                         y_values.append(e)
+
                 trace_turns = go.Scatter(
                     x=x_values,
                     y=y_values,
                     mode='lines+markers',
-                    name=f"electrode-{electrode.channel_number}"
+                    name=f"electrode-{electrode.channel_number}",
+                    line_shape='hv'
                 )
                 fig.add_trace(trace_turns)
             fig.update_yaxes(rangemode="tozero")
