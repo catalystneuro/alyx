@@ -919,7 +919,7 @@ def discrete_colorscale(bvals, colors):
     return dcolorscale
 
 
-def show_electrode_status(data, days):
+def show_electrode_status(data, days, breaks):
 
     state_labels = ['no data', 'no units', 'one unit', '2 units', '2+ units']
     nlabels = len(state_labels)
@@ -948,9 +948,10 @@ def show_electrode_status(data, days):
     layout = go.Layout(
         plot_bgcolor=('#fff'),
         margin=dict(t=40),
-        yaxis={'title': 'electrode #'}
+        yaxis={'title': 'electrode #'},
+        height=800,
+        xaxis=dict(tickmode='linear', tickangle=90, type='category')
     )
 
     fig = go.Figure(data=data, layout=layout)
-
     return fig

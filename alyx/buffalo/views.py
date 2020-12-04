@@ -1351,6 +1351,7 @@ class ElectrodeStatusPlotView(View):
             )
 
             global_status = []
+            day_used = []
             days = [sdate + datetime.timedelta(days=i) for i in range(delta.days + 1)]
 
             for electrode in electrodes:
@@ -1370,17 +1371,23 @@ class ElectrodeStatusPlotView(View):
                         ).first()
                         if ch_rec and ch_rec.number_of_cells:
                             electrode_status.append(ch_rec.number_of_cells)
+                            if day not in day_used:
+                                day_used.append(day)
                         else:
                             electrode_status.append(0)
                     else:
                         electrode_status.append(0)
+
                 global_status.append(electrode_status)
-            
-            print(days)
+
+            day_breaks = np.setdiff1d(days, day_used).tolist()
 
             data_np = np.array(global_status)
+            for day_b in day_breaks:
+                data_np = np.delete(data_np, days.index(day_b), axis=1)
+                days.remove(day_b)
 
-            fig = show_electrode_status(data_np, days)
+            fig = show_electrode_status(data_np, days, day_breaks)
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
 
