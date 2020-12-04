@@ -18,6 +18,7 @@ from buffalo.views import (
     FoodWeightView,
     ElectrodeLogPlotView,
     TaskPlotView,
+    ElectrodeStatusPlotView,
 )
 
 urlpatterns = [
@@ -102,5 +103,10 @@ urlpatterns = [
         "task-plot/<uuid:subject_id>",
         login_required(TaskPlotView.as_view(), login_url="/login/",),
         name="task-plot",
+    ),
+    path(
+        "electrode-status-plot/<uuid:subject_id>",
+        login_required(ElectrodeStatusPlotView.as_view(), login_url="/login/",),
+        name="electrode-status-plot",
     ),
 ]
