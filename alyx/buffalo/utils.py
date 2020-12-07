@@ -780,6 +780,8 @@ def get_sessions_file_columns(subject):
     if subject.sex == "F":
         return SESSIONS_FILE_COLUMNS_V1
     return SESSIONS_FILE_COLUMNS_V2
+
+
 def display_year(z,
                  year: int = None,
                  month_lines: bool = True,
@@ -837,9 +839,11 @@ def display_year(z,
             ),
             hoverinfo='skip'
         )
-        for datev, dow, wkn in zip(dates_in_year,
-                                  weekdays_in_year,
-                                  weeknumber_of_dates):
+        for datev, dow, wkn in zip(
+            dates_in_year,
+            weekdays_in_year,
+            weeknumber_of_dates
+        ):
             if datev.day == 1:
                 data += [
                     go.Scatter(
