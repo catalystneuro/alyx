@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from plotly.subplots import make_subplots
 import plotly.offline as opy
 import plotly.graph_objs as go
@@ -71,7 +71,6 @@ from .forms import (
     SessionQueriesForm,
     SessionsLoadForm,
     TasksLoadForm,
-    DashboardFilterForm,
     FoodWeightFilterForm,
     ElectrodelogsPlotFilterForm,
     TaskPlotFilterForm,
@@ -1043,12 +1042,12 @@ class FoodWeightView(View):
             finish_date = form.cleaned_data["finish_date"]
             food_type = form.cleaned_data["food_type"]
 
-            sdate = datetime.date(
+            sdate = date(
                 start_date.year,
                 start_date.month,
                 start_date.day
             )   # start date
-            edate = datetime.date(
+            edate = date(
                 finish_date.year,
                 finish_date.month,
                 finish_date.day
@@ -1058,7 +1057,7 @@ class FoodWeightView(View):
             weight_days = {}
             food_days = {}
             for i in range(delta.days + 1):
-                day = sdate + datetime.timedelta(days=i)
+                day = sdate + timedelta(days=i)
                 weight_days[str(day)] = []
                 food_days[str(day)] = []
                 session = BuffaloSession.objects.filter(
@@ -1167,12 +1166,12 @@ class ElectrodeLogPlotView(View):
             finish_date = form.cleaned_data["finish_date"]
             device = form.cleaned_data["device"]
 
-            sdate = datetime.date(
+            sdate = date(
                 start_date.year,
                 start_date.month,
                 start_date.day
             )   # start date
-            edate = datetime.date(
+            edate = date(
                 finish_date.year,
                 finish_date.month,
                 finish_date.day
@@ -1186,7 +1185,7 @@ class ElectrodeLogPlotView(View):
             fig = make_subplots()
             for electrode in electrodes:
                 for i in range(delta.days + 1):
-                    day = sdate + datetime.timedelta(days=i)
+                    day = sdate + timedelta(days=i)
                     elogs_days[str(day)] = []
 
                     elogs = ElectrodeLog.objects.filter(
@@ -1253,24 +1252,24 @@ class TaskPlotView(View):
 
             years_list = [i for i in range(start_date.year, finish_date.year + 1)]
 
-            sdate = datetime.date(
+            sdate = date(
                 start_date.year,
                 start_date.month,
                 start_date.day
             )
-            edate = datetime.date(
+            edate = date(
                 finish_date.year,
                 finish_date.month,
                 finish_date.day
             )
 
-            jan_1_fy = datetime.date(years_list[0], 1, 1)
+            jan_1_fy = date(years_list[0], 1, 1)
             delta_first_days = sdate - jan_1_fy
             before_days = []
             if delta_first_days.days > 0:
                 before_days = [0 for i in range(delta_first_days.days)]
 
-            dec_31_ly = datetime.date(years_list[len(years_list) - 1], 12, 31)
+            dec_31_ly = date(years_list[len(years_list) - 1], 12, 31)
             delta_last_days = dec_31_ly - edate
             after_days = []
             if delta_first_days.days > 0:
@@ -1280,7 +1279,7 @@ class TaskPlotView(View):
 
             task_days = []
             for i in range(delta.days + 1):
-                day = sdate + datetime.timedelta(days=i)
+                day = sdate + timedelta(days=i)
 
                 tasks = SessionTask.objects.filter(
                     session__start_time__year=day.year,
@@ -1326,12 +1325,12 @@ class ElectrodeStatusPlotView(View):
             finish_date = form.cleaned_data["finish_date"]
             device = form.cleaned_data["device"]
 
-            sdate = datetime.date(
+            sdate = date(
                 start_date.year,
                 start_date.month,
                 start_date.day
             )
-            edate = datetime.date(
+            edate = date(
                 finish_date.year,
                 finish_date.month,
                 finish_date.day
@@ -1345,12 +1344,12 @@ class ElectrodeStatusPlotView(View):
 
             global_status = []
             day_used = []
-            days = [sdate + datetime.timedelta(days=i) for i in range(delta.days + 1)]
+            days = [sdate + timedelta(days=i) for i in range(delta.days + 1)]
 
             for electrode in electrodes:
                 electrode_status = []
                 for i in range(delta.days + 1):
-                    day = sdate + datetime.timedelta(days=i)
+                    day = sdate + timedelta(days=i)
                     session = BuffaloSession.objects.filter(
                         start_time__year=day.year,
                         start_time__month=day.month,

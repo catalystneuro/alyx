@@ -1,7 +1,7 @@
 import csv
 import xlrd
 import re
-from datetime import datetime
+from datetime import datetime, date
 from datetime import timedelta
 from calendar import monthrange
 from scipy.io import loadmat
@@ -786,11 +786,11 @@ def display_year(z,
                  fig=None,
                  row: int = None):
     if year is None:
-        year = datetime.datetime.now().year
+        year = datetime.now().year
     data = np.ones(365) * np.nan
     data[:len(z)] = z
-    d1 = datetime.date(year, 1, 1)
-    d2 = datetime.date(year, 12, 31)
+    d1 = date(year, 1, 1)
+    d2 = date(year, 12, 31)
     delta = d2 - d1
     month_names = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -799,7 +799,7 @@ def display_year(z,
     month_days = [monthrange(year, month_number)[1] for month_number in range(1, 13)]
     month_positions = (np.cumsum(month_days) - 15) / 7
     # gives me a list with datetimes for each day a year
-    dates_in_year = [d1 + datetime.timedelta(i) for i in range(delta.days + 1)]
+    dates_in_year = [d1 + timedelta(i) for i in range(delta.days + 1)]
     # gives [0,1,2,3,4,5,6,0,1,2,3,4,5,6,…] (ticktext in xaxis dict translates this to weekdays
     weekdays_in_year = [i.weekday() for i in dates_in_year]
     # gives [1,1,1,1,1,1,1,2,2,2,2,2,2,2,…] name is self-explanatory
@@ -837,10 +837,10 @@ def display_year(z,
             ),
             hoverinfo='skip'
         )
-        for date, dow, wkn in zip(dates_in_year,
+        for datev, dow, wkn in zip(dates_in_year,
                                   weekdays_in_year,
                                   weeknumber_of_dates):
-            if date.day == 1:
+            if datev.day == 1:
                 data += [
                     go.Scatter(
                         x=[wkn - .5, wkn - .5],
