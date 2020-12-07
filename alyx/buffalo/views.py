@@ -1163,7 +1163,6 @@ class ElectrodeLogPlotView(View):
         subject_id = self.kwargs["subject_id"]
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
-            subject = BuffaloSubject.objects.get(pk=subject_id)
             start_date = form.cleaned_data["start_date"]
             finish_date = form.cleaned_data["finish_date"]
             device = form.cleaned_data["device"]
@@ -1240,7 +1239,6 @@ class TaskPlotView(View):
     template_name = "buffalo/task_plot.html"
 
     def get(self, request, *args, **kwargs):
-        subject_id = self.kwargs["subject_id"]
         form = self.form_class()
         return render(request, self.template_name, {"form": form})
 
@@ -1279,9 +1277,6 @@ class TaskPlotView(View):
                 after_days = [0 for i in range(1, delta_last_days.days + 1)]
 
             delta = edate - sdate
-
-            days = [str(sdate + datetime.timedelta(days=i)) for i in range(delta.days + 1)]
-            got_one = False
 
             task_days = []
             for i in range(delta.days + 1):
@@ -1331,8 +1326,6 @@ class ElectrodeStatusPlotView(View):
             finish_date = form.cleaned_data["finish_date"]
             device = form.cleaned_data["device"]
 
-            years_list = [i for i in range(start_date.year, finish_date.year + 1)]
-
             sdate = datetime.date(
                 start_date.year,
                 start_date.month,
@@ -1345,7 +1338,7 @@ class ElectrodeStatusPlotView(View):
             )
 
             delta = edate - sdate
-            elogs_days = {}
+
             electrodes = Electrode.objects.filter(
                 device=device
             )
