@@ -440,3 +440,59 @@ class TasksLoadForm(forms.Form):
             raise forms.ValidationError(
                 f"{subject_code} is not this subject's code."
             )
+
+
+class FoodWeightFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+
+    start_date = forms.DateField(initial=date.today)
+    finish_date = forms.DateField(initial=date.today)
+    food_type = forms.ModelChoiceField(queryset=FoodType.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        super(FoodWeightFilterForm, self).__init__(*args, **kwargs)
+        self.fields["food_type"].queryset = FoodType.objects.all()
+
+
+class ElectrodelogsPlotFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+
+    start_date = forms.DateField(initial=date.today)
+    finish_date = forms.DateField(initial=date.today)
+    stl = forms.ModelChoiceField(queryset=STLFile.objects.none())
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop("subject_id")
+        super(ElectrodelogsPlotFilterForm, self).__init__(*args, **kwargs)
+        self.fields["stl"].queryset = STLFile.objects.filter(subject=subject_id)
+        self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
+
+
+class TaskPlotFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+
+    start_date = forms.DateField(initial=date.today)
+    finish_date = forms.DateField(initial=date.today)
+    task = forms.ModelChoiceField(queryset=Task.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        super(TaskPlotFilterForm, self).__init__(*args, **kwargs)
+        self.fields["task"].queryset = Task.objects.all()
+
+
+class ElectrodeStatusPlotFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+
+    start_date = forms.DateField(initial=date.today)
+    finish_date = forms.DateField(initial=date.today)
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop("subject_id")
+        super(ElectrodeStatusPlotFilterForm, self).__init__(*args, **kwargs)
+        self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
