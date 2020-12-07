@@ -803,7 +803,7 @@ def display_year(z,
     # gives [0,1,2,3,4,5,6,0,1,2,3,4,5,6,…] (ticktext in xaxis dict translates this to weekdays
     weekdays_in_year = [i.weekday() for i in dates_in_year]
     # gives [1,1,1,1,1,1,1,2,2,2,2,2,2,2,…] name is self-explanatory
-    weeknumber_of_dates = [ 
+    weeknumber_of_dates = [
         int(i.strftime("%V")) if not (int(i.strftime("%V")) == 1 and i.month == 12) else 53
         for i in dates_in_year
     ]
