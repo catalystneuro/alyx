@@ -14,6 +14,10 @@ from buffalo.views import (
     SessionQueriesView,
     SessionsLoadView,
     TasksLoadView,
+    FoodWeightView,
+    ElectrodeLogPlotView,
+    TaskPlotView,
+    ElectrodeStatusPlotView,
 )
 
 urlpatterns = [
@@ -78,5 +82,25 @@ urlpatterns = [
         "tasks-load/<uuid:subject_id>",
         TasksLoadView.as_view(),
         name="tasks-load",
-    )
+    ),
+    path(
+        "food-weight-plot/<uuid:subject_id>",
+        login_required(FoodWeightView.as_view(), login_url="/login/",),
+        name="food-weight-plot",
+    ),
+    path(
+        "electrodelog-plot/<uuid:subject_id>",
+        login_required(ElectrodeLogPlotView.as_view(), login_url="/login/",),
+        name="electrodelog-plot",
+    ),
+    path(
+        "task-plot/<uuid:subject_id>",
+        login_required(TaskPlotView.as_view(), login_url="/login/",),
+        name="task-plot",
+    ),
+    path(
+        "electrode-status-plot/<uuid:subject_id>",
+        login_required(ElectrodeStatusPlotView.as_view(), login_url="/login/",),
+        name="electrode-status-plot",
+    ),
 ]
