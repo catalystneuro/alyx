@@ -78,10 +78,11 @@ def validate_mat_file(file, structure_name):
     try:
         mat_file = loadmat(file)
         electrodes = mat_file[structure_name].tolist()
+        check_type_and_len(electrodes)
         get_electrodes_clean(electrodes)
     except:
         raise ValidationError(
-            "Error loading the file: {}".format(file),
+            "Error loading the file: {} - Check the structure".format(file),
             code="invalid",
             params={"file": file},
         )
@@ -96,6 +97,16 @@ def get_struct_name(keys):
         return keys_list[0]
     return None
 
+
+def check_type_and_len(electrodes_mat):
+    electrodes_clean = []
+    for electrode in electrodes_mat:
+        channel = electrode[0][0].tolist()[0][0]
+        start_point = electrode[0][1].tolist()[0]
+        norms = electrode[0][2].tolist()[0]
+        assert type(channel) is int
+        assert len(start_point) == 3
+        assert len(norms) == 3
 
 def get_electrodes_clean(electrodes_mat):
     electrodes_clean = []

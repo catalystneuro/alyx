@@ -63,7 +63,8 @@ ADMIN_PAGES = (
             "Datasets",
             "Buffalo datasets",
             "Lab members",
-            "Buffalo async tasks"
+            "Buffalo async tasks",
+            "Devices",
         ],
     ),
 )

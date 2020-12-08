@@ -950,6 +950,11 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
             return self.readonly_fields + ("nickname", "unique_id", "name")
         return self.readonly_fields
 
+class DeviceInlineFormSet(BaseInlineFormSet): 
+    def __init__(self, *args, **kwargs): 
+        super(DeviceInline, self).__init__(*args, **kwargs) 
+        self.can_delete = False 
+
 
 class BuffaloDevice(admin.TabularInline):
     model = Device
@@ -962,6 +967,7 @@ class BuffaloDevice(admin.TabularInline):
     )
     readonly_fields = ("manage_electrodes",)
     extra = 0
+    formset = DeviceInlineFormSet
 
     def link(self, url, name):
         link_code = '<a class="button" href="{url}">{name}</a>'
@@ -1027,6 +1033,37 @@ class BuffaloDeviceSubjectAdmin(BaseAdmin):
 
     def __init__(self, *args, **kwargs):
         super(BuffaloDeviceSubjectAdmin, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
+
+
+class BuffaloDeviceAdmin(BaseAdmin):
+    change_form_template = "buffalo/change_form.html"
+
+    list_display = [
+        "subject",
+        "name",
+        "implantation_date",
+        "explantation_date",
+        "description",
+    ]
+
+    fields = [
+        "name",
+        "subject",
+        "implantation_date",
+        "explantation_date",
+        "description",
+    ]
+
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloDeviceAdmin, self).__init__(*args, **kwargs)
         if self.fields and "json" in self.fields:
             fields = list(self.fields)
             fields.remove("json")
@@ -1390,6 +1427,7 @@ admin.site.register(BuffaloElectrodeSubject, BuffaloElectrodeSubjectAdmin)
 admin.site.register(BuffaloElectrodeLogSubject, BuffaloElectrodeLogSubjectAdmin)
 admin.site.register(BuffaloDeviceSubject, BuffaloDeviceSubjectAdmin)
 admin.site.register(BuffaloElectrodeDevice, BuffaloElectrodeDeviceAdmin)
+admin.site.register(Device, BuffaloDeviceAdmin)
 admin.site.register(ElectrodeLog, BuffaloElectrodeLogAdmin)
 admin.site.register(BuffaloSession, BuffaloSessionAdmin)
 admin.site.register(WeighingLog, BuffaloWeight)

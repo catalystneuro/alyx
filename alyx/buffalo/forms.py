@@ -289,7 +289,7 @@ class ElectrodeBulkLoadForm(forms.Form):
 
 
 class ElectrodeLogBulkLoadForm(forms.Form):
-    file = forms.FileField(validators=[FileExtensionValidator(["xlsm"])])
+    file = forms.FileField(validators=[FileExtensionValidator(["xlsm", "xlsx"])])
     device = forms.ModelChoiceField(queryset=Device.objects.none())
     subject = forms.CharField(widget=forms.HiddenInput())
 
