@@ -147,7 +147,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
     def electrodelog_plot(self, obj):
         url = reverse("electrodelog-plot", kwargs={"subject_id": obj.id})
         return self.link(url, "Electrode log")
-    
+
     def task_plot(self, obj):
         url = reverse("task-plot", kwargs={"subject_id": obj.id})
         return self.link(url, "Tasks")
