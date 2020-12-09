@@ -96,7 +96,7 @@ h1 {    margin: 0 0 20px;
                 min_weight = '28.5rem'
             }
             $(this).find('.dropdown-menu').toggleClass('options').css('min-width', min_weight)
-            $('.dropdown-menu').last().css('left', '-151px')
+            $('.dropdown-toggle:contains(Visualizations)').siblings('.dropdown-menu').css('left', '-151px')
         })    
         $("#mininav").on('change', function (e) {
             var optionSelected = $("option:selected", this);
