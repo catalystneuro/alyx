@@ -128,3 +128,12 @@ $(window).on("load", function() {
     })
 </script>
 {% endblock %}
+
+{% block datepicker %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/datepicker/0.6.5/datepicker.min.js" integrity="sha256-/7FLTdzP6CfC1VBAj/rsp3Rinuuu9leMRGd354hvk0k=" crossorigin="anonymous"></script>
+    <script>
+        $("#id_date, #id_start_date, #id_finish_date").datepicker({
+            format:'dd/mm/yyyy',
+        });
+    </script>
+{% endblock %}

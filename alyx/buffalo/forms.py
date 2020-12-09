@@ -3,6 +3,8 @@ from django import forms
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
+from functools import partial
+
 
 from .utils import (
     validate_mat_file,
@@ -328,12 +330,13 @@ class ChannelRecordingBulkLoadForm(forms.Form):
 
 
 class PlotFilterForm(forms.Form):
+    DateInput = partial(forms.DateInput, {'class': 'datepicker'})
     cur_year = datetime.today().year
     year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
 
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
     device = forms.ModelChoiceField(queryset=Device.objects.none())
-    date = forms.DateField(initial=date.today)
+    date = forms.DateField(widget=DateInput())
     download_points = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):

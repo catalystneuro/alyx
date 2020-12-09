@@ -140,6 +140,22 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = reverse("tasks-load", kwargs={"subject_id": obj.id})
         return self.link(url, "Load tasks")
 
+    def food_weight_plot(self, obj):
+        url = reverse("food-weight-plot", kwargs={"subject_id": obj.id})
+        return self.link(url, "Food-Weight")
+
+    def electrodelog_plot(self, obj):
+        url = reverse("electrodelog-plot", kwargs={"subject_id": obj.id})
+        return self.link(url, "Electrode log")
+
+    def task_plot(self, obj):
+        url = reverse("task-plot", kwargs={"subject_id": obj.id})
+        return self.link(url, "Tasks")
+
+    def electrode_status_plot(self, obj):
+        url = reverse("electrode-status-plot", kwargs={"subject_id": obj.id})
+        return self.link(url, "Electrode Status")
+
     def options(self, obj):
         dropdown = (
             """<div class="dropdown" style="display: inline-block;">
@@ -164,12 +180,20 @@ class BuffaloSubjectAdmin(BaseAdmin):
             "Electrodes",
             self.set_electrodelogs_file(obj) + self.set_channelrecordings_file(obj)
         )
+        plot_options = dropdown.format(
+            "Visualizations",
+            self.plots(obj) +
+            self.food_weight_plot(obj) +
+            self.electrodelog_plot(obj) +
+            self.task_plot(obj) +
+            self.electrode_status_plot(obj)
+        )
         options_group = (
             self.daily_observations(obj) +
             session_options +
             electrodes_options +
             self.add_stl(obj) +
-            self.plots(obj) +
+            plot_options +
             self.manage_devices(obj)
         )
         return format_html(options_group)
