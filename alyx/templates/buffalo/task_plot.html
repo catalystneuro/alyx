@@ -28,9 +28,10 @@
                 {{ form.media.js }}
         </div>
         {% if graph %}
-        <div class="col-lg-4 offset-md-4 card card-body">
-            {{ graph|safe }}
-        </div>
+            <h5>Subject: {{subject_name}}</h5>
+            <div class="col-lg-4 offset-md-4 card card-body">
+                {{ graph|safe }}
+            </div>
         {% endif %}
     </div>
     {% block datepicker %}

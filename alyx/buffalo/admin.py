@@ -122,7 +122,7 @@ class BuffaloSubjectAdmin(BaseAdmin):
 
     def plots(self, obj):
         url = reverse("plots", kwargs={"subject_id": obj.id})
-        return self.link(url, "View plots")
+        return self.link(url, "3D plot")
 
     def session_queries(self, obj):
         url = reverse("session-queries", kwargs={"subject_id": obj.id})

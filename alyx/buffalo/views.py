@@ -501,6 +501,7 @@ class PlotsView(View):
 
     def post(self, request, *args, **kwargs):
         subject_id = self.kwargs["subject_id"]
+        subject_name = BuffaloSubject.objects.get(pk=subject_id)
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
             subject = BuffaloSubject.objects.get(pk=subject_id)
@@ -594,9 +595,13 @@ class PlotsView(View):
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
 
-            return render(request, self.template_name, {"form": form, "graph": graph})
+            return render(request, self.template_name, {
+                "form": form,
+                "graph": graph,
+                'subject_name': subject_name
+            })
 
-        return render(request, self.template_name, {"form": form})
+        return render(request, self.template_name, {"form": form, 'subject_name': subject_name})
 
 
 class SessionQueriesView(View):
@@ -1035,6 +1040,7 @@ class FoodWeightView(View):
 
     def post(self, request, *args, **kwargs):
         subject_id = self.kwargs["subject_id"]
+        subject_name = BuffaloSubject.objects.get(pk=subject_id)
         form = self.form_class(request.POST)
         if form.is_valid():
             subject = BuffaloSubject.objects.get(pk=subject_id)
@@ -1144,9 +1150,13 @@ class FoodWeightView(View):
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
 
-            return render(request, self.template_name, {"form": form, "graph": graph})
+            return render(request, self.template_name, {
+                "form": form,
+                "graph": graph,
+                "subject_name": subject_name
+            })
 
-        return render(request, self.template_name, {"form": form})
+        return render(request, self.template_name, {"form": form, "subject_name": subject_name})
 
 
 class ElectrodeLogPlotView(View):
@@ -1160,6 +1170,7 @@ class ElectrodeLogPlotView(View):
 
     def post(self, request, *args, **kwargs):
         subject_id = self.kwargs["subject_id"]
+        subject_name = BuffaloSubject.objects.get(pk=subject_id)
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
             start_date = form.cleaned_data["start_date"]
@@ -1228,9 +1239,13 @@ class ElectrodeLogPlotView(View):
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
 
-            return render(request, self.template_name, {"form": form, "graph": graph})
+            return render(request, self.template_name, {
+                "form": form,
+                "graph": graph,
+                "subject_name": subject_name
+            })
 
-        return render(request, self.template_name, {"form": form})
+        return render(request, self.template_name, {"form": form, 'subject_name': subject_name})
 
 
 class TaskPlotView(View):
@@ -1243,6 +1258,7 @@ class TaskPlotView(View):
 
     def post(self, request, *args, **kwargs):
         subject_id = self.kwargs["subject_id"]
+        subject_name = BuffaloSubject.objects.get(pk=subject_id)
         form = self.form_class(request.POST)
         if form.is_valid():
             subject = BuffaloSubject.objects.get(pk=subject_id)
@@ -1302,9 +1318,13 @@ class TaskPlotView(View):
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
 
-            return render(request, self.template_name, {"form": form, "graph": graph})
+            return render(request, self.template_name, {
+                "form": form,
+                "graph": graph,
+                "subject_name": subject_name
+            })
 
-        return render(request, self.template_name, {"form": form})
+        return render(request, self.template_name, {"form": form, 'subject_name': subject_name})
 
 
 class ElectrodeStatusPlotView(View):
@@ -1318,6 +1338,7 @@ class ElectrodeStatusPlotView(View):
 
     def post(self, request, *args, **kwargs):
         subject_id = self.kwargs["subject_id"]
+        subject_name = BuffaloSubject.objects.get(pk=subject_id)
         form = self.form_class(request.POST, subject_id=subject_id)
         if form.is_valid():
             subject = BuffaloSubject.objects.get(pk=subject_id)
@@ -1385,6 +1406,10 @@ class ElectrodeStatusPlotView(View):
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
 
-            return render(request, self.template_name, {"form": form, "graph": graph})
+            return render(request, self.template_name, {
+                "form": form,
+                "graph": graph,
+                "subject_name": subject_name
+            })
 
-        return render(request, self.template_name, {"form": form})
+        return render(request, self.template_name, {"form": form, 'subject_name': subject_name})
