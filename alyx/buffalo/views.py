@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from plotly.subplots import make_subplots
 import plotly.offline as opy
 import plotly.graph_objs as go
+import numpy as np
 import trimesh
 import json
 
@@ -27,6 +28,8 @@ from .utils import (
     get_channelrecording_info,
     get_tasks_info,
     get_task_startime,
+    display_years,
+    show_electrode_status,
 )
 from .constants import (
     TASK_CELLS,
@@ -68,6 +71,10 @@ from .forms import (
     SessionQueriesForm,
     SessionsLoadForm,
     TasksLoadForm,
+    FoodWeightFilterForm,
+    ElectrodelogsPlotFilterForm,
+    TaskPlotFilterForm,
+    ElectrodeStatusPlotFilterForm,
 )
 
 from .utils import get_sessions_file_columns
@@ -1016,3 +1023,366 @@ class TasksLoadView(FormView):
         subject_id = kwargs["data"]["subject"]
         sessions_subject_url = f"{self.success_url}/?subject__id__exact={subject_id}"
         return sessions_subject_url
+
+
+class FoodWeightView(View):
+    form_class = FoodWeightFilterForm
+    template_name = "buffalo/food_weight.html"
+
+    def get(self, request, *args, **kwargs):
+        form = self.form_class()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            start_date = form.cleaned_data["start_date"]
+            finish_date = form.cleaned_data["finish_date"]
+            food_type = form.cleaned_data["food_type"]
+
+            sdate = date(
+                start_date.year,
+                start_date.month,
+                start_date.day
+            )   # start date
+            edate = date(
+                finish_date.year,
+                finish_date.month,
+                finish_date.day
+            )
+
+            delta = edate - sdate
+            weight_days = {}
+            food_days = {}
+            for i in range(delta.days + 1):
+                day = sdate + timedelta(days=i)
+                weight_days[str(day)] = []
+                food_days[str(day)] = []
+                session = BuffaloSession.objects.filter(
+                    start_time__year=day.year,
+                    start_time__month=day.month,
+                    start_time__day=day.day,
+                    subject=subject
+                ).first()
+                if session:
+                    weight = WeighingLog.objects.filter(
+                        session=session
+                    ).first()
+                    food = FoodLog.objects.filter(
+                        session=session,
+                        food=food_type
+                    ).first()
+                    if weight:
+                        weight_days[str(day)].append(weight.weight)
+                    if food:
+                        food_days[str(day)].append(food.amount)
+
+                weights = WeighingLog.objects.filter(
+                    date_time__year=day.year,
+                    date_time__month=day.month,
+                    date_time__day=day.day,
+                    subject=subject,
+                ).values("weight")
+
+                foods = FoodLog.objects.filter(
+                    date_time__year=day.year,
+                    date_time__month=day.month,
+                    date_time__day=day.day,
+                    subject=subject,
+                ).values("amount")
+
+                for we in weights:
+                    weight_days[str(day)].append(we["weight"])
+
+                for fo in foods:
+                    food_days[str(day)].append(fo["amount"])
+
+                if not weight_days[str(day)]:
+                    weight_days.pop(str(day))
+
+                if not food_days[str(day)]:
+                    food_days.pop(str(day))
+
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+            y_weight = [weight[0] for weight in weight_days.values() if weight]
+            trace_weight = go.Scatter(
+                x=list(weight_days.keys()),
+                y=y_weight,
+                name="Weights",
+            )
+
+            y_food = [food[0] for food in food_days.values() if food]
+            trace_food = go.Scatter(
+                x=list(food_days.keys()),
+                y=y_food,
+                name="Food",
+                yaxis="y2"
+            )
+
+            unit = ""
+            if food_type.unit:
+                unit = food_type.unit
+
+            fig.add_trace(trace_weight, secondary_y=False)
+            fig.add_trace(trace_food, secondary_y=True)
+            fig.update_yaxes(rangemode="tozero")
+            fig.update_layout(
+                autosize=True,
+                height=900,
+                yaxis={
+                    "color": "blue",
+                    "ticksuffix": " Kg"
+                },
+                yaxis2={
+                    "color": "red",
+                    "ticksuffix": f" {unit}"
+                },
+            )
+
+            graph = opy.plot(fig, auto_open=False, output_type="div")
+
+            return render(request, self.template_name, {"form": form, "graph": graph})
+
+        return render(request, self.template_name, {"form": form})
+
+
+class ElectrodeLogPlotView(View):
+    form_class = ElectrodelogsPlotFilterForm
+    template_name = "buffalo/electrodelog_plot.html"
+
+    def get(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(subject_id=subject_id)
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST, subject_id=subject_id)
+        if form.is_valid():
+            start_date = form.cleaned_data["start_date"]
+            finish_date = form.cleaned_data["finish_date"]
+            device = form.cleaned_data["device"]
+
+            sdate = date(
+                start_date.year,
+                start_date.month,
+                start_date.day
+            )   # start date
+            edate = date(
+                finish_date.year,
+                finish_date.month,
+                finish_date.day
+            )
+
+            delta = edate - sdate
+            elogs_days = {}
+            electrodes = Electrode.objects.filter(
+                device=device
+            )
+            fig = make_subplots()
+            for electrode in electrodes:
+                for i in range(delta.days + 1):
+                    day = sdate + timedelta(days=i)
+                    elogs_days[str(day)] = []
+
+                    elogs = ElectrodeLog.objects.filter(
+                        date_time__year=day.year,
+                        date_time__month=day.month,
+                        date_time__day=day.day,
+                        electrode=electrode
+                    ).order_by('date_time')
+
+                    for elog in elogs:
+                        elogs_days[str(day)].append(elog.turn)
+
+                    if not elogs_days[str(day)]:
+                        elogs_days.pop(str(day))
+
+                x_values = []
+                y_values = []
+
+                ordered_keys = sorted(elogs_days.keys())
+
+                for key in ordered_keys:
+                    value = elogs_days[key]
+                    for e in value:
+                        x_values.append(key)
+                        y_values.append(e)
+
+                trace_turns = go.Scatter(
+                    x=x_values,
+                    y=y_values,
+                    mode='lines+markers',
+                    name=f"electrode-{electrode.channel_number}",
+                    line_shape='hv'
+                )
+                fig.add_trace(trace_turns)
+            fig.update_yaxes(rangemode="tozero")
+            fig.update_layout(
+                autosize=True,
+                height=900,
+            )
+
+            graph = opy.plot(fig, auto_open=False, output_type="div")
+
+            return render(request, self.template_name, {"form": form, "graph": graph})
+
+        return render(request, self.template_name, {"form": form})
+
+
+class TaskPlotView(View):
+    form_class = TaskPlotFilterForm
+    template_name = "buffalo/task_plot.html"
+
+    def get(self, request, *args, **kwargs):
+        form = self.form_class()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            start_date = form.cleaned_data["start_date"]
+            finish_date = form.cleaned_data["finish_date"]
+            task = form.cleaned_data["task"]
+
+            years_list = [i for i in range(start_date.year, finish_date.year + 1)]
+
+            sdate = date(
+                start_date.year,
+                start_date.month,
+                start_date.day
+            )
+            edate = date(
+                finish_date.year,
+                finish_date.month,
+                finish_date.day
+            )
+
+            jan_1_fy = date(years_list[0], 1, 1)
+            delta_first_days = sdate - jan_1_fy
+            before_days = []
+            if delta_first_days.days > 0:
+                before_days = [0 for i in range(delta_first_days.days)]
+
+            dec_31_ly = date(years_list[len(years_list) - 1], 12, 31)
+            delta_last_days = dec_31_ly - edate
+            after_days = []
+            if delta_first_days.days > 0:
+                after_days = [0 for i in range(1, delta_last_days.days + 1)]
+
+            delta = edate - sdate
+
+            task_days = []
+            for i in range(delta.days + 1):
+                day = sdate + timedelta(days=i)
+
+                tasks = SessionTask.objects.filter(
+                    session__start_time__year=day.year,
+                    session__start_time__month=day.month,
+                    session__start_time__day=day.day,
+                    session__subject=subject,
+                    task=task
+                )
+
+                if len(tasks) > 0:
+                    task_days.append(1)
+                else:
+                    task_days.append(0)
+
+            data_list = before_days + task_days + after_days
+
+            data_np = np.array(data_list)
+
+            fig = display_years(data_np, tuple(years_list))
+
+            graph = opy.plot(fig, auto_open=False, output_type="div")
+
+            return render(request, self.template_name, {"form": form, "graph": graph})
+
+        return render(request, self.template_name, {"form": form})
+
+
+class ElectrodeStatusPlotView(View):
+    form_class = ElectrodeStatusPlotFilterForm
+    template_name = "buffalo/electrode_status_plot.html"
+
+    def get(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(subject_id=subject_id)
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        subject_id = self.kwargs["subject_id"]
+        form = self.form_class(request.POST, subject_id=subject_id)
+        if form.is_valid():
+            subject = BuffaloSubject.objects.get(pk=subject_id)
+            start_date = form.cleaned_data["start_date"]
+            finish_date = form.cleaned_data["finish_date"]
+            device = form.cleaned_data["device"]
+
+            sdate = date(
+                start_date.year,
+                start_date.month,
+                start_date.day
+            )
+            edate = date(
+                finish_date.year,
+                finish_date.month,
+                finish_date.day
+            )
+
+            delta = edate - sdate
+
+            electrodes = Electrode.objects.filter(
+                device=device
+            )
+
+            global_status = []
+            day_used = []
+            days = [sdate + timedelta(days=i) for i in range(delta.days + 1)]
+
+            for electrode in electrodes:
+                electrode_status = []
+                for i in range(delta.days + 1):
+                    day = sdate + timedelta(days=i)
+                    session = BuffaloSession.objects.filter(
+                        start_time__year=day.year,
+                        start_time__month=day.month,
+                        start_time__day=day.day,
+                        subject=subject
+                    ).first()
+                    if session:
+                        ch_rec = ChannelRecording.objects.filter(
+                            session=session,
+                            electrode=electrode
+                        ).first()
+                        if ch_rec and ch_rec.number_of_cells:
+                            electrode_status.append(ch_rec.number_of_cells)
+                            if day not in day_used:
+                                day_used.append(day)
+                        else:
+                            electrode_status.append(0)
+                    else:
+                        electrode_status.append(0)
+
+                global_status.append(electrode_status)
+
+            day_breaks = np.setdiff1d(days, day_used).tolist()
+
+            data_np = np.array(global_status)
+            for day_b in day_breaks:
+                data_np = np.delete(data_np, days.index(day_b), axis=1)
+                days.remove(day_b)
+
+            fig = show_electrode_status(data_np, days, day_breaks)
+
+            graph = opy.plot(fig, auto_open=False, output_type="div")
+
+            return render(request, self.template_name, {"form": form, "graph": graph})
+
+        return render(request, self.template_name, {"form": form})
