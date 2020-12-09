@@ -103,7 +103,6 @@ def get_struct_name(keys):
 
 
 def check_type_and_len(electrodes_mat):
-    electrodes_clean = []
     for electrode in electrodes_mat:
         channel = electrode[0][0].tolist()[0][0]
         start_point = electrode[0][1].tolist()[0]
