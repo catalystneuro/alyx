@@ -1048,6 +1048,7 @@ class BuffaloDeviceAdmin(BaseAdmin):
         "implantation_date",
         "explantation_date",
         "description",
+        "updated",
     ]
 
     fields = [
@@ -1061,6 +1062,7 @@ class BuffaloDeviceAdmin(BaseAdmin):
     list_filter = [
         ("subject", RelatedDropdownFilter),
     ]
+    ordering = ("-updated",)
 
     def __init__(self, *args, **kwargs):
         super(BuffaloDeviceAdmin, self).__init__(*args, **kwargs)
