@@ -66,7 +66,7 @@ class ElectrodeLogsBulkLoadTests(TestCase):
             format="multipart",
         )
         self.assertContains(
-            resp, "File extension “mat” is not allowed. Allowed extensions are: xlsm."
+            resp, "File extension “mat” is not allowed. Allowed extensions are: xlsm, xlsx."
         )
 
     def test_upload_well(self):
