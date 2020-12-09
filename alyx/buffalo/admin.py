@@ -950,10 +950,11 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
             return self.readonly_fields + ("nickname", "unique_id", "name")
         return self.readonly_fields
 
-class DeviceInlineFormSet(BaseInlineFormSet): 
-    def __init__(self, *args, **kwargs): 
-        super(DeviceInlineFormSet, self).__init__(*args, **kwargs) 
-        self.can_delete = False 
+
+class DeviceInlineFormSet(BaseInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        super(DeviceInlineFormSet, self).__init__(*args, **kwargs)
+        self.can_delete = False
 
 
 class BuffaloDevice(admin.TabularInline):

@@ -112,6 +112,7 @@ def check_type_and_len(electrodes_mat):
         assert len(start_point) == 3
         assert len(norms) == 3
 
+
 def get_electrodes_clean(electrodes_mat):
     electrodes_clean = []
     for electrode in electrodes_mat:
