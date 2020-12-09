@@ -952,7 +952,7 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
 
 class DeviceInlineFormSet(BaseInlineFormSet): 
     def __init__(self, *args, **kwargs): 
-        super(DeviceInline, self).__init__(*args, **kwargs) 
+        super(DeviceInlineFormSet, self).__init__(*args, **kwargs) 
         self.can_delete = False 
 
 
