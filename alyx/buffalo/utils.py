@@ -800,26 +800,46 @@ def display_year(z,
                  row: int = None):
     if year is None:
         year = datetime.now().year
-    data = np.ones(365) * np.nan
+
+    initial_date = datetime(year, 1, 1)
+    final_date = datetime(year, 12, 31)
+    number_days = final_date - initial_date
+    data = np.ones(number_days.days + 1) * np.nan
     data[:len(z)] = z
-    d1 = date(year, 1, 1)
-    d2 = date(year, 12, 31)
-    delta = d2 - d1
+
     month_names = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ]
     month_days = [monthrange(year, month_number)[1] for month_number in range(1, 13)]
     month_positions = (np.cumsum(month_days) - 15) / 7
+
     # gives me a list with datetimes for each day a year
-    dates_in_year = [d1 + timedelta(i) for i in range(delta.days + 1)]
+    dates_in_year = [initial_date + timedelta(i) for i in range(number_days.days)]
     # gives [0,1,2,3,4,5,6,0,1,2,3,4,5,6,…] (ticktext in xaxis dict translates this to weekdays
     weekdays_in_year = [i.weekday() for i in dates_in_year]
     # gives [1,1,1,1,1,1,1,2,2,2,2,2,2,2,…] name is self-explanatory
-    weeknumber_of_dates = [
-        int(i.strftime("%V")) if not (int(i.strftime("%V")) == 1 and i.month == 12) else 53
-        for i in dates_in_year
-    ]
+
+    weeknumber_of_dates = []
+    last_week = 0
+    week_count = 1
+    for i, day_in_year in enumerate(dates_in_year):
+        weeknumber_of_dates.append(week_count)
+        iso_week = day_in_year.isocalendar()[1]
+        if i == 0:
+            last_week = iso_week
+        if iso_week != last_week:
+            last_week = iso_week
+            week_count += 1
+    
+    
+
+    #weeknumber_of_dates = [
+    #    int(i.strftime("%V")) if not (int(i.strftime("%V")) == 1 and i.month == 12) else 53
+    #    for i in dates_in_year
+    #]
+
+
     # gives something like list of strings like '2018-01-25' for each date.
     # Used in data trace to make good hovertext.
     text = [str(i) for i in dates_in_year]
@@ -827,6 +847,7 @@ def display_year(z,
     colorscale = [[False, '#eeeeee'], [True, '#76cf63']]
     if not np.count_nonzero(z):
         colorscale = [[False, '#eeeeee'], [True, '#eeeeee']]
+    #import pdb; pdb.set_trace()
     # handle end of year
     data = [
         go.Heatmap(
@@ -909,8 +930,16 @@ def display_year(z,
 
 def display_years(z, years):
     fig = make_subplots(rows=len(years), cols=1, subplot_titles=years)
+
+    year_days = []
+    for year in years:
+        initial_date = datetime(year, 1, 1)
+        final_date = datetime(year, 12, 31)
+        number_days = final_date - initial_date
+        year_days.append(number_days.days + 1)
+
     for i, year in enumerate(years):
-        data = z[i * 365: (i + 1) * 365]
+        data = z[sum(year_days[0 : i]) : sum(year_days[0 : i + 1]) ]
         display_year(data, year=year, fig=fig, row=i)
         fig.update_layout(height=250 * len(years))
     return fig
