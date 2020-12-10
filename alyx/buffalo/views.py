@@ -1262,23 +1262,23 @@ class TaskPlotView(View):
         form = self.form_class(request.POST)
         if form.is_valid():
             subject = BuffaloSubject.objects.get(pk=subject_id)
-            start_date = form.cleaned_data["start_date"]
-            finish_date = form.cleaned_data["finish_date"]
+            start_date = int(form.cleaned_data["start_date"])
+            finish_date = int(form.cleaned_data["finish_date"])
             task = form.cleaned_data["task"]
 
-            years_list = [i for i in range(start_date.year, finish_date.year + 1)]
+            years_list = [i for i in range(start_date, finish_date + 1)]
 
             sdate = date(
-                start_date.year,
-                start_date.month,
-                start_date.day
+                start_date,
+                1,
+                1
             )
             edate = date(
-                finish_date.year,
-                finish_date.month,
-                finish_date.day
+                finish_date,
+                12,
+                31
             )
-
+            """ import pdb; pdb.set_trace()
             jan_1_fy = date(years_list[0], 1, 1)
             delta_first_days = sdate - jan_1_fy
             before_days = []
@@ -1289,10 +1289,10 @@ class TaskPlotView(View):
             delta_last_days = dec_31_ly - edate
             after_days = []
             if delta_first_days.days > 0:
-                after_days = [0 for i in range(1, delta_last_days.days + 1)]
+                after_days = [0 for i in range(1, delta_last_days.days + 1)] """
 
             delta = edate - sdate
-
+            
             task_days = []
             for i in range(delta.days + 1):
                 day = sdate + timedelta(days=i)
@@ -1310,8 +1310,7 @@ class TaskPlotView(View):
                 else:
                     task_days.append(0)
 
-            data_list = before_days + task_days + after_days
-
+            data_list = task_days
             data_np = np.array(data_list)
 
             fig = display_years(data_np, tuple(years_list))

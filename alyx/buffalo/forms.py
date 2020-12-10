@@ -475,8 +475,8 @@ class TaskPlotFilterForm(forms.Form):
     cur_year = datetime.today().year
     year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
 
-    start_date = forms.DateField(initial=date.today)
-    finish_date = forms.DateField(initial=date.today)
+    start_date = forms.CharField()
+    finish_date = forms.CharField()
     task = forms.ModelChoiceField(queryset=Task.objects.none())
 
     def __init__(self, *args, **kwargs):
