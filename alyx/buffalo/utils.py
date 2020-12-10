@@ -934,7 +934,7 @@ def discrete_colorscale(bvals, colors):
     return dcolorscale
 
 
-def show_electrode_status(data, days, breaks):
+def show_electrode_status(data, days, electrodes, breaks):
 
     state_labels = ['no data', 'no units', 'one unit', '2 units', '2+ units']
     nlabels = len(state_labels)
@@ -949,12 +949,14 @@ def show_electrode_status(data, days, breaks):
         go.Heatmap(
             z=data,
             x=days,
+            y=electrodes,
             colorscale=dcolorsc,
             colorbar=dict(
                 thickness=10,
                 tickvals=tickvals,
                 ticktext=state_labels
             ),
+            hovertemplate='Date: %{x}<br>Electrode: %{y}<br>Units code: %{z}<extra></extra>',
             xgap=2,
             ygap=2
         ),
