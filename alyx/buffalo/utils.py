@@ -1,7 +1,7 @@
 import csv
 import xlrd
 import re
-from datetime import datetime, date
+from datetime import datetime
 from datetime import timedelta
 from calendar import monthrange
 from scipy.io import loadmat
@@ -97,7 +97,7 @@ def get_struct_name(keys):
     keys_list.remove("__version__")
     keys_list.remove("__globals__")
     keys_list.remove("__header__")
-    if len(keys_list) > 0:
+    if keys_list:
         return keys_list[0]
     return None
 
@@ -400,7 +400,7 @@ def get_electrodelog_info(file):
                                 log["notes"] = None
 
                             electrode["logs"].append(log)
-            if len(electrode["logs"]) > 0:
+            if electrode["logs"]:
                 electrodes.append(electrode)
         sheet_number += 1
     return electrodes
@@ -568,7 +568,7 @@ def get_channelrecording_info(file, sufix):
                                         save = False
                                 value = get_value(sheet.cell(row, col).value).strip()
                                 record = {"value": value}
-                                if len(value) > 0 and save:
+                                if value and save:
                                     session["records"][channel_number] = record
                     if bool(session["records"]):  # Check empty records
                         sessions[str(date)] = session
@@ -826,8 +826,8 @@ def display_year(z,
         weekday = day_in_year.weekday()
         if i != 0 and weekday == 0:
             week_count += 1
-        weeknumber_of_dates.append(week_count)  
-  
+        weeknumber_of_dates.append(week_count)
+
     # gives something like list of strings like '2018-01-25' for each date.
     # Used in data trace to make good hovertext.
     text = [str(i) for i in dates_in_year]
@@ -927,7 +927,7 @@ def display_years(z, years):
         year_days.append(number_days.days + 1)
 
     for i, year in enumerate(years):
-        data = z[sum(year_days[0 : i]) : sum(year_days[0 : i + 1]) ]
+        data = z[sum(year_days[0:i]):sum(year_days[0:i + 1])]
         display_year(data, year=year, fig=fig, row=i)
         fig.update_layout(height=250 * len(years))
     return fig
