@@ -1265,9 +1265,7 @@ class TaskPlotView(View):
             start_date = int(form.cleaned_data["start_date"])
             finish_date = int(form.cleaned_data["finish_date"])
             task = form.cleaned_data["task"]
-
             years_list = [i for i in range(start_date, finish_date + 1)]
-
             sdate = date(
                 start_date,
                 1,
@@ -1278,43 +1276,29 @@ class TaskPlotView(View):
                 12,
                 31
             )
-            """ import pdb; pdb.set_trace()
-            jan_1_fy = date(years_list[0], 1, 1)
-            delta_first_days = sdate - jan_1_fy
-            before_days = []
-            if delta_first_days.days > 0:
-                before_days = [0 for i in range(delta_first_days.days)]
-
-            dec_31_ly = date(years_list[len(years_list) - 1], 12, 31)
-            delta_last_days = dec_31_ly - edate
-            after_days = []
-            if delta_first_days.days > 0:
-                after_days = [0 for i in range(1, delta_last_days.days + 1)] """
-
             delta = edate - sdate
-            
+            all_tasks_dates = []
             task_days = []
-            for i in range(delta.days + 1):
-                day = sdate + timedelta(days=i)
-
-                tasks = SessionTask.objects.filter(
-                    session__start_time__year=day.year,
-                    session__start_time__month=day.month,
-                    session__start_time__day=day.day,
+            for year in years_list:
+                tasks_start_time = SessionTask.objects.filter(
+                    session__start_time__year=year,
                     session__subject=subject,
                     task=task
-                )
-
-                if len(tasks) > 0:
-                    task_days.append(1)
-                else:
-                    task_days.append(0)
+                ).values_list('start_time', flat=True).order_by('start_time')
+                if tasks_start_time:
+                    for t in tasks_start_time:
+                        all_tasks_dates.append(t.date())
+            if all_tasks_dates:
+                for i in range(delta.days + 1):
+                    day = sdate + timedelta(days=i)
+                    if day in all_tasks_dates:
+                        task_days.append(1)
+                    else:
+                        task_days.append(0)
 
             data_list = task_days
             data_np = np.array(data_list)
-
             fig = display_years(data_np, tuple(years_list))
-
             graph = opy.plot(fig, auto_open=False, output_type="div")
 
             return render(request, self.template_name, {
@@ -1396,7 +1380,7 @@ class ElectrodeStatusPlotView(View):
 
             data_np = np.array(global_status)
 
-            if len(data_np):
+            if data_np:
                 for day_b in day_breaks:
                     data_np = np.delete(data_np, days.index(day_b), axis=1)
                     days.remove(day_b)
