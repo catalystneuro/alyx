@@ -568,7 +568,7 @@ def get_channelrecording_info(file, sufix):
                                         save = False
                                 value = get_value(sheet.cell(row, col).value).strip()
                                 record = {"value": value}
-                                if value and save:
+                                if len(value) > 0 and save:
                                     session["records"][channel_number] = record
                     if bool(session["records"]):  # Check empty records
                         sessions[str(date)] = session

@@ -1287,7 +1287,8 @@ class TaskPlotView(View):
                 ).values_list('start_time', flat=True).order_by('start_time')
                 if tasks_start_time:
                     for t in tasks_start_time:
-                        all_tasks_dates.append(t.date())
+                        if t:
+                            all_tasks_dates.append(t.date())
             if all_tasks_dates:
                 for i in range(delta.days + 1):
                     day = sdate + timedelta(days=i)
@@ -1406,7 +1407,7 @@ class ElectrodeStatusPlotView(View):
 
             data_np = np.array(global_status)
 
-            if data_np:
+            if len(data_np):
                 for day_b in day_breaks:
                     data_np = np.delete(data_np, days.index(day_b), axis=1)
                     days.remove(day_b)
