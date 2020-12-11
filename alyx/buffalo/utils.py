@@ -800,26 +800,34 @@ def display_year(z,
                  row: int = None):
     if year is None:
         year = datetime.now().year
-    data = np.ones(365) * np.nan
+
+    initial_date = datetime(year, 1, 1)
+    final_date = datetime(year, 12, 31)
+    number_days = final_date - initial_date
+    data = np.ones(number_days.days + 1) * np.nan
     data[:len(z)] = z
-    d1 = date(year, 1, 1)
-    d2 = date(year, 12, 31)
-    delta = d2 - d1
+
     month_names = [
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ]
     month_days = [monthrange(year, month_number)[1] for month_number in range(1, 13)]
     month_positions = (np.cumsum(month_days) - 15) / 7
+
     # gives me a list with datetimes for each day a year
-    dates_in_year = [d1 + timedelta(i) for i in range(delta.days + 1)]
+    dates_in_year = [initial_date + timedelta(i) for i in range(number_days.days + 1)]
     # gives [0,1,2,3,4,5,6,0,1,2,3,4,5,6,…] (ticktext in xaxis dict translates this to weekdays
     weekdays_in_year = [i.weekday() for i in dates_in_year]
     # gives [1,1,1,1,1,1,1,2,2,2,2,2,2,2,…] name is self-explanatory
-    weeknumber_of_dates = [
-        int(i.strftime("%V")) if not (int(i.strftime("%V")) == 1 and i.month == 12) else 53
-        for i in dates_in_year
-    ]
+
+    weeknumber_of_dates = []
+    week_count = 1
+    for i, day_in_year in enumerate(dates_in_year):
+        weekday = day_in_year.weekday()
+        if i != 0 and weekday == 0:
+            week_count += 1
+        weeknumber_of_dates.append(week_count)  
+  
     # gives something like list of strings like '2018-01-25' for each date.
     # Used in data trace to make good hovertext.
     text = [str(i) for i in dates_in_year]
@@ -827,6 +835,7 @@ def display_year(z,
     colorscale = [[False, '#eeeeee'], [True, '#76cf63']]
     if not np.count_nonzero(z):
         colorscale = [[False, '#eeeeee'], [True, '#eeeeee']]
+
     # handle end of year
     data = [
         go.Heatmap(
@@ -909,8 +918,16 @@ def display_year(z,
 
 def display_years(z, years):
     fig = make_subplots(rows=len(years), cols=1, subplot_titles=years)
+
+    year_days = []
+    for year in years:
+        initial_date = datetime(year, 1, 1)
+        final_date = datetime(year, 12, 31)
+        number_days = final_date - initial_date
+        year_days.append(number_days.days + 1)
+
     for i, year in enumerate(years):
-        data = z[i * 365: (i + 1) * 365]
+        data = z[sum(year_days[0 : i]) : sum(year_days[0 : i + 1]) ]
         display_year(data, year=year, fig=fig, row=i)
         fig.update_layout(height=250 * len(years))
     return fig
@@ -934,27 +951,42 @@ def discrete_colorscale(bvals, colors):
     return dcolorscale
 
 
-def show_electrode_status(data, days, breaks):
+def show_electrode_status(data, days, electrodes, breaks, no_electrodes):
 
-    state_labels = ['no data', 'no units', 'one unit', '2 units', '2+ units']
+    state_labels = [
+        'no data (0)',
+        'nothing (1)',
+        'maybe 1 cell (2)',
+        '1 good cell (3)',
+        '2+ good cells (4)'
+    ]
+    if no_electrodes:
+        state_labels.append('no electrodes (5)')
+
     nlabels = len(state_labels)
 
     tickvals = np.linspace(0, nlabels - 1, 2 * nlabels + 1)[1::2]
 
     bvals = np.arange(nlabels + 1) - .5
-    colors = np.array(['#eeeeee', '#b81d13', '#efb700', '#008450', '#009ece'])[:nlabels]
-    dcolorsc = discrete_colorscale(bvals, colors.tolist())
 
+    colors_hex = ['#eeeeee', '#b81d13', '#efb700', '#008450', '#009ece']
+    if no_electrodes:
+        colors_hex.append('#000000')
+
+    colors = np.array(colors_hex)[:nlabels]
+    dcolorsc = discrete_colorscale(bvals, colors.tolist())
     data = [
         go.Heatmap(
             z=data,
             x=days,
+            y=electrodes,
             colorscale=dcolorsc,
             colorbar=dict(
                 thickness=10,
                 tickvals=tickvals,
                 ticktext=state_labels
             ),
+            hovertemplate='Date: %{x}<br>Electrode: %{y}<br>Units code: %{z}<extra></extra>',
             xgap=2,
             ygap=2
         ),
