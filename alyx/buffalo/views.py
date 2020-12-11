@@ -1356,10 +1356,10 @@ class ElectrodeStatusPlotView(View):
                         all_channels[channel_int] = el
                     except:
                         print(f"Channel {el.channel_number} ignored")
-
-            for channel in range(1, max(channels) + 1):
-                if channel not in all_channels:
-                    all_channels[channel] = None
+            if channels:
+                for channel in range(1, max(channels) + 1):
+                    if channel not in all_channels:
+                        all_channels[channel] = None
 
             global_status = []
             day_used = []
@@ -1369,37 +1369,38 @@ class ElectrodeStatusPlotView(View):
 
             no_electrodes = False
 
-            for channel in range(1, max(channels) + 1):
-                electrode_status = []
-                for i in range(delta.days + 1):
-                    electrode = all_channels[channel]
-                    if electrode:
-                        day = sdate + timedelta(days=i)
-                        session = BuffaloSession.objects.filter(
-                            start_time__year=day.year,
-                            start_time__month=day.month,
-                            start_time__day=day.day,
-                            subject=subject
-                        ).first()
-                        if session:
-                            ch_rec = ChannelRecording.objects.filter(
-                                session=session,
-                                electrode=electrode
+            if channels:
+                for channel in range(1, max(channels) + 1):
+                    electrode_status = []
+                    for i in range(delta.days + 1):
+                        electrode = all_channels[channel]
+                        if electrode:
+                            day = sdate + timedelta(days=i)
+                            session = BuffaloSession.objects.filter(
+                                start_time__year=day.year,
+                                start_time__month=day.month,
+                                start_time__day=day.day,
+                                subject=subject
                             ).first()
-                            if ch_rec and ch_rec.number_of_cells:
-                                electrode_status.append(ch_rec.number_of_cells)
-                                if day not in day_used:
-                                    day_used.append(day)
+                            if session:
+                                ch_rec = ChannelRecording.objects.filter(
+                                    session=session,
+                                    electrode=electrode
+                                ).first()
+                                if ch_rec and ch_rec.number_of_cells:
+                                    electrode_status.append(ch_rec.number_of_cells)
+                                    if day not in day_used:
+                                        day_used.append(day)
+                                else:
+                                    electrode_status.append(0)
                             else:
                                 electrode_status.append(0)
                         else:
-                            electrode_status.append(0)
-                    else:
-                        no_electrodes = True
-                        electrode_status.append(5)
+                            no_electrodes = True
+                            electrode_status.append(5)
 
-                electrode_channels.append(channel)
-                global_status.append(electrode_status)
+                    electrode_channels.append(channel)
+                    global_status.append(electrode_status)
 
             day_breaks = np.setdiff1d(days, day_used).tolist()
 
