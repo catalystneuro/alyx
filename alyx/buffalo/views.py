@@ -1370,6 +1370,17 @@ class ElectrodeStatusPlotView(View):
 
             no_electrodes = False
 
+            all_sessions_qs = BuffaloSession.objects.filter(
+                start_time__range=(sdate, edate),
+                subject=subject
+            )
+
+            all_sessions = {}
+            for sess in all_sessions_qs:
+                if sess.start_time and \
+                    str(sess.start_time.date()) not in all_sessions.keys():
+                    all_sessions[str(sess.start_time.date())] = sess
+
             if channels:
                 for channel in range(1, max(channels) + 1):
                     electrode_status = []
@@ -1377,13 +1388,8 @@ class ElectrodeStatusPlotView(View):
                         electrode = all_channels[channel]
                         if electrode:
                             day = sdate + timedelta(days=i)
-                            session = BuffaloSession.objects.filter(
-                                start_time__year=day.year,
-                                start_time__month=day.month,
-                                start_time__day=day.day,
-                                subject=subject
-                            ).first()
-                            if session:
+                            if str(day) in all_sessions.keys():
+                                session = all_sessions[str(day)]
                                 ch_rec = ChannelRecording.objects.filter(
                                     session=session,
                                     electrode=electrode
