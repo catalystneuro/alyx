@@ -1292,7 +1292,7 @@ class TaskPlotView(View):
                 after_days = [0 for i in range(1, delta_last_days.days + 1)] """
 
             delta = edate - sdate
-            
+
             task_days = []
             for i in range(delta.days + 1):
                 day = sdate + timedelta(days=i)
@@ -1367,7 +1367,7 @@ class ElectrodeStatusPlotView(View):
             for el in electrodes:
                 if el.channel_number:
                     try:
-                        channel_int= int(el.channel_number)
+                        channel_int = int(el.channel_number)
                         channels.append(channel_int)
                         all_channels[channel_int] = el
                     except:

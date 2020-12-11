@@ -936,7 +936,13 @@ def discrete_colorscale(bvals, colors):
 
 def show_electrode_status(data, days, electrodes, breaks, no_electrodes):
 
-    state_labels = ['no data (0)', 'nothing (1)', 'maybe 1 cell (2)', '1 good cell (3)', '2+ good cells (4)']
+    state_labels = [
+        'no data (0)',
+        'nothing (1)',
+        'maybe 1 cell (2)',
+        '1 good cell (3)',
+        '2+ good cells (4)'
+    ]
     if no_electrodes:
         state_labels.append('no electrodes (5)')
 
