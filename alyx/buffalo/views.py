@@ -1378,8 +1378,8 @@ class ElectrodeStatusPlotView(View):
             all_sessions = {}
             for sess in all_sessions_qs:
                 if (
-                    sess.start_time
-                    and str(sess.start_time.date()) not in all_sessions.keys()
+                    sess.start_time and
+                    str(sess.start_time.date()) not in all_sessions.keys()
                 ):
                     all_sessions[str(sess.start_time.date())] = sess
 
