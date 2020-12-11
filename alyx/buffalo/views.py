@@ -1383,6 +1383,8 @@ class ElectrodeStatusPlotView(View):
 
             electrode_channels = []
 
+            no_electrodes = False
+
             for channel in range(1, max(channels) + 1):
                 electrode_status = []
                 for i in range(delta.days + 1):
@@ -1409,7 +1411,8 @@ class ElectrodeStatusPlotView(View):
                         else:
                             electrode_status.append(0)
                     else:
-                        electrode_status.append(0)
+                        no_electrodes = True
+                        electrode_status.append(5)
 
                 electrode_channels.append(channel)
                 global_status.append(electrode_status)
@@ -1422,7 +1425,13 @@ class ElectrodeStatusPlotView(View):
                 for day_b in day_breaks:
                     data_np = np.delete(data_np, days.index(day_b), axis=1)
                     days.remove(day_b)
-            fig = show_electrode_status(data_np, days, electrode_channels, day_breaks)
+            fig = show_electrode_status(
+                data_np,
+                days,
+                electrode_channels,
+                day_breaks,
+                no_electrodes
+            )
 
             graph = opy.plot(fig, auto_open=False, output_type="div")
 

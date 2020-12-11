@@ -934,17 +934,24 @@ def discrete_colorscale(bvals, colors):
     return dcolorscale
 
 
-def show_electrode_status(data, days, electrodes, breaks):
+def show_electrode_status(data, days, electrodes, breaks, no_electrodes):
 
-    state_labels = ['no data', 'no units', 'one unit', '2 units', '2+ units']
+    state_labels = ['no data (0)', 'nothing (1)', 'maybe 1 cell (2)', '1 good cell (3)', '2+ good cells (4)']
+    if no_electrodes:
+        state_labels.append('no electrodes (5)')
+
     nlabels = len(state_labels)
 
     tickvals = np.linspace(0, nlabels - 1, 2 * nlabels + 1)[1::2]
 
     bvals = np.arange(nlabels + 1) - .5
-    colors = np.array(['#eeeeee', '#b81d13', '#efb700', '#008450', '#009ece'])[:nlabels]
-    dcolorsc = discrete_colorscale(bvals, colors.tolist())
 
+    colors_hex = ['#eeeeee', '#b81d13', '#efb700', '#008450', '#009ece']
+    if no_electrodes:
+        colors_hex.append('#000000')
+
+    colors = np.array(colors_hex)[:nlabels]
+    dcolorsc = discrete_colorscale(bvals, colors.tolist())
     data = [
         go.Heatmap(
             z=data,
