@@ -1407,7 +1407,7 @@ class ElectrodeStatusPlotView(View):
 
             data_np = np.array(global_status)
 
-            if data_np:
+            if len(data_np):
                 for day_b in day_breaks:
                     data_np = np.delete(data_np, days.index(day_b), axis=1)
                     days.remove(day_b)
