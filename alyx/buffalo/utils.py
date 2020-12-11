@@ -815,31 +815,19 @@ def display_year(z,
     month_positions = (np.cumsum(month_days) - 15) / 7
 
     # gives me a list with datetimes for each day a year
-    dates_in_year = [initial_date + timedelta(i) for i in range(number_days.days)]
+    dates_in_year = [initial_date + timedelta(i) for i in range(number_days.days + 1)]
     # gives [0,1,2,3,4,5,6,0,1,2,3,4,5,6,…] (ticktext in xaxis dict translates this to weekdays
     weekdays_in_year = [i.weekday() for i in dates_in_year]
     # gives [1,1,1,1,1,1,1,2,2,2,2,2,2,2,…] name is self-explanatory
 
     weeknumber_of_dates = []
-    last_week = 0
     week_count = 1
     for i, day_in_year in enumerate(dates_in_year):
-        weeknumber_of_dates.append(week_count)
-        iso_week = day_in_year.isocalendar()[1]
-        if i == 0:
-            last_week = iso_week
-        if iso_week != last_week:
-            last_week = iso_week
+        weekday = day_in_year.weekday()
+        if i != 0 and weekday == 0:
             week_count += 1
-    
-    
-
-    #weeknumber_of_dates = [
-    #    int(i.strftime("%V")) if not (int(i.strftime("%V")) == 1 and i.month == 12) else 53
-    #    for i in dates_in_year
-    #]
-
-
+        weeknumber_of_dates.append(week_count)  
+  
     # gives something like list of strings like '2018-01-25' for each date.
     # Used in data trace to make good hovertext.
     text = [str(i) for i in dates_in_year]
@@ -847,7 +835,7 @@ def display_year(z,
     colorscale = [[False, '#eeeeee'], [True, '#76cf63']]
     if not np.count_nonzero(z):
         colorscale = [[False, '#eeeeee'], [True, '#eeeeee']]
-    #import pdb; pdb.set_trace()
+
     # handle end of year
     data = [
         go.Heatmap(
