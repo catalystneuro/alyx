@@ -28,12 +28,16 @@
                 {{ form.media.js }}
         </div>
         {% if graph %}
-        <div class="col-lg-4 offset-md-4 card card-body">
-            {{ graph|safe }}
-        </div>
+            <h5>Subject: {{subject_name}}</h5>
+            <div class="col-lg-4 offset-md-4 card card-body">
+                {{ graph|safe }}
+            </div>
         {% endif %}
     </div>
-    {% block datepicker %}
-        {{ block.super }}
-    {% endblock %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/datepicker/0.6.5/datepicker.min.js" integrity="sha256-/7FLTdzP6CfC1VBAj/rsp3Rinuuu9leMRGd354hvk0k=" crossorigin="anonymous"></script>
+    <script>
+        $("#id_date, #id_start_date, #id_finish_date").datepicker({
+            format:'yyyy',
+        });
+    </script>
 {% endblock %}
