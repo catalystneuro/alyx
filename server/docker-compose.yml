@@ -1,0 +1,100 @@
+version: '3'
+
+services:
+  nginx:
+    image: nginx:alpine
+    depends_on:
+      - django
+    expose:
+      - 80
+    volumes:
+      - ./etc/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./data/logs/nginx/:/var/log/nginx/
+      - ./alyx/alyx/static:/home/app/web/static
+
+  postgres:
+    image: postgres:11-alpine
+    env_file:
+      - .env
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      default:
+           ipv4_address: 172.27.0.10
+
+  django:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: alyx:django_base
+    working_dir: /opt/monadical.alyx/
+    command: ./run.sh
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+    expose:
+      - 8000
+    networks:
+      - default
+    volumes:
+      - ./alyx/:/opt/monadical.alyx/
+      - ./data/www-data-home/:/home/www-data/
+      - ./data/logs/django/:/var/log/
+      - ./alyx/scripts/:/opt/monadical.alyx/scripts/
+      - ./data/uploaded/:/opt/monadical.alyx/uploaded/
+
+  dramatiq:
+    image: alyx:django_base
+    working_dir: /opt/monadical.alyx/
+    command: bash -c "cd alyx && python manage.py rundramatiq"
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+    networks:
+      - default
+    volumes:
+      - ./alyx/:/opt/monadical.alyx/
+      - ./data/www-data-home/:/home/www-data/
+      - ./data/logs/django/:/var/log/
+      - ./alyx/scripts/:/opt/monadical.alyx/scripts/
+      - ./data/uploaded/:/opt/monadical.alyx/uploaded/
+
+  vpn:
+    image: kylemanna/openvpn
+    volumes:
+      - ./data/ovpn:/etc/openvpn
+    ports:
+      - 1194:1194/udp
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - default
+
+  argo:
+    image: cloudflare/cloudflared
+    network_mode: 'service:django'
+    command: tunnel --no-autoupdate --hostname alyx-dev.zervice.io http://nginx
+    depends_on:
+      - django
+    volumes:
+      - ./data/certs/alyx-dev.zervice.io.pem:/etc/cloudflared/cert.pem:ro
+
+  redis:
+    image: redis:6
+    networks:
+      - default
+    volumes:
+      - ./data/redis:/data
+
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.27.0.0/16
