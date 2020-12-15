@@ -394,8 +394,9 @@ class ChannelRecordingBulkLoadView(FormView):
             try:
                 with transaction.atomic():
                     for key, session_data in channel_recording_info.items():
-                        datetime_str = str(session_data["date"])
-                        session_name = f"{datetime_str}_{subject.nicknamesafe()}"
+                        datetime_str = session_data["date"].date()
+                        name_date = f"{datetime_str}T{datetime.min.time()}"
+                        session_name = f"{name_date}_{subject.nicknamesafe()}"
                         session = None
                         for se in sessions:
                             if se.name == session_name:
@@ -404,7 +405,9 @@ class ChannelRecordingBulkLoadView(FormView):
                                 break
                         if session is None:
                             session = BuffaloSession.objects.create(
-                                subject=subject, name=session_name
+                                subject=subject,
+                                name=session_name,
+                                start_time=session_data["date"]
                             )
                         sharp_waves = []
                         spikes = []
