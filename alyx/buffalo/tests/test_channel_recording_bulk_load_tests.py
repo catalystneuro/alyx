@@ -91,7 +91,7 @@ class ChannelRecordingsBulkLoadTests(TestCase):
             format="multipart",
         )
         self.assertContains(resp, "File loaded successful")
-        session_name = "2018-05-03 00:00:00_Sam"
+        session_name = "2018-05-03T00:00:00_Sam"
         session_180503 = BuffaloSession.objects.get(
             subject=sam, name=session_name
         )
@@ -100,7 +100,7 @@ class ChannelRecordingsBulkLoadTests(TestCase):
         )
         self.assertEquals(124, len(ch_rec_180503))
 
-        session_name = "2018-06-15 00:00:00_Sam"
+        session_name = "2018-06-15T00:00:00_Sam"
         session_180615 = BuffaloSession.objects.get(
             subject=sam, name=session_name
         )
@@ -109,7 +109,7 @@ class ChannelRecordingsBulkLoadTests(TestCase):
         )
         self.assertEquals(124, len(ch_rec_180615))
 
-        session_name = "2019-09-23 00:00:00_Sam"
+        session_name = "2019-09-23T00:00:00_Sam"
         session_190923 = BuffaloSession.objects.get(
             subject=sam, name=session_name
         )
@@ -138,7 +138,7 @@ class ChannelRecordingsBulkLoadTests(TestCase):
 
         self.assertContains(resp, "File loaded successful")
 
-        session_name = "2018-08-30 00:00:00_Sam"
+        session_name = "2018-08-30T00:00:00_Sam"
         session_180830 = BuffaloSession.objects.get(
             subject=sam, name=session_name
         )
@@ -147,7 +147,7 @@ class ChannelRecordingsBulkLoadTests(TestCase):
         )
         self.assertEquals(96, len(ch_rec_180830))
 
-        session_name = "2018-06-15 00:00:00_Sam"
+        session_name = "2018-06-15T00:00:00_Sam"
         session_180615 = BuffaloSession.objects.get(
             subject=sam, name=session_name
         )
