@@ -308,7 +308,7 @@ class ElectrodeLogBulkLoadForm(forms.Form):
                 "There is a syncing process in the DB, please wait a moment please and try",
                 code="invalid"
             )
-        
+
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop("subject_id", None)
         if subject_id is None and "subject" in kwargs["initial"].keys():
