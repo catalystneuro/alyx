@@ -91,12 +91,14 @@ h1 {    margin: 0 0 20px;
         $('.dropdown').on('click', function(e) {
             $('.dropdown-menu', ).not($(this).find('.dropdown-menu')).removeClass('options')
             let button_name = $(this).find('.dropdown-toggle').text()
-            let min_weight = '28rem'
+            let min_weight = '21rem'
             if (button_name == 'Session') {
                 min_weight = '28.5rem'
             }
-            $(this).find('.dropdown-menu').toggleClass('options').css('min-width', min_weight)
-            $('.dropdown-toggle:contains(Visualizations)').siblings('.dropdown-menu').css('left', '-151px')
+            $('.dropdown-toggle:contains(Session)').siblings('.dropdown-menu').css('left', '-151px')
+            $('.dropdown-toggle:contains(Electrodes)').siblings('.dropdown-menu').css('left', '-151px')
+            $(this).find('.dropdown-menu').toggleClass('options').css({'min-width':min_weight})
+            $('.dropdown-toggle:contains(Visualizations)').siblings('.dropdown-menu').css({'left':'-276px', 'min-width':24})
         })    
         $("#mininav").on('change', function (e) {
             var optionSelected = $("option:selected", this);
