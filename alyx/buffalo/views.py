@@ -1234,7 +1234,7 @@ class ElectrodeLogPlotView(View):
                     line_shape='hv'
                 )
                 fig.add_trace(trace_turns)
-            fig.update_yaxes(rangemode="tozero")
+            fig.update_yaxes(rangemode="tozero", title_text="Turns")
             fig.update_layout(
                 autosize=True,
                 height=900,

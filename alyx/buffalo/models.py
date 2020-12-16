@@ -451,8 +451,11 @@ class ElectrodeLog(BaseAction):
             stl=stl,
             electrodelog=self
         )
-        elstl.is_in, elstl.distance = self.is_in_stl(stl.stl_file.name)
-        elstl.save()
+        is_in, distance = self.is_in_stl(stl.stl_file.name)
+        if is_in or distance is not None:
+            elstl.is_in = is_in
+            elstl.distance = distance
+            elstl.save()
 
 
 class StartingPointSet(BaseModel):
