@@ -3,7 +3,7 @@ password = '';
 datasource = "alyx";
 conn = postgresql(datasource,username,password);
 
-% Tell me which wires were turned yesterday and have today.
+% Tell me which wires were turned yesterday and have cells today.
 
 % Set this variable with the monkey id
 subject_nickname = 'laureano'
