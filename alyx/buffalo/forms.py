@@ -1,9 +1,11 @@
-from datetime import datetime, date
+from datetime import datetime
 from django import forms
+from django_dramatiq.models import Task as DramatiqTask
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
-from functools import partial
+from django.core.exceptions import ValidationError
+from django.conf import settings
 
 
 from .utils import (
@@ -299,6 +301,13 @@ class ElectrodeLogBulkLoadForm(forms.Form):
         cleaned_data = super().clean()
         file = cleaned_data.get("file")
         validate_electrodelog_file(file)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, please wait a moment please and try",
+                code="invalid"
+            )
 
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop("subject_id", None)
@@ -327,16 +336,21 @@ class ChannelRecordingBulkLoadForm(forms.Form):
             subject_id = kwargs["initial"]["subject"]
         super(ChannelRecordingBulkLoadForm, self).__init__(*args, **kwargs)
         self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, please wait a moment please and try",
+                code="invalid"
+            )
 
 
 class PlotFilterForm(forms.Form):
-    DateInput = partial(forms.DateInput, {'class': 'datepicker'})
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
-
+    today = datetime.today().strftime('%m/%d/%Y')
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
     device = forms.ModelChoiceField(queryset=Device.objects.none())
-    date = forms.DateField(widget=DateInput())
+    date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     download_points = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
@@ -350,7 +364,6 @@ class PlotFilterForm(forms.Form):
 
 class SessionQueriesForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
 
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
     starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
@@ -384,8 +397,14 @@ class SessionsLoadForm(forms.Form):
             raise forms.ValidationError(
                 "The file name is different than the subject's nickname"
             )
-
         validate_sessions_file(file, subject)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, please wait a moment please and try",
+                code="invalid"
+            )
 
 
 class NeuralPhenomenaForm(forms.ModelForm):
@@ -444,10 +463,10 @@ class TasksLoadForm(forms.Form):
 
 class FoodWeightFilterForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+    today = datetime.today().strftime('%m/%d/%Y')
 
-    start_date = forms.DateField(initial=date.today)
-    finish_date = forms.DateField(initial=date.today)
+    start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     food_type = forms.ModelChoiceField(queryset=FoodType.objects.none())
 
     def __init__(self, *args, **kwargs):
@@ -457,10 +476,10 @@ class FoodWeightFilterForm(forms.Form):
 
 class ElectrodelogsPlotFilterForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+    today = datetime.today().strftime('%m/%d/%Y')
 
-    start_date = forms.DateField(initial=date.today)
-    finish_date = forms.DateField(initial=date.today)
+    start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     device = forms.ModelChoiceField(queryset=Device.objects.none())
 
     def __init__(self, *args, **kwargs):
@@ -471,7 +490,6 @@ class ElectrodelogsPlotFilterForm(forms.Form):
 
 class TaskPlotFilterForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
 
     start_date = forms.CharField()
     finish_date = forms.CharField()
@@ -484,10 +502,10 @@ class TaskPlotFilterForm(forms.Form):
 
 class ElectrodeStatusPlotFilterForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+    today = datetime.today().strftime('%m/%d/%Y')
 
-    start_date = forms.DateField(initial=date.today)
-    finish_date = forms.DateField(initial=date.today)
+    start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     device = forms.ModelChoiceField(queryset=Device.objects.none())
 
     def __init__(self, *args, **kwargs):

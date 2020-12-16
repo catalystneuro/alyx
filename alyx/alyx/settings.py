@@ -267,3 +267,5 @@ SITE_URL = config('SITE_URL', default=None)
 SITE_INDEX_TITLE = config('SITE_INDEX_TITLE', default="Welcome to Alyx")
 ENABLE_HOME_URLS = config("ENABLE_HOME_URLS", default=True, cast=bool)
 ADMIN_URL_PATH_IN_ROOT = config("ADMIN_URL_PATH_IN_ROOT", default=False, cast=bool)
+
+DATE_INPUT_FORMATS = ['%m/%d/%Y']
