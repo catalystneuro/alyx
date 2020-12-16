@@ -481,13 +481,11 @@ class ElectrodelogsPlotFilterForm(forms.Form):
 
     start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
-    stl = forms.ModelChoiceField(queryset=STLFile.objects.none())
     device = forms.ModelChoiceField(queryset=Device.objects.none())
 
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop("subject_id")
         super(ElectrodelogsPlotFilterForm, self).__init__(*args, **kwargs)
-        self.fields["stl"].queryset = STLFile.objects.filter(subject=subject_id)
         self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
 
 
