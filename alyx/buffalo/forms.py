@@ -1,11 +1,10 @@
-from datetime import datetime, date
+from datetime import datetime
 from django import forms
 from django_dramatiq.models import Task as DramatiqTask
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
-from functools import partial
 from django.conf import settings
 
 
