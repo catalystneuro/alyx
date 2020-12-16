@@ -6,6 +6,7 @@ from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
 from django.core.exceptions import ValidationError
 from functools import partial
+from django.conf import settings
 
 
 from .utils import (
@@ -346,13 +347,11 @@ class ChannelRecordingBulkLoadForm(forms.Form):
 
 
 class PlotFilterForm(forms.Form):
-    DateInput = partial(forms.DateInput, {'class': 'datepicker'})
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
-
+    today = datetime.today().strftime('%m/%d/%Y')
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
     device = forms.ModelChoiceField(queryset=Device.objects.none())
-    date = forms.DateField(widget=DateInput())
+    date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     download_points = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
@@ -366,7 +365,6 @@ class PlotFilterForm(forms.Form):
 
 class SessionQueriesForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
 
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
     starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
@@ -466,10 +464,10 @@ class TasksLoadForm(forms.Form):
 
 class FoodWeightFilterForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+    today = datetime.today().strftime('%m/%d/%Y')
 
-    start_date = forms.DateField(initial=date.today)
-    finish_date = forms.DateField(initial=date.today)
+    start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     food_type = forms.ModelChoiceField(queryset=FoodType.objects.none())
 
     def __init__(self, *args, **kwargs):
@@ -479,10 +477,10 @@ class FoodWeightFilterForm(forms.Form):
 
 class ElectrodelogsPlotFilterForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+    today = datetime.today().strftime('%m/%d/%Y')
 
-    start_date = forms.DateField(initial=date.today)
-    finish_date = forms.DateField(initial=date.today)
+    start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     stl = forms.ModelChoiceField(queryset=STLFile.objects.none())
     device = forms.ModelChoiceField(queryset=Device.objects.none())
 
@@ -495,7 +493,6 @@ class ElectrodelogsPlotFilterForm(forms.Form):
 
 class TaskPlotFilterForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
 
     start_date = forms.CharField()
     finish_date = forms.CharField()
@@ -508,10 +505,10 @@ class TaskPlotFilterForm(forms.Form):
 
 class ElectrodeStatusPlotFilterForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
+    today = datetime.today().strftime('%m/%d/%Y')
 
-    start_date = forms.DateField(initial=date.today)
-    finish_date = forms.DateField(initial=date.today)
+    start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     device = forms.ModelChoiceField(queryset=Device.objects.none())
 
     def __init__(self, *args, **kwargs):
