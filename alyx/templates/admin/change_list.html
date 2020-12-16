@@ -98,7 +98,7 @@ h1 {    margin: 0 0 20px;
             $('.dropdown-toggle:contains(Session)').siblings('.dropdown-menu').css('left', '-151px')
             $('.dropdown-toggle:contains(Electrodes)').siblings('.dropdown-menu').css('left', '-151px')
             $(this).find('.dropdown-menu').toggleClass('options').css({'min-width':min_weight})
-            $('.dropdown-toggle:contains(Visualizations)').siblings('.dropdown-menu').css('left', '-151px')
+            $('.dropdown-toggle:contains(Visualizations)').siblings('.dropdown-menu').css({'left':'-276px', 'min-width':24})
         })    
         $("#mininav").on('change', function (e) {
             var optionSelected = $("option:selected", this);
