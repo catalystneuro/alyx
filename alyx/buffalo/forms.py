@@ -305,7 +305,7 @@ class ElectrodeLogBulkLoadForm(forms.Form):
         tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
         if tasks:
             raise ValidationError(
-                "There is a syncing process in the DB, please wait a moment please and try"
+                "There is a syncing process in the DB, wait a moment and try again please"
             )
 
     def __init__(self, *args, **kwargs):
@@ -332,8 +332,7 @@ class ChannelRecordingBulkLoadForm(forms.Form):
         tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
         if tasks:
             raise ValidationError(
-                "There is a syncing process in the DB, please wait a moment please and try",
-                code="invalid"
+                "There is a syncing process in the DB, wait a moment and try again please"
             )
 
     def __init__(self, *args, **kwargs):
@@ -401,7 +400,7 @@ class SessionsLoadForm(forms.Form):
         tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
         if tasks:
             raise ValidationError(
-                "There is a syncing process in the DB, please wait a moment please and try"
+                "There is a syncing process in the DB, wait a moment and try again please"
             )
 
 
