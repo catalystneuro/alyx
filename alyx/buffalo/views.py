@@ -412,7 +412,10 @@ class ChannelRecordingBulkLoadView(FormView):
                         sharp_waves = []
                         spikes = []
                         electrodes = list(
-                            Electrode.objects.filter(device__subject=subject)
+                            Electrode.objects.filter(
+                                device__subject=subject,
+                                device=device
+                            )
                         )
                         for key, record_data in session_data["records"].items():
                             save = True
