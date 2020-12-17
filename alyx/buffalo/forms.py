@@ -1,9 +1,10 @@
-from datetime import datetime, date
+from datetime import datetime
 from django import forms
+from django_dramatiq.models import Task as DramatiqTask
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
-from functools import partial
+from django.core.exceptions import ValidationError
 from django.conf import settings
 
 
@@ -300,6 +301,12 @@ class ElectrodeLogBulkLoadForm(forms.Form):
         cleaned_data = super().clean()
         file = cleaned_data.get("file")
         validate_electrodelog_file(file)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, wait a moment and try again please"
+            )
 
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop("subject_id", None)
@@ -321,6 +328,12 @@ class ChannelRecordingBulkLoadForm(forms.Form):
         cleaned_data = super().clean()
         file = cleaned_data.get("file")
         validate_channel_recording_file(file)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, wait a moment and try again please"
+            )
 
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop("subject_id", None)
@@ -382,8 +395,13 @@ class SessionsLoadForm(forms.Form):
             raise forms.ValidationError(
                 "The file name is different than the subject's nickname"
             )
-
         validate_sessions_file(file, subject)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, wait a moment and try again please"
+            )
 
 
 class NeuralPhenomenaForm(forms.ModelForm):
@@ -459,13 +477,11 @@ class ElectrodelogsPlotFilterForm(forms.Form):
 
     start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
-    stl = forms.ModelChoiceField(queryset=STLFile.objects.none())
     device = forms.ModelChoiceField(queryset=Device.objects.none())
 
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop("subject_id")
         super(ElectrodelogsPlotFilterForm, self).__init__(*args, **kwargs)
-        self.fields["stl"].queryset = STLFile.objects.filter(subject=subject_id)
         self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
 
 
