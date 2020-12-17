@@ -412,7 +412,10 @@ class ChannelRecordingBulkLoadView(FormView):
                         sharp_waves = []
                         spikes = []
                         electrodes = list(
-                            Electrode.objects.filter(device__subject=subject)
+                            Electrode.objects.filter(
+                                device__subject=subject,
+                                device=device
+                            )
                         )
                         for key, record_data in session_data["records"].items():
                             save = True
@@ -544,10 +547,13 @@ class PlotsView(View):
             z = []
             ht = []
             for electrode in electrodes:
-                sp = electrode.starting_point.latest("updated")
-                x.append(sp.x)
-                y.append(sp.y)
-                z.append(sp.z)
+                try:
+                    sp = electrode.starting_point.latest("updated")
+                    x.append(sp.x)
+                    y.append(sp.y)
+                    z.append(sp.z)
+                except:
+                    pass
                 ht.append(electrode.channel_number)
             # Electrode logs data
             x_el = []

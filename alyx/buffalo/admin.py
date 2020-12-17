@@ -1040,7 +1040,8 @@ class BuffaloDeviceSubjectAdmin(BaseAdmin):
     inlines = [BuffaloDevice]
 
     def response_change(self, request, obj):
-        return redirect("/buffalo/buffalosubject")
+        url = f"/buffalo/buffalodevicesubject/{obj.id}"
+        return redirect(url)
 
     def has_add_permission(self, request, obj=None):
         return False
