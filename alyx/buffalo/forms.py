@@ -305,8 +305,7 @@ class ElectrodeLogBulkLoadForm(forms.Form):
         tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
         if tasks:
             raise ValidationError(
-                "There is a syncing process in the DB, please wait a moment please and try",
-                code="invalid"
+                "There is a syncing process in the DB, wait a moment and try again please"
             )
 
     def __init__(self, *args, **kwargs):
@@ -329,6 +328,12 @@ class ChannelRecordingBulkLoadForm(forms.Form):
         cleaned_data = super().clean()
         file = cleaned_data.get("file")
         validate_channel_recording_file(file)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, wait a moment and try again please"
+            )
 
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop("subject_id", None)
@@ -336,13 +341,6 @@ class ChannelRecordingBulkLoadForm(forms.Form):
             subject_id = kwargs["initial"]["subject"]
         super(ChannelRecordingBulkLoadForm, self).__init__(*args, **kwargs)
         self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
-        DramatiqTask.tasks.delete_old_tasks(1800)
-        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
-        if tasks:
-            raise ValidationError(
-                "There is a syncing process in the DB, please wait a moment please and try",
-                code="invalid"
-            )
 
 
 class PlotFilterForm(forms.Form):
@@ -402,8 +400,7 @@ class SessionsLoadForm(forms.Form):
         tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
         if tasks:
             raise ValidationError(
-                "There is a syncing process in the DB, please wait a moment please and try",
-                code="invalid"
+                "There is a syncing process in the DB, wait a moment and try again please"
             )
 
 
