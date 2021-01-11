@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.db.models import Case, Count, When
 from reversion.admin import VersionAdmin
 import nested_admin
 
@@ -286,6 +287,26 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
     extra = 0
     inlines = [SessionDataNestedsetInline]
     ordering = ("task_sequence",)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        subject = request.GET.get("subject", None)
+        if db_field.name == "task":
+            sessions = BuffaloSession.objects.filter(
+                subject__id=subject
+            ).order_by('-start_time')
+            last_session = None
+            if sessions:
+                last_session = sessions[0]
+            if last_session is not None:
+                tasks = SessionTask.objects.filter(session=last_session).values_list('task')
+                kwargs["queryset"] = Task.objects.annotate(
+                    relevancy=Count(Case(When(id__in=tasks, then=1)))
+                ).order_by('-relevancy')
+        return super(SessionTaskInline, self).formfield_for_foreignkey(
+            db_field,
+            request,
+            **kwargs
+        )
 
 
 def TemplateInitialDataAddChannelRecording(data, num_forms):
