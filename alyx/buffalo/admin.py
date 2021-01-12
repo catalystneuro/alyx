@@ -291,12 +291,9 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         subject = request.GET.get("subject", None)
         if db_field.name == "task":
-            sessions = BuffaloSession.objects.filter(
+            last_session = BuffaloSession.objects.filter(
                 subject__id=subject
-            ).order_by('-start_time')
-            last_session = None
-            if sessions:
-                last_session = sessions[0]
+            ).order_by('-start_time').first()
             if last_session is not None:
                 tasks = SessionTask.objects.filter(session=last_session).values_list('task')
                 kwargs["queryset"] = Task.objects.annotate(
