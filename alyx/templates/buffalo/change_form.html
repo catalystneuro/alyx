@@ -132,6 +132,7 @@ $(document).ready(function() {
     })
 
     $('#foodlog_set-group h2').append('<span class="btn btn-light"style="color:#fff; font-size: 9px;">  (This session is required)</span>')
+    $('#sessiontask_set-group h2').append('<span class="btn btn-light"style="color:#fff; font-size: 9px;">  (Task Sequence is required for each task)</span>')
     const current_location = window.location.href
     if (current_location.includes("buffalosession/add/?subject=")) {
         $('#channelrecording_set-group h2').append(
