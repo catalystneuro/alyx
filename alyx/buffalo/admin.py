@@ -258,6 +258,10 @@ class SessionTaskFormset(BaseInlineFormSet):
     def clean(self):
         super(SessionTaskFormset, self).clean()
         for form in self.forms:
+            if not form.cleaned_data.get("task_sequence"):
+                raise forms.ValidationError(
+                    "You must input the tasks sequence"
+                )
             if form.cleaned_data.get("needs_review") and not form.cleaned_data.get(
                 "general_comments"
             ):
@@ -282,7 +286,6 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
         "needs_review",
         "general_comments",
         "json",
-        "start_time",
     )
     extra = 0
     inlines = [SessionDataNestedsetInline]
@@ -694,6 +697,10 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         for obj in formset.deleted_objects:
             obj.delete()
         for instance in instances:
+            if isinstance(instance, SessionTask):
+                session_start_date = instance.session.start_time.date()
+                if session_start_date != instance.start_time.date():
+                    instance.start_time = instance.session.start_time
             if isinstance(instance, WeighingLog):
                 instance.subject = form.instance.subject
             if isinstance(instance, ChannelRecording):
