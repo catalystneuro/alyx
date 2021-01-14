@@ -97,10 +97,10 @@ services:
 
   argo:
     image: cloudflare/cloudflared
-    network_mode: 'service:django'
-    command: tunnel --no-autoupdate --retries 15 --hostname alyx.zervice.io http://django:8000
+    network_mode: 'service:nginx'
+    command: tunnel --no-autoupdate --retries 15 --hostname alyx.zervice.io http://nginx
     depends_on:
-      - django
+      - nginx
     volumes:
       # get this cert from https://www.cloudflare.com/a/warp
       - ./data/certs/zervice.io.pem:/etc/cloudflared/cert.pem:ro
