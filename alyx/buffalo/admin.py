@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.db.models import Case, Count, When
 from reversion.admin import VersionAdmin
 import nested_admin
 
@@ -257,6 +258,10 @@ class SessionTaskFormset(BaseInlineFormSet):
     def clean(self):
         super(SessionTaskFormset, self).clean()
         for form in self.forms:
+            if not form.cleaned_data.get("task_sequence"):
+                raise forms.ValidationError(
+                    "You must input the tasks sequence"
+                )
             if form.cleaned_data.get("needs_review") and not form.cleaned_data.get(
                 "general_comments"
             ):
@@ -281,11 +286,27 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
         "needs_review",
         "general_comments",
         "json",
-        "start_time",
     )
     extra = 0
     inlines = [SessionDataNestedsetInline]
     ordering = ("task_sequence",)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        subject = request.GET.get("subject", None)
+        if db_field.name == "task":
+            last_session = BuffaloSession.objects.filter(
+                subject__id=subject
+            ).order_by('-start_time').first()
+            if last_session is not None:
+                tasks = SessionTask.objects.filter(session=last_session).values_list('task')
+                kwargs["queryset"] = Task.objects.annotate(
+                    relevancy=Count(Case(When(id__in=tasks, then=1)))
+                ).order_by('-relevancy')
+        return super(SessionTaskInline, self).formfield_for_foreignkey(
+            db_field,
+            request,
+            **kwargs
+        )
 
 
 def TemplateInitialDataAddChannelRecording(data, num_forms):
@@ -676,6 +697,10 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         for obj in formset.deleted_objects:
             obj.delete()
         for instance in instances:
+            if isinstance(instance, SessionTask):
+                session_start_date = instance.session.start_time.date()
+                if session_start_date != instance.start_time.date():
+                    instance.start_time = instance.session.start_time
             if isinstance(instance, WeighingLog):
                 instance.subject = form.instance.subject
             if isinstance(instance, ChannelRecording):
