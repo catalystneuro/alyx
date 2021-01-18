@@ -286,6 +286,7 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
         "needs_review",
         "general_comments",
         "json",
+        "start_time"
     )
     extra = 0
     inlines = [SessionDataNestedsetInline]
@@ -700,7 +701,11 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
             if isinstance(instance, SessionTask):
                 session_start_date = instance.session.start_time.date()
                 if session_start_date != instance.start_time.date():
-                    instance.start_time = instance.session.start_time
+                    actual_date = instance.start_time.replace(
+                        year=instance.session.start_time.year,
+                        month=instance.session.start_time.month,
+                        day=instance.session.start_time.day)
+                    instance.start_time = actual_date
             if isinstance(instance, WeighingLog):
                 instance.subject = form.instance.subject
             if isinstance(instance, ChannelRecording):
