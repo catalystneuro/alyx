@@ -135,6 +135,7 @@
                             <th class="session-task-fields col-1" scope="col">Task Sequence</th>
                             <th class="session-task-fields col-3" scope="col">Needs review</th>
                             <th class="session-task-fields col-3" scope="col">Task Comments</th>
+                            <th class="session-task-fields col-2" scope="col">Task Datetime (run)</th>
                             <th class="session-task-fields col-3" scope="col">Directory/File Name</th>
                             <th class="session-task-fields col-3" scope="col">Dataset type</th>
                         </tr>
@@ -147,6 +148,7 @@
                                 <td class="col-sm-1">{{session_task.task_sequence}}</td>
                                 <td class="col-sm-3">{{session_task.needs_review|yesno|title}}</td>
                                 <td class="col-sm-3">{{session_task.general_comments}}</td>
+                                <td class="col-sm-2">{{session_task.start_time|default:""}}</td>
                                 {% for s in session_task_dataset_type.items %}
                                     {% ifequal session_task.task_sequence s.0 %}
                                         <td class="col-sm-3">
