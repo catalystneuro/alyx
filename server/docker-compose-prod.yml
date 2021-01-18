@@ -1,0 +1,123 @@
+# Steps to set up a new docker-compose machine:
+#
+# cp ./env/dev.env ./.env
+# cp ./env/postgres.secrets.env.default ./secrets.env.default
+# cp  ./etc/nginx/blizka-dev.conf ./etc/nginx/nginx.conf
+# save certs in /data/certs 
+# docker-compose run django ./manage.py migrate
+# docker-compose run django ./manage.py createsuperuser
+# docker-compose up
+
+
+version: '3'
+
+services:
+  nginx:
+    image: nginx:alpine
+    restart: always
+    depends_on: 
+      - django
+    volumes:
+      - ./etc/nginx:/etc/nginx
+      - ./data/logs/nginx/:/var/log/nginx/
+      - ./alyx/alyx/static:/home/app/web/static
+
+  postgres:
+    image: postgres:11-alpine
+    env_file:
+      - .env
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    expose:
+      - 5432
+    networks_
+      default:
+        ipv4_address: 172.27.0.10
+    cpus: 2
+    mem_limit: 1536m
+    restart: on-failure
+
+  django:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    image: alyx:django_base
+    working_dir: /opt/monadical.alyx/
+    command: ./run.sh
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+    expose:
+      - 8000
+    volumes:
+      - ./alyx/:/opt/monadical.alyx/
+      - ./data/www-data-home/:/home/www-data/
+      - ./data/logs/django/:/var/log/
+      - ./alyx/scripts/:/opt/monadical.alyx/scripts/
+      - ./data/uploaded/:/opt/monadical.alyx/uploaded/
+    cpus: 2
+    mem_limit: 1536m
+    restart: on-failure
+
+  dramatiq:
+    image: alyx:django_base
+    working_dir: /opt/monadical.alyx/
+    command: bash -c "cd alyx && python manage.py rundramatiq"
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
+    depends_on:
+      - postgres
+    networks:
+      - default
+    volumes:
+      - ./alyx/:/opt/monadical.alyx/
+      - ./data/www-data-home/:/home/www-data/
+      - ./data/logs/django/:/var/log/
+      - ./alyx/scripts/:/opt/monadical.alyx/scripts/
+      - ./data/uploaded/:/opt/monadical.alyx/uploaded/
+    cpus: 2
+    mem_limit: 1536
+    restart: on-failure
+
+  vpn:
+    image: kylemanna/openvpn
+    volumes:
+      - ./data/ovpn:/etc/openvpn
+    ports:
+      - 1194:1194/udp
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - default
+
+  argo:
+    image: cloudflare/cloudflared
+    network_mode: 'service:nginx'
+    command: tunnel --no-autoupdate --retries 15 --hostname alyx.zervice.io http://nginx
+    depends_on:
+      - nginx
+    volumes:
+      # get this cert from https://www.cloudflare.com/a/warp
+      - ./data/certs/zervice.io.pem:/etc/cloudflared/cert.pem:ro
+    cpus: 2
+    mem_limit: 4096m
+    restart: on-failure
+
+  redis:
+    image: redis:6
+    networks:
+      - default
+    volumes:
+      - ./data/redis:/data
+
+networks:
+  default:
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.27.0.0/16
