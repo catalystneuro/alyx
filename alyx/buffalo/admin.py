@@ -1030,11 +1030,11 @@ class BuffaloDevice(admin.TabularInline):
 
     def set_electrodes_file(self, obj):
         url = reverse("electrode-bulk-load", kwargs={"device_id": obj.id})
-        return self.link(url, "Set electrodes form")
+        return self.link(url, "Set electrode starts")
 
     def set_electrodes(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodedevice_change", args=[obj.id])
-        return self.link(url, "Set electrodes")
+        return self.link(url, "Edit electrodes")
 
     def new_electrode_logs(self, obj):
         url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.subject.id]) + \

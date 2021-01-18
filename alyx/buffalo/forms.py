@@ -276,7 +276,11 @@ class FoodTypeForm(forms.ModelForm):
 class ElectrodeBulkLoadForm(forms.Form):
     file = forms.FileField(validators=[FileExtensionValidator(["mat"])])
     structure_name = forms.CharField(
-        label="Structure name", required=False, max_length=250
+        label="Matlab variable name", required=False, max_length=250,
+        help_text="""This is the matlab variable name that you use when
+            export the electrode startpoints to the mat file.
+            Usually, it's the monkey name.
+        """
     )
     device = forms.CharField(widget=forms.HiddenInput())
 
