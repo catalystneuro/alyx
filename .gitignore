@@ -14,6 +14,7 @@ all_dumped_anon.json
 *.pkl
 *.patch
 *.sql
+!cookbook/sql/*.sql
 *.html.py
 *.orig
 notes.txt

@@ -36,7 +36,7 @@
     <div class="col-sm-10 offset-md-1 subject-info">
         <div class="col-sm-3" style="line-height: 20px;">
             <label><strong>Session </strong>{{session.name}}</label><br>
-            <label><strong>Session start date </strong>{{session.start_time}}</label><br>
+            <label><strong>Session start date </strong>{{session.start_time.date}}</label><br>
             <label><strong>Subject </strong>{{session.subject}}</label><br>
             <label>
                 <strong>Users </strong>
@@ -45,6 +45,8 @@
                 {% endfor %}
             </label><br>
             <label><strong>Needs Review</strong> {{session.needs_review|yesno|title}}</label><br>
+            <label><strong>Pump Setting</strong> {{session.pump_setting|default:""}}</label><br>
+            <label><strong>Chamber Cleaning</strong> {{session.chamber_cleaning|default:""}}</label><br>
             <label><strong>Narrative</strong> {{session.narrative}}</label><br>
         </div>
         <br><br>
@@ -88,7 +90,7 @@
             </table>
         </div>
     </div>
-    <br><br>
+    <br>
     <div class="col-lg-10  offset-md-1">
         <div class="table-responsive">
             <table class="table table-striped">
@@ -100,6 +102,21 @@
                 <tbody>
                     <tr class="d-flex">
                         <td class="col-sm-2">{{session_foodlog.get_food_detail}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <br>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr class="d-flex">
+                        <th class="session-task-fields col-2" scope="col">Menstruation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="d-flex">
+                        <td class="col-sm-2">{{session_menstruationlog|default:""}}</td>
                     </tr>
                 </tbody>
             </table>
@@ -120,6 +137,7 @@
                             <th class="session-task-fields col-3" scope="col">Task Comments</th>
                             <th class="session-task-fields col-2" scope="col">Task Datetime (run)</th>
                             <th class="session-task-fields col-3" scope="col">Directory/File Name</th>
+                            <th class="session-task-fields col-3" scope="col">Dataset type</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -130,12 +148,23 @@
                                 <td class="col-sm-1">{{session_task.task_sequence}}</td>
                                 <td class="col-sm-3">{{session_task.needs_review|yesno|title}}</td>
                                 <td class="col-sm-3">{{session_task.general_comments}}</td>
-                                <td class="col-sm-2">{{session_task.date_time|default:""}}</td>
+                                <td class="col-sm-2">{{session_task.start_time|default:""}}</td>
                                 {% for s in session_task_dataset_type.items %}
-                                    {% ifequal session_task.task__id s.0 %}
+                                    {% ifequal session_task.task_sequence s.0 %}
                                         <td class="col-sm-3">
                                         {% for dt in s.1.0%}
-                                            {{dt.collection|default:""}}/{{dt.file_name|default:""}}<br>
+                                        {% if dt.file_name %}
+                                            {{dt.collection|default:""}}/{{dt.file_name|default:""}}
+                                        {% endif %}
+                                        {% endfor %}
+                                        </td>
+                                        <td class="col-sm-3" style="line-height: 20px;">
+                                        {% for dt in s.1.0%}
+                                            {% ifnotequal dt.dataset_type__name "unknown" %}
+                                                <span style="font-weight: bold;">{{dt.dataset_type__name}}</span>
+                                                <span>{{dt.created_datetime|date:"D d M Y H:i:s"}}</span>
+                                            {% endifnotequal %}
+                                         <br>
                                         {% endfor %}
                                         </td>
                                     {% endifequal %}
@@ -155,16 +184,17 @@
     {% endif %}
     {% if channels_recording %}
         <br><br>
-        <h1>channels Recording</h1>
+        <h1>Channels Recording</h1>
         <div class="col-lg-10  offset-md-1">
             <div class="table-responsive">
-                <table class="table table-striped">
+                <table class="table table-striped scroll_table">
                     <thead>
                         <tr class="d-flex">
                             <th class="session-task-fields col-1" scope="col">Channel Number</th>
                             <th class="session-task-fields col-1" scope="col">Ripples</th>
                             <th class="session-task-fields col-1" scope="col">Alive</th>
                             <th class="session-task-fields col-3" scope="col">Number of cells</th>
+                            <th class="session-task-fields col-3" scope="col">Neural phenomena</th>
                             <th class="session-task-fields col-3" scope="col">Notes</th>
                             </tr>
                     </thead>
@@ -176,6 +206,10 @@
                                     <td class="col-sm-1">{{channel_recording.ripples}}</td>
                                     <td class="col-sm-1">{{channel_recording.alive}}</td>
                                     <td class="col-sm-3">{{channel_recording.number_of_cells}}</td>
+                                    <td class="col-sm-3">
+                                        {% for neural_phenomena in channel_recording.neural_phenomena.all %}
+                                            {{ neural_phenomena.name }}<br>
+                                        {% endfor %}
                                     <td class="col-sm-3">{{channel_recording.notes}}</td>
                                 </tr>
                                 

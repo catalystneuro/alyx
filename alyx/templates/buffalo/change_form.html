@@ -16,6 +16,13 @@ form#subject_form div.form-row.field-strain label
 {
     color: red;
 }
+#sessiontask_set-group p::first-line {
+  color: transparent;
+}
+#sessiontask_set-group .vDateField + .datetimeshortcuts {
+    display: none;
+    visibility: hidden;
+}
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
@@ -96,6 +103,7 @@ $(window).on("load", function() {
 });
 
 $(document).ready(function() {
+    hide_date_field()
     const version = parseInt($("#id_version").val())
     if (version > 1) {
         $(".field-version").removeClass('hidden')
@@ -124,6 +132,7 @@ $(document).ready(function() {
         
     }
     $("#sessiontask_set-group .add-row a").on("click", function() {
+        hide_date_field()
         task_sequence = $("#sessiontask_set-group .field-task_sequence").length - 1
         $("#sessiontask_set-group .djn-inline-form:not(.empty-form) .field-task_sequence input").last().val(task_sequence)        
         $(document).on( "click", $(".dynamic-sessiontask_set:not(.has_original) .field-needs_review input"), function() {
@@ -132,6 +141,7 @@ $(document).ready(function() {
     })
 
     $('#foodlog_set-group h2').append('<span class="btn btn-light"style="color:#fff; font-size: 9px;">  (This session is required)</span>')
+    $('#sessiontask_set-group h2').append('<span class="btn btn-light"style="color:#fff; font-size: 9px;">  (Task Sequence is required for each task)</span>')
     const current_location = window.location.href
     if (current_location.includes("buffalosession/add/?subject=")) {
         $('#channelrecording_set-group h2').append(
@@ -208,6 +218,11 @@ disable_save_button = () => {
         $(this).prop('disabled', true)
         $(this).parents('form:first').submit()
     })
+}
+
+hide_date_field = () => {
+    $("#sessiontask_set-group .empty-form .vDateField").addClass('hidden')
+    $("#sessiontask_set-group .vDateField").addClass('hidden')
 }
 
 

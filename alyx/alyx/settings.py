@@ -110,7 +110,7 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 if not DEBUG:
     CSRF_COOKIE_SECURE = True
     X_FRAME_OPTIONS = 'DENY'
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = config('SESSION_COOKIE_SECURE', default=True, cast=bool)
     SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -151,6 +151,7 @@ INSTALLED_APPS = (
     'crispy_forms',
     'nested_admin',
     'django_cleanup',
+    'django_dramatiq',
 )
 
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
@@ -209,6 +210,36 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 250,
 }
 
+REDIS_HOST = config('REDIS_HOST', default='localhost')
+REDIS_PORT = config('REDIS_PORT', default='6379')
+
+DRAMATIQ_BROKER = {
+    "BROKER": "dramatiq.brokers.redis.RedisBroker",
+    "OPTIONS": {
+        "host": REDIS_HOST,
+        "port": REDIS_PORT,
+    },
+    "MIDDLEWARE": [
+        "dramatiq.middleware.AgeLimit",
+        "dramatiq.middleware.TimeLimit",
+        "dramatiq.middleware.Callbacks",
+        "dramatiq.middleware.Pipelines",
+        "dramatiq.middleware.Retries",
+        "django_dramatiq.middleware.AdminMiddleware",
+        "django_dramatiq.middleware.DbConnectionsMiddleware",
+    ]
+}
+
+DRAMATIQ_RESULT_BACKEND = {
+    "BACKEND": "dramatiq.results.backends.redis.RedisBackend",
+    "BACKEND_OPTIONS": {
+        "url": f"redis://{REDIS_HOST}:{REDIS_PORT}",
+    },
+    # "MIDDLEWARE_OPTIONS": {
+    #    "result_ttl": 50*24*60*60,
+    # },
+}
+
 # Internationalization
 # https://docs.djangoproject.com/en/1.8/topics/i18n/
 
@@ -229,9 +260,12 @@ UPLOADED_IMAGE_WIDTH = 800
 
 TIME_ZONE = config('TIME_ZONE', default='UTC')
 
+TESTING = config("TESTING", default=False, cast=bool)
 SITE_HEADER = config('SITE_HEADER', default='Alyx')
 SITE_TITLE = config('SITE_TITLE', default='Alyx')
 SITE_URL = config('SITE_URL', default=None)
 SITE_INDEX_TITLE = config('SITE_INDEX_TITLE', default="Welcome to Alyx")
 ENABLE_HOME_URLS = config("ENABLE_HOME_URLS", default=True, cast=bool)
 ADMIN_URL_PATH_IN_ROOT = config("ADMIN_URL_PATH_IN_ROOT", default=False, cast=bool)
+
+DATE_INPUT_FORMATS = ['%m/%d/%Y']

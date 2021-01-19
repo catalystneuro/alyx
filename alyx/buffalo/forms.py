@@ -1,9 +1,20 @@
-from datetime import datetime, date
+from datetime import datetime
 from django import forms
+from django_dramatiq.models import Task as DramatiqTask
 import django.forms
 from django.forms import ModelForm
 from django.core.validators import FileExtensionValidator
-from .utils import validate_mat_file
+from django.core.exceptions import ValidationError
+from django.conf import settings
+
+
+from .utils import (
+    validate_mat_file,
+    validate_electrodelog_file,
+    validate_channel_recording_file,
+    validate_sessions_file,
+)
+
 
 from .models import (
     Task,
@@ -17,6 +28,8 @@ from .models import (
     WeighingLog,
     STLFile,
     StartingPointSet,
+    NeuralPhenomena,
+    Device,
 )
 
 
@@ -89,9 +102,6 @@ class SubjectForm(ModelForm):
             "sex",
             "description",
         ]
-        widgets = {
-            # "lab": forms.HiddenInput(),
-        }
 
 
 class ElectrodeLogSubjectForm(ModelForm):
@@ -149,15 +159,15 @@ class SessionForm(ModelForm):
             "name",
             "subject",
             "users",
+            "unknown_user",
             "lab",
             "needs_review",
             "narrative",
+            "pump_setting",
+            "chamber_cleaning",
             "start_time",
             "end_time",
         ]
-        widgets = {
-            # "lab": forms.HiddenInput(),
-        }
 
 
 class CustomModelChoiceField(django.forms.ModelChoiceField):
@@ -266,43 +276,96 @@ class FoodTypeForm(forms.ModelForm):
 class ElectrodeBulkLoadForm(forms.Form):
     file = forms.FileField(validators=[FileExtensionValidator(["mat"])])
     structure_name = forms.CharField(
-        label="Structure name", required=False, max_length=250
+        label="Matlab variable name", required=False, max_length=250,
+        help_text="""This is the matlab variable name that you use when
+            export the electrode startpoints to the mat file.
+            Usually, it's the monkey name.
+        """
+    )
+    device = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        device_id = cleaned_data.get("device")
+        structure = cleaned_data.get("structure_name")
+        if structure:
+            validate_mat_file(file, structure)
+        else:
+            device = Device.objects.get(pk=device_id)
+            validate_mat_file(file, device.subject.nickname)
+
+
+class ElectrodeLogBulkLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["xlsm", "xlsx"])])
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
+    subject = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        validate_electrodelog_file(file)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, wait a moment and try again please"
+            )
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop("subject_id", None)
+        if subject_id is None and "subject" in kwargs["initial"].keys():
+            subject_id = kwargs["initial"]["subject"]
+        super(ElectrodeLogBulkLoadForm, self).__init__(*args, **kwargs)
+        self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
+
+
+class ChannelRecordingBulkLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["xlsx"])])
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
+    sufix = forms.CharField(
+        label="Sufix (Ex. a)", required=False, max_length=250
     )
     subject = forms.CharField(widget=forms.HiddenInput())
 
     def clean(self):
         cleaned_data = super().clean()
         file = cleaned_data.get("file")
-        subject_id = cleaned_data.get("subject")
-        structure = cleaned_data.get("structure_name")
-        if structure:
-            validate_mat_file(file, structure)
-        else:
-            subject = BuffaloSubject.objects.get(pk=subject_id)
-            validate_mat_file(file, subject.nickname)
+        validate_channel_recording_file(file)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, wait a moment and try again please"
+            )
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop("subject_id", None)
+        if subject_id is None and "subject" in kwargs["initial"].keys():
+            subject_id = kwargs["initial"]["subject"]
+        super(ChannelRecordingBulkLoadForm, self).__init__(*args, **kwargs)
+        self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
 
 
 class PlotFilterForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
-
+    today = datetime.today().strftime('%m/%d/%Y')
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
-    starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
-    date = forms.DateField(initial=date.today)
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
+    date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
     download_points = forms.BooleanField(required=False)
 
     def __init__(self, *args, **kwargs):
         subject_id = kwargs.pop("subject_id")
         super(PlotFilterForm, self).__init__(*args, **kwargs)
         self.fields["stl"].queryset = STLFile.objects.filter(subject=subject_id)
-        self.fields["starting_point_set"].queryset = StartingPointSet.objects.filter(
+        self.fields["device"].queryset = Device.objects.filter(
             subject=subject_id
         )
 
 
 class SessionQueriesForm(forms.Form):
     cur_year = datetime.today().year
-    year_range = tuple([i for i in range(cur_year - 2, cur_year + 10)])
 
     stl = forms.ModelChoiceField(queryset=StartingPointSet.objects.none())
     starting_point_set = forms.ModelChoiceField(queryset=STLFile.objects.none())
@@ -321,3 +384,132 @@ class SessionQueriesForm(forms.Form):
             "task"
         )
         self.fields["task"].queryset = Task.objects.filter(id__in=session_tasks)
+
+
+class SessionsLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["xlsx"])])
+    subject = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        file_name = file.name.split(".")[0]
+        subject = BuffaloSubject.objects.get(pk=cleaned_data.get("subject"))
+        if file_name.lower() != subject.nickname.lower():
+            raise forms.ValidationError(
+                "The file name is different than the subject's nickname"
+            )
+        validate_sessions_file(file, subject)
+        DramatiqTask.tasks.delete_old_tasks(1800)
+        tasks = DramatiqTask.tasks.filter(status=DramatiqTask.STATUS_RUNNING)
+        if tasks:
+            raise ValidationError(
+                "There is a syncing process in the DB, wait a moment and try again please"
+            )
+
+
+class NeuralPhenomenaForm(forms.ModelForm):
+    class Meta:
+        model = NeuralPhenomena
+        fields = [
+            "name",
+            "description",
+        ]
+
+
+def stl_directory_path(instance, filename):
+    return "stl/subject_{0}/{1}".format(instance.subject.id, filename)
+
+
+class STLFileForm(forms.ModelForm):
+
+    stl_file = forms.FileField(
+        validators=[FileExtensionValidator(["stl"])]
+    )
+
+    subject = forms.ModelChoiceField(
+        queryset=BuffaloSubject.objects.all(), required=True
+    )
+
+    sync_electrodelogs = forms.BooleanField(
+        required=False,
+        help_text="Check if the available electrodelogs are within this \
+            mesh and save the result in the database",
+        label="Sync electrodelogs",
+    )
+
+    class Meta:
+        model = STLFile
+        fields = [
+            "name",
+            "stl_file",
+            "subject"
+        ]
+
+
+class TasksLoadForm(forms.Form):
+    file = forms.FileField(validators=[FileExtensionValidator(["csv"])])
+    subject = forms.CharField(widget=forms.HiddenInput())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        file = cleaned_data.get("file")
+        subject_code = file.name.split("_")[0]
+        subject = BuffaloSubject.objects.get(pk=cleaned_data.get("subject"))
+        if subject_code.lower() != subject.code.lower():
+            raise forms.ValidationError(
+                f"{subject_code} is not this subject's code."
+            )
+
+
+class FoodWeightFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    today = datetime.today().strftime('%m/%d/%Y')
+
+    start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    food_type = forms.ModelChoiceField(queryset=FoodType.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        super(FoodWeightFilterForm, self).__init__(*args, **kwargs)
+        self.fields["food_type"].queryset = FoodType.objects.all()
+
+
+class ElectrodelogsPlotFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    today = datetime.today().strftime('%m/%d/%Y')
+
+    start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop("subject_id")
+        super(ElectrodelogsPlotFilterForm, self).__init__(*args, **kwargs)
+        self.fields["device"].queryset = Device.objects.filter(subject=subject_id)
+
+
+class TaskPlotFilterForm(forms.Form):
+    cur_year = datetime.today().year
+
+    start_date = forms.CharField()
+    finish_date = forms.CharField()
+    task = forms.ModelChoiceField(queryset=Task.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        super(TaskPlotFilterForm, self).__init__(*args, **kwargs)
+        self.fields["task"].queryset = Task.objects.all()
+
+
+class ElectrodeStatusPlotFilterForm(forms.Form):
+    cur_year = datetime.today().year
+    today = datetime.today().strftime('%m/%d/%Y')
+
+    start_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    finish_date = forms.DateField(initial=today, input_formats=settings.DATE_INPUT_FORMATS)
+    device = forms.ModelChoiceField(queryset=Device.objects.none())
+
+    def __init__(self, *args, **kwargs):
+        subject_id = kwargs.pop("subject_id")
+        super(ElectrodeStatusPlotFilterForm, self).__init__(*args, **kwargs)
+        self.fields["device"].queryset = Device.objects.filter(subject=subject_id)

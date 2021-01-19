@@ -1,5 +1,6 @@
 from django.db import models
 from django.utils import timezone
+from django.db.models import Count
 from django.core.validators import MinValueValidator, FileExtensionValidator
 from django.db import transaction, IntegrityError
 from django.conf import settings
@@ -37,6 +38,12 @@ ALIVE = [
     ("maybe", "Maybe"),
 ]
 
+CHAMBER_CLEANING = [
+    ("yes", "Yes"),
+    ("no", "No"),
+    ("n/a", "N/A"),
+]
+
 
 class Location(BaseModel):
     created = models.DateTimeField(auto_now_add=True)
@@ -70,6 +77,15 @@ class Platform(BaseModel):
         return self.name
 
 
+class NeuralPhenomena(BaseModel):
+    description = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
 class BuffaloSubject(Subject):
     unique_id = models.CharField(
         max_length=255, blank=True, default="", help_text="Monkey Identifier"
@@ -87,6 +103,11 @@ class BuffaloElectrodeSubject(BuffaloSubject):
 
 
 class BuffaloElectrodeLogSubject(BuffaloSubject):
+    class Meta:
+        proxy = True
+
+
+class BuffaloDeviceSubject(BuffaloSubject):
     class Meta:
         proxy = True
 
@@ -117,9 +138,7 @@ class Task(BaseModel):
     updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        if self.version is None:
-            return self.name
-        return f"{self.name} (version: {self.version})"
+        return self.name
 
     class Meta:
         verbose_name = "TaskType"
@@ -199,6 +218,21 @@ class WeighingLog(Weighing):
         return str_weight
 
 
+class MenstruationLog(BaseModel):
+    subject = models.ForeignKey(
+        BuffaloSubject,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="The subject on which this action was performed",
+    )
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    menstruation = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
 class BuffaloDataset(Dataset):
     file_name = models.CharField(
         blank=True, null=True, max_length=255, help_text="file name"
@@ -212,6 +246,13 @@ class BuffaloDataset(Dataset):
 
 class BuffaloSession(Session):
     needs_review = models.BooleanField(default=False)
+    pump_setting = models.FloatField(null=True, blank=True)
+    chamber_cleaning = models.CharField(
+        max_length=10, choices=CHAMBER_CLEANING, null=True, blank=True
+    )
+    unknown_user = models.CharField(
+        blank=True, null=True, max_length=255, help_text="Unknown user initials"
+    )
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -232,12 +273,44 @@ class BuffaloSession(Session):
         return super(BuffaloSession, self).save(*args, **kwargs)
 
 
+class Device(BaseModel):
+    subject = models.ForeignKey(
+        BuffaloSubject,
+        null=True,
+        on_delete=models.SET_NULL,
+        help_text="The subject on which the device is",
+    )
+    implantation_date = models.DateTimeField(null=True, blank=True, default=timezone.now)
+    explantation_date = models.DateTimeField(null=True, blank=True)
+    description = models.TextField(blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        name = "deleted"
+        if self.subject:
+            name = self.subject.nickname
+        return f"{name} - {self.name}"
+
+
+class BuffaloElectrodeDevice(Device):
+    class Meta:
+        proxy = True
+
+
 class Electrode(BaseAction):
     subject = models.ForeignKey(
         BuffaloSubject,
         null=True,
         on_delete=models.SET_NULL,
         help_text="The subject on which the electrode is",
+    )
+    device = models.ForeignKey(
+        Device,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="device",
     )
     date_time = models.DateTimeField(null=True, blank=True, default=timezone.now)
     millimeters = models.FloatField(null=True, blank=True)
@@ -275,18 +348,20 @@ class Electrode(BaseAction):
         return self.current_location in stl
 
     def __str__(self):
-        name = "deleted"
-        if self.subject:
-            name = self.subject.nickname
-        return f"{name} - {self.channel_number}"
+        device_name = "device-deleted"
+        subject_name = "subject-deleted"
+        if self.device:
+            device = self.device
+            device_name = device.name
+            if device.subject:
+                subject = device.subject
+                subject_name = subject.nickname
+        return f"{subject_name} - {device_name} - {self.channel_number}"
 
 
 class ElectrodeLog(BaseAction):
     electrode = models.ForeignKey(
-        Electrode,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        Electrode, on_delete=models.SET_NULL, null=True, blank=True,
     )
     turn = models.FloatField(null=True, blank=True)
     impedance = models.FloatField(null=True, blank=True)
@@ -330,22 +405,62 @@ class ElectrodeLog(BaseAction):
                 mesh = trimesh.load(settings.UPLOADED_PATH + stl_file_name)
                 dist = proximity.signed_distance(mesh, [location_list])
                 if dist[0] > 0:
-                    return True
-        return False
+                    return True, dist[0]
+                else:
+                    return False, dist[0]
+        return False, None
 
     @property
     def current_location(self):
         location = self.get_current_location()
         return str(location)
 
+    @property
+    def is_in_stls(self):
+        stls = {}
+        elstls = ElectrodeLogSTL.objects.prefetch_related('stl').filter(
+            electrodelog=self
+        )
+        for elstl in elstls:
+            stl = elstl.stl
+            name = str(stl)
+            if stl.name:
+                name = stl.name
+            stls[name] = f"{str(elstl.is_in)} ({elstl.distance})"
+        return stls
+
+    def save(self, sync=True, *args, **kwargs):
+        super(ElectrodeLog, self).save(*args, **kwargs)
+        if sync:
+            ell = ElectrodeLog.objects.prefetch_related('electrode__device__subject').get(
+                pk=self.id
+            )
+            existing = ell.electrodelogstl.prefetch_related("stl").all().values("id")
+            subject = ell.electrode.device.subject
+            stls = STLFile.objects.filter(subject=subject).exclude(id__in=existing)
+            for stl in stls:
+                elstl = ElectrodeLogSTL(
+                    stl=stl,
+                    electrodelog=self
+                )
+                elstl.is_in, elstl.distance = self.is_in_stl(stl.stl_file.name)
+                elstl.save()
+
+    def sync_stl(self, stl):
+        elstl = ElectrodeLogSTL(
+            stl=stl,
+            electrodelog=self
+        )
+        is_in, distance = self.is_in_stl(stl.stl_file.name)
+        if is_in or distance is not None:
+            elstl.is_in = is_in
+            elstl.distance = distance
+            elstl.save()
+
 
 class StartingPointSet(BaseModel):
     name = models.CharField(max_length=255, default="", blank=True)
-    subject = models.ForeignKey(
-        BuffaloSubject,
-        null=True,
-        on_delete=models.SET_NULL,
-    )
+    subject = models.ForeignKey(BuffaloSubject, null=True, on_delete=models.SET_NULL,)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -412,7 +527,57 @@ class STLFile(Dataset):
         name = "deleted"
         if self.subject:
             name = self.subject.nickname
-        return "<Dataset %s - %s created on %s>" % (str(self.pk)[:8], name, date)
+        name_stl = ""
+        if self.name:
+            name_stl = self.name
+        else:
+            name_stl = str(self.pk)[:8]
+        return "<Dataset %s - %s created on %s>" % (name_stl, name, date)
+
+    def sync_electrodelogs(self):
+        subject = self.subject
+        stls = STLFile.objects.filter(subject=subject)
+        electrode_logs = ElectrodeLog.objects.filter(
+            electrode__device__subject=subject
+        ).annotate(
+            num_stls=Count('electrodelogstl')
+        ).filter(num_stls__lt=len(stls))
+
+        for electrode_log in electrode_logs:
+            electrode_log.sync_stl(self)
+
+
+class ElectrodeLogSTL(BaseModel):
+    electrodelog = models.ForeignKey(
+        ElectrodeLog,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="electrodelogstl",
+    )
+    stl = models.ForeignKey(
+        STLFile, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    is_in = models.BooleanField(default=False)
+    distance = models.FloatField(null=True, blank=True, default=None)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+
+
+class BuffaloAsyncTask(BaseModel):
+    PENDING = "PEN"
+    COMPLETED = "COM"
+    ERROR = "ERR"
+    STATUS = (
+        (PENDING, "PENDING"),
+        (COMPLETED, "COMPLETED"),
+        (ERROR, "ERROR"),
+    )
+    description = models.CharField(max_length=255, default="", blank=True)
+    status = models.CharField(max_length=3, default=PENDING, choices=STATUS)
+    message = models.CharField(max_length=255, default="", blank=True)
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class ChannelRecording(BaseModel):
@@ -428,8 +593,15 @@ class ChannelRecording(BaseModel):
     session = models.ForeignKey(
         Session, null=True, blank=True, on_delete=models.SET_NULL
     )
+    neural_phenomena = models.ManyToManyField(NeuralPhenomena, blank=True)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = (
+            "electrode",
+            "session",
+        )
 
 
 class ProcessedRecording(Dataset):

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from django.contrib import admin
 from django import forms
 from django.forms import BaseInlineFormSet, ModelForm
+from django.utils.encoding import force_text
 from django_admin_listfilter_dropdown.filters import (
     RelatedDropdownFilter,
     DropdownFilter,
@@ -12,6 +13,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.db.models import Case, Count, When
 from reversion.admin import VersionAdmin
 import nested_admin
 
@@ -36,6 +38,7 @@ from .models import (
     ElectrodeLog,
     BuffaloElectrodeSubject,
     BuffaloElectrodeLogSubject,
+    BuffaloDeviceSubject,
     Reward,
     Platform,
     FoodLog,
@@ -43,6 +46,11 @@ from .models import (
     WeighingLog,
     BuffaloDataset,
     StartingPointSet,
+    NeuralPhenomena,
+    Device,
+    BuffaloElectrodeDevice,
+    MenstruationLog,
+    BuffaloAsyncTask,
 )
 from .forms import (
     SubjectWeighingForm,
@@ -52,10 +60,13 @@ from .forms import (
     SubjectForm,
     SessionForm,
     TaskCategoryForm,
-    ElectrodeForm,
     FoodTypeForm,
     ElectrodeLogSubjectForm,
+    NeuralPhenomenaForm,
+    STLFileForm,
 )
+
+from .tasks import sync_electrodelogs_stl
 
 
 class BuffaloSubjectAdmin(BaseAdmin):
@@ -98,65 +109,142 @@ class BuffaloSubjectAdmin(BaseAdmin):
         url = "/buffalo/stlfile/add/?subject=" + str(obj.id)
         return self.link(url, "Add STL file")
 
-    def set_electrodes(self, obj):
-        url = reverse("admin:buffalo_buffaloelectrodesubject_change", args=[obj.id])
-        return self.link(url, "Set electrodes")
+    def manage_devices(self, obj):
+        url = reverse("admin:buffalo_buffalodevicesubject_change", args=[obj.id])
+        return self.link(url, "Manage devices")
 
-    def new_electrode_logs(self, obj):
-        url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.id])
-        return self.link(url, "New electrode logs")
+    def set_electrodelogs_file(self, obj):
+        url = reverse("electrodelog-bulk-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Set electrode logs form")
 
-    def set_electrodes_file(self, obj):
-        url = reverse("electrode-bulk-load", kwargs={"subject_id": obj.id})
-        return self.link(url, "Set electrodes form")
+    def set_channelrecordings_file(self, obj):
+        url = reverse("channelrecord-bulk-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Set channel recordings form")
 
     def plots(self, obj):
         url = reverse("plots", kwargs={"subject_id": obj.id})
-        return self.link(url, "View plots")
+        return self.link(url, "3D plot")
 
     def session_queries(self, obj):
         url = reverse("session-queries", kwargs={"subject_id": obj.id})
         return self.link(url, "Session queries")
 
+    def load_sessions(self, obj):
+        url = reverse("sessions-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Load Sessions")
+
+    def see_subject_sessions(self, obj):
+        url = f"/buffalo/buffalosession/?subject__id__exact={obj.id}"
+        return self.link(url, "See Sessions")
+
+    def load_tasks(self, obj):
+        url = reverse("tasks-load", kwargs={"subject_id": obj.id})
+        return self.link(url, "Load tasks")
+
+    def food_weight_plot(self, obj):
+        url = reverse("food-weight-plot", kwargs={"subject_id": obj.id})
+        return self.link(url, "Food-Weight")
+
+    def electrodelog_plot(self, obj):
+        url = reverse("electrodelog-plot", kwargs={"subject_id": obj.id})
+        return self.link(url, "Electrode log")
+
+    def task_plot(self, obj):
+        url = reverse("task-plot", kwargs={"subject_id": obj.id})
+        return self.link(url, "Tasks")
+
+    def electrode_status_plot(self, obj):
+        url = reverse("electrode-status-plot", kwargs={"subject_id": obj.id})
+        return self.link(url, "Electrode Status")
+
     def options(self, obj):
-        select = "{} {} {} {} {} {} {} {}"
-        select = select.format(
-            self.daily_observations(obj),
-            self.add_session(obj),
-            self.add_stl(obj),
-            self.set_electrodes(obj),
-            self.new_electrode_logs(obj),
-            self.set_electrodes_file(obj),
-            self.plots(obj),
-            self.session_queries(obj),
+        dropdown = (
+            """<div class="dropdown" style="display: inline-block;">
+            <button class="btn btn-secondary dropdown-toggle" type="button"
+            id="dropdownMenuButton""" +
+            obj.nickname +
+            """" data-toggle="dropdown"
+            aria-haspopup="true" aria-expanded="false">{}</button>
+            <div class="dropdown-menu" aria-labelledby="dropdownMenuButton""" +
+            str(obj.id) +
+            """">{}</div></div>"""
         )
-        return format_html(select)
+        session_options = dropdown.format(
+            "Session",
+            self.add_session(obj) +
+            self.see_subject_sessions(obj) +
+            self.load_tasks(obj) +
+            self.load_sessions(obj) +
+            self.session_queries(obj)
+        )
+        electrodes_options = dropdown.format(
+            "Electrodes",
+            self.set_electrodelogs_file(obj) + self.set_channelrecordings_file(obj)
+        )
+        plot_options = dropdown.format(
+            "Visualizations",
+            self.plots(obj) +
+            self.food_weight_plot(obj) +
+            self.electrodelog_plot(obj) +
+            self.task_plot(obj) +
+            self.electrode_status_plot(obj)
+        )
+        options_group = (
+            self.daily_observations(obj) +
+            session_options +
+            electrodes_options +
+            self.add_stl(obj) +
+            plot_options +
+            self.manage_devices(obj)
+        )
+        return format_html(options_group)
 
 
 class ChannelRecordingFormset(BaseInlineFormSet):
     def __init__(self, *args, **kwargs):
         super(ChannelRecordingFormset, self).__init__(*args, **kwargs)
 
+    def clean(self):
+        super().clean()
+        for form in self.forms:
+            if form.cleaned_data.get("neural_phenomena") and not form.cleaned_data.get(
+                "electrode"
+            ):
+                raise forms.ValidationError(
+                    "You must select an Electrode for the Neural Phenomena"
+                )
+
 
 class ChannelRecordingInline(nested_admin.NestedTabularInline):
     model = ChannelRecording
     formset = ChannelRecordingFormset
-    fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
+    fields = (
+        "electrode",
+        "ripples",
+        "alive",
+        "number_of_cells",
+        "neural_phenomena",
+        "notes",
+    )
     extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "electrode":
             try:
-                session = Session.objects.get(
+                session = Session.objects.prefetch_related('subject').get(
                     pk=request.resolver_match.kwargs["object_id"]
                 )
-                kwargs["queryset"] = Electrode.objects.filter(subject=session.subject)
+                kwargs["queryset"] = Electrode.objects.prefetch_related(
+                    "device__subject"
+                ).filter(subject=session.subject)
             except KeyError:
                 pass
             try:
                 subject = request.GET.get("subject", None)
                 if subject is not None:
-                    kwargs["queryset"] = Electrode.objects.filter(subject=subject)
+                    kwargs["queryset"] = Electrode.objects.prefetch_related(
+                        "device__subject"
+                    ).filter(subject=subject)
             except:
                 pass
 
@@ -170,6 +258,10 @@ class SessionTaskFormset(BaseInlineFormSet):
     def clean(self):
         super(SessionTaskFormset, self).clean()
         for form in self.forms:
+            if not form.cleaned_data.get("task_sequence"):
+                raise forms.ValidationError(
+                    "You must input the tasks sequence"
+                )
             if form.cleaned_data.get("needs_review") and not form.cleaned_data.get(
                 "general_comments"
             ):
@@ -194,16 +286,34 @@ class SessionTaskInline(nested_admin.NestedTabularInline):
         "needs_review",
         "general_comments",
         "json",
-        "start_time",
+        "start_time"
     )
     extra = 0
     inlines = [SessionDataNestedsetInline]
+    ordering = ("task_sequence",)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        subject = request.GET.get("subject", None)
+        if db_field.name == "task":
+            last_session = BuffaloSession.objects.filter(
+                subject__id=subject
+            ).order_by('-start_time').first()
+            if last_session is not None:
+                tasks = SessionTask.objects.filter(session=last_session).values_list('task')
+                kwargs["queryset"] = Task.objects.annotate(
+                    relevancy=Count(Case(When(id__in=tasks, then=1)))
+                ).order_by('-relevancy')
+        return super(SessionTaskInline, self).formfield_for_foreignkey(
+            db_field,
+            request,
+            **kwargs
+        )
 
 
 def TemplateInitialDataAddChannelRecording(data, num_forms):
     class AlwaysChangedModelForm(ModelForm):
         def has_changed(self):
-            """ Should returns True if data differs from initial.
+            """Should returns True if data differs from initial.
             By always returning true even unchanged inlines will get validated and saved."""
             return True
 
@@ -218,7 +328,9 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
             subject = request.GET.get("subject", None)
             if db_field.name == "electrode" and subject is not None:
                 try:
-                    kwargs["queryset"] = Electrode.objects.filter(subject=subject)
+                    kwargs["queryset"] = Electrode.objects.prefetch_related(
+                        "device__subject"
+                    ).filter(subject=subject)
                 except KeyError:
                     pass
             return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -232,9 +344,26 @@ def TemplateInitialDataAddChannelRecording(data, num_forms):
                     AddChannelRecordingInline.AddChannelRecordingFormset, self
                 ).__init__(*args, **kwargs)
 
+            def clean(self):
+                super().clean()
+                for form in self.forms:
+                    if form.cleaned_data.get(
+                        "neural_phenomena"
+                    ) and not form.cleaned_data.get("electrode"):
+                        raise forms.ValidationError(
+                            "You must select an Electrode for the Neural Phenomena"
+                        )
+
         model = ChannelRecording
         extra = num_forms
-        fields = ("electrode", "ripples", "alive", "number_of_cells", "notes")
+        fields = (
+            "electrode",
+            "ripples",
+            "alive",
+            "number_of_cells",
+            "neural_phenomena",
+            "notes",
+        )
         formset = AddChannelRecordingFormset
 
     return AddChannelRecordingInline
@@ -245,6 +374,9 @@ class BuffaloSubjectFood(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     list_display = ["subject", "session_", "amount", "date_time"]
     source = ""
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+    ]
 
     def session_(self, obj):
         try:
@@ -323,15 +455,30 @@ class SessionWeighingInline(nested_admin.NestedTabularInline):
     can_delete = False
 
 
+class SessionMenstruationForm(ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(SessionMenstruationForm, self).__init__(*args, **kwargs)
+        self.fields["menstruation"].required = False
+
+
+class SessionMenstruationInline(nested_admin.NestedTabularInline):
+    model = MenstruationLog
+    form = SessionMenstruationForm
+    fields = ("session", "menstruation")
+    min_num = 1
+    max_num = 1
+    can_delete = False
+
+
 class SessionTaskListFilter(DefaultListFilter):
     title = "Task"
     parameter_name = "task"
 
     def lookups(self, request, model_admin):
         sessions_tasks = set(
-            [c.task for c in SessionTask.objects.filter(task__isnull=False)]
+            [(c.id, c) for c in Task.objects.all()]
         )
-        return [("all", "All")] + [(c.id, c) for c in sessions_tasks]
+        return [("all", "All")] + list(sessions_tasks)
 
     def queryset(self, request, queryset):
         if self.value() == "all":
@@ -366,6 +513,50 @@ class SessionTaskTrainingFilter(DefaultListFilter):
             return queryset.filter(id__in=sessions)
 
 
+class ElectrodeListFilter(DefaultListFilter):
+    title = "Electrode"
+    parameter_name = "electrode"
+    related_filter_parameter = "subject__id__exact"
+    template = "django_admin_listfilter_dropdown/dropdown_filter.html"
+
+    def choices(self, cl):
+        for lookup, title in self.lookup_choices:
+            yield {
+                "selected": self.value() == force_text(lookup),
+                "query_string": cl.get_query_string({self.parameter_name: lookup}, [],),
+                "display": title,
+            }
+
+    def lookups(self, request, model_admin):
+        electrodes = Electrode.objects.all()
+        if self.related_filter_parameter in request.GET:
+            electrodes = electrodes.prefetch_related(
+                "device__subject"
+            ).filter(
+                subject_id=request.GET[self.related_filter_parameter]
+            )
+
+        return [("all", "All")] + [(e.id, e) for e in electrodes]
+
+    def queryset(self, request, queryset):
+        all_flag = False
+        if (
+            self.value() != "all" and
+            self.related_filter_parameter in request.GET and
+            self.value() is not None
+        ):
+            electrodes = queryset.filter(
+                subject_id=request.GET[self.related_filter_parameter],
+                electrode=self.value(),
+            )
+            all_flag = len(electrodes) == 0
+        if self.value() == "all" or all_flag:
+            return queryset.all()
+        elif self.value() is not None:
+            return queryset.filter(electrode=self.value())
+        return queryset.all()
+
+
 class SessionDatasetForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super(SessionDatasetForm, self).__init__(*args, **kwargs)
@@ -379,7 +570,6 @@ class SessionDatasetInline(nested_admin.NestedTabularInline):
 
 class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
     form = SessionForm
-    # change_list_template = "buffalo/change_list.html"
     change_form_template = "buffalo/change_form.html"
     source = ""
     extra = 0
@@ -397,6 +587,7 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         SessionDatasetInline,
         SessionWeighingInline,
         SessionFoodInline,
+        SessionMenstruationInline,
         SessionTaskInline,
         ChannelRecordingInline,
     ]
@@ -450,6 +641,7 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
                     SessionDatasetInline,
                     SessionWeighingInline,
                     SessionFoodInline,
+                    SessionMenstruationInline,
                     SessionTaskInline,
                     TemplateInitialDataAddChannelRecording(initial, len(initial)),
                 ]
@@ -502,12 +694,18 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         )
 
     def save_formset(self, request, form, formset, change):
-
         instances = formset.save(commit=False)
         for obj in formset.deleted_objects:
             obj.delete()
-
         for instance in instances:
+            if isinstance(instance, SessionTask):
+                session_start_date = instance.session.start_time.date()
+                if session_start_date != instance.start_time.date():
+                    actual_date = instance.start_time.replace(
+                        year=instance.session.start_time.year,
+                        month=instance.session.start_time.month,
+                        day=instance.session.start_time.day)
+                    instance.start_time = actual_date
             if isinstance(instance, WeighingLog):
                 instance.subject = form.instance.subject
             if isinstance(instance, ChannelRecording):
@@ -528,9 +726,22 @@ class BuffaloWeight(BaseAdmin):
         "subject",
         "weight_in_Kg",
         "user",
+        "_session",
         "date_time",
     ]
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+    ]
     ordering = ("-updated",)
+
+    def _session(self, obj):
+        try:
+            url = reverse("session-details", kwargs={"session_id": obj.session.id})
+            name = obj.session.name
+        except AttributeError:
+            url = ""
+            name = ""
+        return format_html('<a href="{url}">{name}</a>', url=url, name=name)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super(BuffaloWeight, self).get_form(request, obj, **kwargs)
@@ -679,7 +890,10 @@ class StartingPointFormset(BaseInlineFormSet):
     def clean(self):
         super().clean()
         for form in self.forms:
-            form.instance.subject = form.cleaned_data['electrode'].subject
+            if form.cleaned_data["electrode"].subject is not None:
+                form.instance.subject = form.cleaned_data["electrode"].subject
+            elif form.cleaned_data["electrode"].device is not None:
+                form.instance.subject = form.cleaned_data["electrode"].device.subject
 
 
 class StartingPointInline(nested_admin.NestedTabularInline):
@@ -701,9 +915,18 @@ class StartingPointInline(nested_admin.NestedTabularInline):
     extra = 0
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        cache = getattr(request, 'subject_id_cache', {})
         if db_field.name == "starting_point_set":
             try:
-                subject_id = request.resolver_match.kwargs["object_id"]
+                subject_id = None
+                if cache.get("subject_id"):
+                    subject_id = cache["subject_id"]
+                else:
+                    device_id = request.resolver_match.kwargs["object_id"]
+                    device = Device.objects.prefetch_related("subject").get(pk=device_id)
+                    subject_id = device.subject.id
+                    request.subject_id_cache = cache
+                    request.subject_id_cache["subject_id"] = subject_id
                 kwargs["queryset"] = StartingPointSet.objects.prefetch_related(
                     "subject"
                 ).filter(subject=subject_id)
@@ -712,12 +935,36 @@ class StartingPointInline(nested_admin.NestedTabularInline):
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
 
+class BuffaloElectrodeFormset(BaseInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        super(BuffaloElectrodeFormset, self).__init__(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        for form in self.forms:
+            if form.cleaned_data["device"] is not None:
+                form.instance.subject = form.cleaned_data["device"].subject
+
+
 class BuffaloElectrode(nested_admin.NestedTabularInline):
     model = Electrode
-    fields = ("channel_number", "turns_per_mm", "millimeters", "date_time", "notes")
+    formset = BuffaloElectrodeFormset
+    fields = (
+        "channel_number",
+        "turns_per_mm",
+        "millimeters",
+        "device",
+        "date_time",
+        "notes",
+    )
     extra = 0
     inlines = [StartingPointInline]
     ordering = ("created",)
+
+    def get_queryset(self, request):
+        return super(BuffaloElectrode, self).get_queryset(request).select_related(
+            'device__subject'
+        )
 
 
 class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
@@ -758,18 +1005,188 @@ class BuffaloElectrodeSubjectAdmin(nested_admin.NestedModelAdmin):
         return self.readonly_fields
 
 
-def TemplateInitialDataElectrodeLog(data, num_forms, subject_id):
+class DeviceInlineFormSet(BaseInlineFormSet):
+    def __init__(self, *args, **kwargs):
+        super(DeviceInlineFormSet, self).__init__(*args, **kwargs)
+        self.can_delete = False
+
+
+class BuffaloDevice(admin.TabularInline):
+    model = Device
+    fields = (
+        "name",
+        "manage_electrodes",
+        "implantation_date",
+        "explantation_date",
+        "description",
+    )
+    readonly_fields = ("manage_electrodes",)
+    extra = 0
+    formset = DeviceInlineFormSet
+
+    def link(self, url, name):
+        link_code = '<a class="button" href="{url}">{name}</a>'
+        return format_html(link_code, url=url, name=name)
+
+    def set_electrodes_file(self, obj):
+        url = reverse("electrode-bulk-load", kwargs={"device_id": obj.id})
+        return self.link(url, "Set electrode starts")
+
+    def set_electrodes(self, obj):
+        url = reverse("admin:buffalo_buffaloelectrodedevice_change", args=[obj.id])
+        return self.link(url, "Edit electrodes")
+
+    def new_electrode_logs(self, obj):
+        url = reverse("admin:buffalo_buffaloelectrodelogsubject_change", args=[obj.subject.id]) + \
+            "?device_id={}".format(obj.id)
+        return self.link(url, "New electrode logs")
+
+    def manage_electrodes(self, obj):
+        select = "{}<br><br>{}<br><br>{}".format(
+            self.set_electrodes_file(obj), self.set_electrodes(obj),
+            self.new_electrode_logs(obj)
+        )
+        return format_html(select)
+
+
+class BuffaloDeviceSubjectAdmin(BaseAdmin):
+    change_form_template = "buffalo/change_form.html"
+    form = SubjectForm
+
+    list_display = [
+        "nickname",
+        "birth_date",
+        "sex",
+        "description",
+        "responsible_user",
+    ]
+
+    fields = ["nickname", "unique_id", "name"]
+
+    search_fields = [
+        "nickname",
+    ]
+
+    inlines = [BuffaloDevice]
+
+    def response_change(self, request, obj):
+        url = f"/buffalo/buffalodevicesubject/{obj.id}"
+        return redirect(url)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return self.readonly_fields + ("nickname", "unique_id", "name")
+        return self.readonly_fields
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloDeviceSubjectAdmin, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
+
+
+class BuffaloDeviceAdmin(BaseAdmin):
+    change_form_template = "buffalo/change_form.html"
+
+    list_display = [
+        "subject",
+        "name",
+        "implantation_date",
+        "explantation_date",
+        "description",
+        "updated",
+    ]
+
+    fields = [
+        "name",
+        "subject",
+        "implantation_date",
+        "explantation_date",
+        "description",
+    ]
+
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+    ]
+    ordering = ("-updated",)
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloDeviceAdmin, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
+
+
+class BuffaloElectrodeDeviceAdmin(nested_admin.NestedModelAdmin):
+    change_form_template = "buffalo/change_form.html"
+
+    list_display = ["name", "description"]
+
+    fields = [
+        "name",
+        "description",
+        "implantation_date",
+        "subject",
+        "explantation_date",
+    ]
+
+    search_fields = [
+        "nickname",
+    ]
+
+    inlines = [BuffaloElectrode]
+
+    def response_change(self, request, obj):
+        return redirect(
+            reverse("admin:buffalo_buffalodevicesubject_change", args=[obj.subject.id])
+        )
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return self.readonly_fields + (
+                "name",
+                "subject",
+                "description",
+                "implantation_date",
+                "explantation_date",
+            )
+        return self.readonly_fields
+
+
+def TemplateInitialDataElectrodeLog(data, num_forms):
     class BuffaloElectrodeLog(admin.TabularInline):
         def get_queryset(self, request):
             self.request = request
             return ElectrodeLog.objects.none()
 
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
+            device_id = request.GET.get('device_id', None)
+
             if db_field.name == "electrode":
                 try:
                     kwargs["queryset"] = Electrode.objects.prefetch_related(
-                        "subject"
-                    ).filter(subject=subject_id)
+                        "device__subject"
+                    ).filter(device=device_id)
                 except KeyError:
                     pass
             return super().formfield_for_foreignkey(db_field, request, **kwargs)
@@ -821,11 +1238,12 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
         super().save_formset(request, form, formset, change)
 
     def get_inline_instances(self, request, obj=None):
-        electrodes = Electrode.objects.filter(subject=obj.id)
+        device_id = request.GET.get('device_id', None)
+        electrodes = Electrode.objects.filter(device=device_id).order_by('created')
         initial = []
         for electrode in electrodes:
             initial.append({"electrode": electrode.id})
-        inlines = [TemplateInitialDataElectrodeLog(initial, len(initial), obj.id)]
+        inlines = [TemplateInitialDataElectrodeLog(initial, len(initial))]
         return [inline(self.model, self.admin_site) for inline in inlines]
 
     def response_change(self, request, obj):
@@ -847,14 +1265,18 @@ class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
 
 
 class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
-    change_form_template = "buffalo/change_form.html"
-    form = ElectrodeForm
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+        ElectrodeListFilter,
+    ]
     list_display = [
         "subject",
         "electrode",
         "turn",
         "impedance",
         "current_location",
+        "is_in_stls",
+        "notes",
         "date_time",
     ]
     fields = ("subject", "electrode", "turn", "impedance", "date_time", "notes")
@@ -867,16 +1289,22 @@ class BuffaloElectrodeLogAdmin(admin.ModelAdmin):
 class BuffaloChannelRecording(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
     list_display = [
+        "name",
         "subject_recorded",
         "session_",
         "alive",
         "number_of_cells",
     ]
+    list_filter = [
+        ("session__subject", RelatedDropdownFilter),
+    ]
 
     def session_(self, obj):
         if obj.session is None:
             return ""
-        return obj.session.name
+        url = reverse("session-details", kwargs={"session_id": obj.session.id})
+        name = obj.session
+        return format_html('<a href="{url}">{name}</a>', url=url, name=name)
 
     def subject_recorded(self, obj):
         if obj.session is None:
@@ -887,7 +1315,11 @@ class BuffaloChannelRecording(BaseAdmin):
 
 class BuffaloSTLFile(BaseAdmin):
     change_form_template = "buffalo/change_form.html"
-    fields = ("stl_file", "subject")
+    fields = ("name", "stl_file", "subject", "sync_electrodelogs")
+    form = STLFileForm
+    list_filter = [
+        ("subject", RelatedDropdownFilter),
+    ]
 
     def response_add(self, request, obj):
         messages.success(request, "File uploaded successful.")
@@ -905,7 +1337,34 @@ class BuffaloSTLFile(BaseAdmin):
         subject_id = request.GET.get("subject", None)
         if subject_id:
             form.base_fields["subject"].initial = subject_id
+        form.base_fields["sync_electrodelogs"].initial = True
         return form
+
+    def save_model(self, request, obj, form, change):
+        ret = super(BuffaloSTLFile, self).save_model(request, obj, form, change)
+        if form.cleaned_data["sync_electrodelogs"]:
+            sync_electrodelogs_stl.send(str(obj.id))
+        return ret
+
+
+class BuffaloAsyncTaskAdmin(BaseAdmin):
+    change_form_template = "buffalo/change_form.html"
+    fields = ("description", "status", "message")
+    list_display = [
+        "description",
+        "status",
+        "message",
+        "created",
+    ]
+
+    ordering = ("-created",)
+
+    def __init__(self, *args, **kwargs):
+        super(BuffaloAsyncTaskAdmin, self).__init__(*args, **kwargs)
+        if self.fields and "json" in self.fields:
+            fields = list(self.fields)
+            fields.remove("json")
+            self.fields = tuple(fields)
 
 
 class BuffaloStartingPoint(admin.ModelAdmin):
@@ -1002,9 +1461,31 @@ class BuffaloDatasetAdmin(BaseExperimentalDataAdmin):
         return False
 
 
+class NeuralPhenomenaAdmin(admin.ModelAdmin):
+    form = NeuralPhenomenaForm
+
+    list_display = [
+        "name",
+        "description",
+    ]
+
+    def has_delete_permission(self, request, obj=None):
+        if "buffalo/buffalosession" in request.path:
+            return False
+        return True
+
+    def has_change_permission(self, request, obj=None):
+        if "buffalo/buffalosession" in request.path:
+            return False
+        return True
+
+
 admin.site.register(BuffaloSubject, BuffaloSubjectAdmin)
 admin.site.register(BuffaloElectrodeSubject, BuffaloElectrodeSubjectAdmin)
 admin.site.register(BuffaloElectrodeLogSubject, BuffaloElectrodeLogSubjectAdmin)
+admin.site.register(BuffaloDeviceSubject, BuffaloDeviceSubjectAdmin)
+admin.site.register(BuffaloElectrodeDevice, BuffaloElectrodeDeviceAdmin)
+admin.site.register(Device, BuffaloDeviceAdmin)
 admin.site.register(ElectrodeLog, BuffaloElectrodeLogAdmin)
 admin.site.register(BuffaloSession, BuffaloSessionAdmin)
 admin.site.register(WeighingLog, BuffaloWeight)
@@ -1022,3 +1503,5 @@ admin.site.register(Reward)
 admin.site.register(Platform)
 admin.site.register(FoodType, FoodTypeAdmin)
 admin.site.register(BuffaloDataset, BuffaloDatasetAdmin)
+admin.site.register(NeuralPhenomena, NeuralPhenomenaAdmin)
+admin.site.register(BuffaloAsyncTask, BuffaloAsyncTaskAdmin)

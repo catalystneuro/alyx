@@ -60,11 +60,10 @@
             <label><strong>General Comments </strong> {{subject.general_comments}}</label><br><br>
         </div>
     </div>
-    
-    <div class="col-lg-8  offset-md-2" >
-        <div class="col-lg-8  offset-md-2">
+    <div>
+       <div id="table-weight">
             <h5>Weight</h5>
-            <table class="table table-striped">
+            <table class="table table-striped scroll_table" style="{% if not weights %}visibility:hidden{% endif %}">
                 <thead>
                     <tr>
                     <th scope="col">Date Time</th>
@@ -81,12 +80,9 @@
                 </tbody>
             </table>
         </div>
-    </div>
-    <br><br>
-    <div class="row">
-        <div class="col-lg-8  offset-md-2">
+       <div id="table-food">
             <h5>Food</h5>
-            <table class="table table-striped">
+            <table class="table table-striped scroll_table" style="{% if not food %}visibility:hidden{% endif %}">
                 <thead>
                     <tr>
                     <th scope="col">Date Time</th>
@@ -97,43 +93,15 @@
                     {% for f in food %}
                         <tr class="">
                             <td>{{f.date_time}}</td>
-                            <td>{{f.amount}}Ml</td>
+                            <td>{{f.get_food_detail}}</td>
                         </tr>
                     {% endfor %}                    
                 </tbody>
             </table>
         </div>
-    </div>
-    <br><br>
-    <div class="row">
-        <!--<div class="col-lg-10  offset-md-1">
-            <h5>Daily Observations</h5>
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col">Run</th>
-                    <th scope="col">Tasks</th>
-                    <th scope="col">Food</th>
-                    <th scope="col">General Comments</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for observation in observations %}
-                        <tr class="">
-                            <td>{{observation.date_time}}</td>
-                            <td>{{observation.run}}</td>
-                            <td>{{observation.food}}</td>
-                            <td>{{observation.general_comments}}</td>
-                        </tr>
-                    {% endfor %}                    
-                </tbody>
-            </table>
-        </div>-->
-        <br><br>
-        <div class="col-md-10 offset-md-1">
+        <div class="col-md-10 offset-md-1" style="{% if not food and not weights %}display:inline-block{% endif %}">
             <h5>Sessions</h5>
-            <table class="table table-striped">
+            <table class="table table-striped scroll_table" style="{% if not sessions %}visibility:hidden{% endif %}">
                 <thead>
                     <tr>
                     <th scope="col">Session</th>
@@ -158,7 +126,7 @@
                         {% with users=session.users|get_users %}
                             <td>{{users}}</td>
                         {% endwith %}
-                        <td>{{session.narrative}}</td>
+                        <td style="width: 30%;word-wrap: break-word;">{{session.narrative}}</td>
                         <td>{{session.start_time|default:""}}</td>
                         <td>{{session.end_time|default:""}}</td>
                         </tr>
@@ -166,6 +134,5 @@
                 </tbody>
             </table>
         </div>
-    </div>
      </div>
 {% endblock %}
