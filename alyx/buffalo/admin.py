@@ -693,6 +693,10 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
             request, object_id, form_url, extra_context=extra_context,
         )
 
+    def message_user(self, request, message, level=messages.INFO, extra_tags='',
+                 fail_silently=False):
+        pass
+
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
         for obj in formset.deleted_objects:
@@ -715,6 +719,13 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
                     continue
             instance.save()
         formset.save_m2m()
+
+    def save_model(self, request, obj, form, change):
+        super(BuffaloSessionAdmin, self).save_model(request, obj, form, change)
+        msg = f"The session '{obj.name}' was added successfully"
+        if change:
+            msg = f"The session '{obj.name}' was changed successfully"
+        messages.success(request, msg)
 
 
 class BuffaloWeight(BaseAdmin):
