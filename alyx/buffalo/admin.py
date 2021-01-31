@@ -377,6 +377,7 @@ class BuffaloSubjectFood(BaseAdmin):
     list_filter = [
         ("subject", RelatedDropdownFilter),
     ]
+    ordering = ("date_time",)
 
     def session_(self, obj):
         try:
@@ -386,7 +387,7 @@ class BuffaloSubjectFood(BaseAdmin):
             return "-"
 
         return format_html(
-            '<a href="{url}">{name}</a>', url=url, name="Session Task Details"
+            '<a href="{url}">{name}</a>', url=url, name=obj.session.name
         )
 
     def add_view(self, request, *args, **kwargs):
@@ -406,15 +407,19 @@ class BuffaloSubjectFood(BaseAdmin):
 
     def has_delete_permission(self, request, obj=None):
         try:
-            if obj.session is not None or obj.subject is not None:
+            if obj.session is not None:
                 return False
+            else:
+                return True
         except:
             return True
 
     def has_change_permission(self, request, obj=None):
         try:
-            if obj.session is not None or obj.subject is not None:
+            if obj.session is not None:
                 return False
+            else:
+                return True
         except:
             return True
 
@@ -702,6 +707,8 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
         for obj in formset.deleted_objects:
             obj.delete()
         for instance in instances:
+            if isinstance(instance, FoodLog):
+                instance.subject = form.instance.subject
             if isinstance(instance, SessionTask):
                 session_start_date = instance.session.start_time.date()
                 if session_start_date != instance.start_time.date():
@@ -1218,7 +1225,6 @@ def TemplateInitialDataElectrodeLog(data, num_forms):
 
 
 class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
-
     change_form_template = "buffalo/change_form.html"
     form = ElectrodeLogSubjectForm
     list_display = [

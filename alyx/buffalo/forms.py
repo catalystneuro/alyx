@@ -223,7 +223,8 @@ class SubjectFoodLog(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(SubjectFoodLog, self).__init__(*args, **kwargs)
-        self.fields["amount"].widget.attrs = {"min": 50, "max": 1500}
+        if "amount" in self.fields:
+            self.fields["amount"].widget.attrs = {"min": 50, "max": 1500}
 
     class Meta:
         model = FoodLog

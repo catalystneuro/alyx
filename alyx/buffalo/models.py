@@ -187,7 +187,7 @@ class FoodLog(BaseModel):
         on_delete=models.SET_NULL,
         help_text="The subject on which this action was performed",
     )
-    food = models.ForeignKey(FoodType, null=True, blank=True, on_delete=models.PROTECT)
+    food = models.ForeignKey(FoodType, null=True, blank=True, on_delete=models.SET_NULL)
     amount = models.FloatField(
         null=True, blank=True, validators=[MinValueValidator(limit_value=0)]
     )
