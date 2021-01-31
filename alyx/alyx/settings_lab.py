@@ -43,10 +43,7 @@ NARRATIVE_TEMPLATES = {
 # Menu Buffalo lab
 CUSTOM_MENU = config("CUSTOM_MENU", default=False)
 ADMIN_PAGES = (
-    ("Start Here", ["Buffalo subjects",],),
-    (
-        "Inividual Models",
-        [
+    ("Start Here", [
             "Buffalo subjects",
             "Sessions",
             "TaskTypes",
@@ -65,8 +62,7 @@ ADMIN_PAGES = (
             "Lab members",
             "Buffalo async tasks",
             "Devices",
-        ],
-    ),
+        ],),
 )
 
 # Custom urls
