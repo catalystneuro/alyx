@@ -698,7 +698,9 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
             request, object_id, form_url, extra_context=extra_context,
         )
 
-    def message_user(self, request, message, level=messages.INFO, extra_tags='', fail_silently=False):
+    def message_user(
+        self, request, message, level=messages.INFO, extra_tags="", fail_silently=False
+    ):
         pass
 
     def save_formset(self, request, form, formset, change):
