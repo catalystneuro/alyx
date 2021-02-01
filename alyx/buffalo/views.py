@@ -224,7 +224,7 @@ class SessionDetails(TemplateView):
             "session": session,
             "session_users": session.users.all(),
             "session_weightlog": WeighingLog.objects.filter(session=session_id).first(),
-            "session_foodlog": FoodLog.objects.filter(session=session_id).first(),
+            "session_foodlog": FoodLog.objects.filter(session=session_id),
             "session_menstruationlog": MenstruationLog.objects.filter(
                 session=session_id
             ).first(),

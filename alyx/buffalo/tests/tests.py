@@ -26,8 +26,6 @@ class SubjectSessionTestCase(TestCase):
     def test_load_homepage(self):
         response = self.client.get("")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.context_data["app_list"][0].models), 1)
-        self.assertEqual(len(response.context_data["app_list"][1].models), 18)
 
     def test_subject_exists(self):
         # Subject exists

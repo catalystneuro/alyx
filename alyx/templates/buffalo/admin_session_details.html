@@ -100,9 +100,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr class="d-flex">
-                        <td class="col-sm-2">{{session_foodlog.get_food_detail}}</td>
-                    </tr>
+                    {% for food_log in session_foodlog %}
+                        <tr class="d-flex">
+                            <td class="col-sm-2">{{food_log.get_food_detail}}</td>
+                        </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -116,7 +118,7 @@
                 </thead>
                 <tbody>
                     <tr class="d-flex">
-                        <td class="col-sm-2">{{session_menstruationlog|default:""}}</td>
+                        <td class="col-sm-2">{{session_menstruationlog.menstruation|yesno:"Yes,No"|default:""}}</td>
                     </tr>
                 </tbody>
             </table>

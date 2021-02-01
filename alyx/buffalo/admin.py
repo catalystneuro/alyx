@@ -377,6 +377,7 @@ class BuffaloSubjectFood(BaseAdmin):
     list_filter = [
         ("subject", RelatedDropdownFilter),
     ]
+    ordering = ("date_time",)
 
     def session_(self, obj):
         try:
@@ -386,7 +387,7 @@ class BuffaloSubjectFood(BaseAdmin):
             return "-"
 
         return format_html(
-            '<a href="{url}">{name}</a>', url=url, name="Session Task Details"
+            '<a href="{url}">{name}</a>', url=url, name=obj.session.name
         )
 
     def add_view(self, request, *args, **kwargs):
@@ -406,15 +407,19 @@ class BuffaloSubjectFood(BaseAdmin):
 
     def has_delete_permission(self, request, obj=None):
         try:
-            if obj.session is not None or obj.subject is not None:
+            if obj.session is not None:
                 return False
+            else:
+                return True
         except:
             return True
 
     def has_change_permission(self, request, obj=None):
         try:
-            if obj.session is not None or obj.subject is not None:
+            if obj.session is not None:
                 return False
+            else:
+                return True
         except:
             return True
 
@@ -693,11 +698,18 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
             request, object_id, form_url, extra_context=extra_context,
         )
 
+    def message_user(
+        self, request, message, level=messages.INFO, extra_tags="", fail_silently=False
+    ):
+        pass
+
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
         for obj in formset.deleted_objects:
             obj.delete()
         for instance in instances:
+            if isinstance(instance, FoodLog):
+                instance.subject = form.instance.subject
             if isinstance(instance, SessionTask):
                 session_start_date = instance.session.start_time.date()
                 if session_start_date != instance.start_time.date():
@@ -715,6 +727,13 @@ class BuffaloSessionAdmin(VersionAdmin, nested_admin.NestedModelAdmin):
                     continue
             instance.save()
         formset.save_m2m()
+
+    def save_model(self, request, obj, form, change):
+        super(BuffaloSessionAdmin, self).save_model(request, obj, form, change)
+        msg = f"The session '{obj.name}' was added successfully"
+        if change:
+            msg = f"The session '{obj.name}' was changed successfully"
+        messages.success(request, msg)
 
 
 class BuffaloWeight(BaseAdmin):
@@ -1207,7 +1226,6 @@ def TemplateInitialDataElectrodeLog(data, num_forms):
 
 
 class BuffaloElectrodeLogSubjectAdmin(admin.ModelAdmin):
-
     change_form_template = "buffalo/change_form.html"
     form = ElectrodeLogSubjectForm
     list_display = [
