@@ -10,6 +10,17 @@ subject_nickname = 'snake'
 date_alive = '2020-02-26'
 date_dead = '2019-10-04'
 
+% To query a date range: set and uncomment the following variables with the dates ranges:
+% date_alive_start = '2020-02-25'
+% date_alive_end = '2020-02-26'
+% date_dead_start = '2019-10-03'
+% date_dead_end = '2019-10-04'
+
+% Then replace "'select be.channel_number ' ..." with "distinct( be.channel_number )"
+% replace the first "'and date(asess.start_time) = ''%s'' ' ..." with "'and date(asess.start_time) between ''%s'' and ''%s'' ' ..."
+% And replace the second "and date(asess_s.start_time) = ''%s'' ' ..." with "and date(asess_s.start_time)  between ''%s'' and ''%s'' '"
+% Finally replace "], subject_nickname, date_alive, date_dead)" with "], subject_nickname, date_alive_start, date_alive_end, date_dead_start, date_dead_end)"
+
 channels_sql = sprintf([
 'select be.channel_number ' ...
 'from buffalo_device bd, buffalo_electrode be, ' ...

@@ -29,4 +29,6 @@ and be.channel_number in (
 	and bch_s.alive = 'no' 
 	and bch_s.electrode_id = be_s.id 
 	and date(asess_s.start_time) = '2019-10-04' -- Update this date
+	-- for date range:
+    -- and date(asess_s.start_time) between 'date1' and 'date2' both times
 )

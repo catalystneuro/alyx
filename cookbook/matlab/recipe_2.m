@@ -10,6 +10,13 @@ conn = postgresql(datasource,username,password);
 subject_nickname = 'laureano'
 stl_name = 'ca1'
 date = '2020-11-11'
+% To query a year set variable year with the year you want to query:
+year = '2020'
+% Then replace 'and date(bel.date_time) = ''%s'' ' with the this line:
+% 'and date_part(''year'', date(bel.date_time)) = ''%s'' '
+% And replace "], subject_nickname, stl_name, date)'" with:
+% ], subject_nickname, stl_name, year)
+
 
 channels_sql = sprintf(['select be.channel_number, bels.distance ' ...
 'from buffalo_device bd, buffalo_electrode be, buffalo_electrodelog bel, ' ...
