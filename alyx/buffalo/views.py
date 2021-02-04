@@ -1445,3 +1445,11 @@ class ElectrodeStatusPlotView(View):
             })
 
         return render(request, self.template_name, {"form": form, 'subject_name': subject_name})
+
+
+class getSubjectJson(View):
+    def get(self, request, *args, **kwargs):
+        if request.is_ajax():
+            subject = request.GET.get("id_subject")
+            subject_name = BuffaloSubject.objects.get(pk=subject)
+            return JsonResponse({"subject_name": subject_name.nickname}, status=200)
