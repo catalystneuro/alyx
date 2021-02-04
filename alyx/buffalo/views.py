@@ -768,7 +768,7 @@ class SessionsLoadView(FormView):
                         )
                         # Creates the Menstruation log
                         try:
-                            if session["5_Menstration"].strip() == "yes":
+                            if session["5_Menstruation"].strip() == "yes":
                                 subject_mentruation_logs = (
                                     MenstruationLog.objects.filter(
                                         subject=subject, session=newsession
