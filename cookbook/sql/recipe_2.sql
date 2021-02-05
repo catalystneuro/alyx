@@ -17,4 +17,6 @@ and bel.id = bels.electrodelog_id
 and bstl.dataset_ptr_id = bels.stl_id 
 and bels.is_in is true 
 and abs(bels.distance) < 1 
-and date(bel.date_time) = '2020-11-11' -- update this date
+and date(bel.date_time) = '2020-11-11' -- update this date to query an specific day
+-- To query a year replace the last line with this condition:
+    -- and date_part('year', date(bel.date_time)) = '2020' -- update this date to query a year
