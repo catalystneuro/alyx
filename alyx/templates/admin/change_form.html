@@ -128,7 +128,25 @@ $(window).on("load", function() {
     })
 </script>
 {% endblock %}
-
+{% block subject_name %}
+    <script>
+        label_load = $("#label-load")
+        if (label_load) {
+            const id_subject = $("#id_subject").val()
+            $.ajax({
+                type: 'GET',
+                url: "{% url 'subject-json' %}",
+                data: {"id_subject": id_subject  },
+                success: function (response) {
+                    $("#label-load").append("for " + response.subject_name)
+                },
+                error: function (response) {
+                    console.log(response)
+                }
+            })
+        }
+    </script>
+{% endblock %}
 {% block datepicker %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/datepicker/0.6.5/datepicker.min.js" integrity="sha256-/7FLTdzP6CfC1VBAj/rsp3Rinuuu9leMRGd354hvk0k=" crossorigin="anonymous"></script>
     <script>

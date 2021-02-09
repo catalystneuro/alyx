@@ -13,6 +13,7 @@ from .utils import (
     validate_electrodelog_file,
     validate_channel_recording_file,
     validate_sessions_file,
+    valid_year,
 )
 
 
@@ -493,9 +494,19 @@ class ElectrodelogsPlotFilterForm(forms.Form):
 class TaskPlotFilterForm(forms.Form):
     cur_year = datetime.today().year
 
-    start_date = forms.CharField()
-    finish_date = forms.CharField()
+    start_date = forms.CharField(label="Start year")
+    finish_date = forms.CharField(label="Finish year")
     task = forms.ModelChoiceField(queryset=Task.objects.none())
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data["start_date"]
+        finish_date = cleaned_data["finish_date"]
+
+        if not valid_year(start_date) or not valid_year(finish_date):
+            raise forms.ValidationError(
+                "Start and finish dates must be a valid years"
+            )
 
     def __init__(self, *args, **kwargs):
         super(TaskPlotFilterForm, self).__init__(*args, **kwargs)
