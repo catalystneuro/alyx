@@ -4,7 +4,7 @@ SESSIONS_FILE_COLUMNS_V1 = [
     "Weight (kg)",
     "Food (mL)",
     "Pump Setting",
-    "Menstration",
+    "Menstruation",
     "General Comments",
     "Daily Task List",
     "Task 1",

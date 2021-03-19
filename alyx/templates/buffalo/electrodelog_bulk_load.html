@@ -17,7 +17,7 @@
     <div id="loading"></div>
     <div class="row">
         <div class="col-lg-4 offset-md-4">
-            <h5>Load electrode logs</h5>
+            <h5 id="label-load">Upload Electrode Depth Log </h5>
         </div>
         <div class="col-lg-4 offset-md-4 card card-body">
                 <form action="" method="post" enctype="multipart/form-data">
@@ -28,4 +28,7 @@
             </div>
         </div>
     </div>
+    {% block subject_name %}
+        {{ block.super }}
+    {% endblock %}
 {% endblock %}

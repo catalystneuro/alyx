@@ -18,6 +18,7 @@ from buffalo.views import (
     ElectrodeLogPlotView,
     TaskPlotView,
     ElectrodeStatusPlotView,
+    getSubjectJson,
 )
 
 urlpatterns = [
@@ -102,5 +103,10 @@ urlpatterns = [
         "electrode-status-plot/<uuid:subject_id>",
         login_required(ElectrodeStatusPlotView.as_view(), login_url="/login/",),
         name="electrode-status-plot",
+    ),
+    path(
+        "subject-json/",
+        login_required(getSubjectJson.as_view(), login_url="/login/",),
+        name="subject-json",
     ),
 ]

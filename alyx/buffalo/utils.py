@@ -1002,3 +1002,9 @@ def show_electrode_status(data, days, electrodes, breaks, no_electrodes):
 
     fig = go.Figure(data=data, layout=layout)
     return fig
+
+
+def valid_year(year):
+    if len(year) == 4 and year.isdigit():
+        return True
+    return False

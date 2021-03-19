@@ -16,7 +16,7 @@
     <div id="loading"></div>
         <div class="row">
             <div class="col-lg-4 offset-md-4">
-                <h5>Load Sessions</h5>
+                <h5 id="label-load">Load Sessions </h5>
             </div>
             <div class="col-lg-4 offset-md-4 card card-body">
                     <form action="" method="post" enctype="multipart/form-data">
@@ -29,6 +29,9 @@
         </div>
      </div>
     {% block loading %}
+        {{ block.super }}
+    {% endblock %}
+    {% block subject_name %}
         {{ block.super }}
     {% endblock %}
 {% endblock %}
